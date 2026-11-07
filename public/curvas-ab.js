@@ -132,9 +132,10 @@
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
   const fit=row.adsCompetitiveness||null;
+  const maxAboveMarketPct=Number(fit?.maxAboveMarketPct??60);
   const fitTag=!pending&&fit?.eligible?t('div','curve-ads-fit',
    fit.status==='within_market'?'Pré-qualificada • preço na média':
-   'Pré-qualificada • até 40% acima da média'):null;
+   'Pré-qualificada • até '+maxAboveMarketPct+'% acima da média'):null;
   const facts=t('div','curve-metrics');
   facts.append(
    metric(row.periodSource?.includes('Em Destaque')?'Vendido/Mês • Shopee':
@@ -146,7 +147,7 @@
    metric('Custo WeDrop',money(row.cost)),
    ...(fit?.eligible?[
     metric('Preço sugerido para Ads',money(fit.suggestedSalePrice)),
-    metric('Teto competitivo (+40%)',money(fit.maxMarketPrice)),
+    metric('Teto competitivo (+'+maxAboveMarketPct+'%)',money(fit.maxMarketPrice)),
     metric('Lucro líquido estimado',money(fit.estimatedNetProfit))
    ]:[]),
    metric('Correspondência de nomes',nf.format(Math.round(100*Number(row.matchScore||0)))+'%')
@@ -353,7 +354,8 @@
    const chromeCount=Number(result.sources?.chrome||0);
   const marketNotice=result.competitiveOnly?
    ' '+Number(result.discardedCount||0)+' SKU(s) descartadas para Ads por custo, margem ou estoque; '+
-   Number(result.pendingCount||0)+' SKU(s) aguardam informações. Teto +40% aplicado.':'';
+   Number(result.pendingCount||0)+' SKU(s) aguardam informações. Teto +'+
+   Number(result.pricePolicy?.maxAboveMarketPct??60)+'% aplicado.':'';
   const foot=' Fonte: '+(feature?'busca pública Em Destaque Shopee ('+feature+' consultas). ':'')+
    (affiliate?'API Afiliados ('+affiliate+' consultas). ':'')+
     (chromeCount?'Ponte Chrome ('+chromeCount+' consultas visíveis). ':'')+
@@ -372,3 +374,4 @@
   if(state.last)render(state.last);
  }};
 })();
+

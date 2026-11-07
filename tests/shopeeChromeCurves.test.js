@@ -110,7 +110,7 @@ test('custo acima da média nunca aparece como Potencial em verificação',()=>{
  const candidates=[
   ...qualified,
   {sku:'INOX',verified30:false,adsCompetitiveness:{eligible:false,status:'cost_above_market'}},
-  {sku:'SEM_MARGEM',verified30:false,adsCompetitiveness:{eligible:false,status:'above_40_pct'}},
+  {sku:'SEM_MARGEM',verified30:false,adsCompetitiveness:{eligible:false,status:'above_60_pct'}},
   {sku:'SEM_ESTOQUE',adsCompetitiveness:{eligible:false,status:'out_of_stock'}},
   {sku:'SEM_PRECO',adsCompetitiveness:{eligible:false,status:'missing_market'}},
   {sku:'DEMADA',adsCompetitiveness:{eligible:true,status:'within_market'}}

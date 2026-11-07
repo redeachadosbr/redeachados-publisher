@@ -696,7 +696,7 @@ export async function researchCurveAB(shopId,{
  const hasMore=state.cursor<state.plan.length&&!state.limited;
  const notes=[
   'Pesquisa parte do catálogo WeDrop, inclusive SKUs ainda não anunciadas na sua loja; cruza produtos equivalentes com concorrentes da Shopee, priorizando a busca pública Em Destaque.',
-  'Curva A: 900+ vendas em 30 dias; Curva B: 700 a 899. Somente SKUs com custo WeDrop menor que a média de concorrentes e preço lucrativo até 40% acima da média entram no Top para Ads.',
+  'Curva A: 900+ vendas em 30 dias; Curva B: 700 a 899. Somente SKUs com custo WeDrop menor que a média de concorrentes e preço lucrativo até '+CURVE_ADS_POLICY.maxAboveMarketPct+'% acima da média entram no Top para Ads.',
   priceStats.excludedByPrice?priceStats.excludedByPrice+' SKUs com curva mensal foram excluídas por preço/custo inviável.':'',
   state.matches.some(x=>!x.verified30)&&!selected.items.length?'Anúncios sem evidência mensal não entram na lista apta para Ads.':'',
   selected.shortage?'Encontradas '+selected.items.length+' das '+desired+
@@ -729,3 +729,4 @@ export async function researchCurveAB(shopId,{
   warning:notes.join(' '),searchMode:'wedrop-first-featured-competitor-monthly',
   readOnly:true,marketplaceUpdated:false};
 }
+

@@ -107,7 +107,7 @@ export function confirmChromeMonthlySamples(rows){
 // Produtos com custo/preço comprovadamente incompatíveis NUNCA são candidatos pendentes.
 // Exigir renda/demanda adicional para esses itens não muda a inviabilidade financeira.
 const FINAL_ADS_REJECTIONS=new Set([
- 'cost_above_market','above_40_pct','unprofitable','out_of_stock'
+ 'cost_above_market','above_60_pct','unprofitable','out_of_stock'
 ]);
 export function splitChromeAdsCandidates(rows,qualified=[]){
  const approved=new Set(qualified.map(row=>String(row.sku)));
@@ -219,7 +219,7 @@ export async function importChromeOffers(shopId,{
    skuCount:task.skus.length,searchedSkus:task.skus,
    matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
    viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},
-  warning:'Somente Curvas A/B com 2 a 5 concorrentes de 700+ vendas/mês, média do preço de 2 a 10 anúncios do mesmo produto (mesma loja permitida), custo inferior à média e preço rentável até 40% acima dela. '+
+  warning:'Somente Curvas A/B com 2 a 5 concorrentes de 700+ vendas/mês, média do preço de 2 a 10 anúncios do mesmo produto (mesma loja permitida), custo inferior à média e preço rentável até '+CURVE_ADS_POLICY.maxAboveMarketPct+'% acima dela. '+
    discarded.length+' SKU(s) descartadas de Ads por custo, margem ou estoque; '+
    pending.length+' SKU(s) aguardam evidências ou dados financeiros. '+
    'Vendas acumuladas não comprovam uma Curva A/B.',

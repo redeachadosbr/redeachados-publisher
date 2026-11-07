@@ -409,7 +409,7 @@ test('bicicletas Curva A não passam para Ads quando preço médio da concorrên
  }
  assert.equal(pickCurveResults(rows,{limit:10,curve:'ALL',competitiveOnly:true}).found,0);
 });
-test('Curva B com custo baixo e três lojas de preços comparáveis recebe simulação dentro de +40%',()=>{
+test('Curva B com três lojas aceita preço rentável entre 40% e 60% acima da média',()=>{
  const catalog=[{supplier_sku:'SHP123',product_data:{
   name:'Organizador de Gaveta Modular Plástico Grande',category:'Organizadores',
   rawAvailability:'Disponível'}}];
@@ -424,13 +424,14 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
   dataSource:'shopee-featured-chrome'
  })));
  const rows=matchCurveOffers({catalog,costs:[
-  {supplier_sku:'SHP123',unit_cost:40}],offers,ownShopId:'999'});
+  {supplier_sku:'SHP123',unit_cost:80}],offers,ownShopId:'999'});
  assert.equal(rows.length,1);
  assert.equal(rows[0].curve,'B');
  assert.equal(rows[0].avgCompetitorPrice,100);
  assert.equal(rows[0].monthlyCompetitorCount,3);
  assert.equal(rows[0].adsCompetitiveness.eligible,true);
- assert.ok(rows[0].adsCompetitiveness.suggestedSalePrice<=140);
+ assert.ok(rows[0].adsCompetitiveness.suggestedSalePrice>140);
+ assert.ok(rows[0].adsCompetitiveness.suggestedSalePrice<=160);
  assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
 });
 
@@ -627,3 +628,4 @@ test('média de mercado percorre amostras de 2, 5 e 10 balanças comparáveis',(
   assert.equal(rows[0].monthlyCompetitorCount,0);
  }
 });
+

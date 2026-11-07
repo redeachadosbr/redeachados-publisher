@@ -3,7 +3,7 @@
 import {SHOPEE_PRICE_DEFAULTS,normalizeShopeePricingSettings,
  calculateShopeeSale,minimumGrossForNetMargin} from './shopeePricing.js';
 export const CURVE_ADS_POLICY=Object.freeze({
- maxAboveMarketPct:40,minMonthlyCompetitors:2,minPriceOffers:2,
+ maxAboveMarketPct:60,minMonthlyCompetitors:2,minPriceOffers:2,
  screeningAdsPct:10,screeningMinMarginPct:5
 });
 const cents=x=>Math.round(x*100);
@@ -16,6 +16,7 @@ const settings=normalizeShopeePricingSettings({
 });
 function reject(status,reason,rest={}){
  return {eligible:false,status,reason,marketAverage:null,
+  maxAboveMarketPct:CURVE_ADS_POLICY.maxAboveMarketPct,
   maxMarketPrice:null,suggestedSalePrice:null,estimatedNetProfit:null,
   estimatedMarginPct:null,...rest};
 }
@@ -29,7 +30,7 @@ export function assessCurveAdsCompetitiveness({
  if(!positive(unit))return reject('missing_cost','Custo WeDrop não cadastrado.');
  if(!positive(avg)||Number(competitorOfferCount)<CURVE_ADS_POLICY.minPriceOffers)
   return reject('missing_market','Média não confirmada: exigir 2 a 10 anúncios do mesmo produto, mesmo que sejam da mesma loja.');
- const ceiling=round2(avg*1.4);
+ const ceiling=round2(avg*(1+CURVE_ADS_POLICY.maxAboveMarketPct/100));
  if(unit>=avg)return reject('cost_above_market','Custo WeDrop acima ou igual à média de venda dos concorrentes.',
   {marketAverage:avg,maxMarketPrice:ceiling});
  const floor=minimumGrossForNetMargin(unit,settings,CURVE_ADS_POLICY.screeningMinMarginPct);
@@ -43,11 +44,12 @@ export function assessCurveAdsCompetitiveness({
    solution=sale;break;
   }
  }
- if(!solution)return reject('above_40_pct','Preço rentável em Ads excede 40% acima da média.',
+ if(!solution)return reject('above_60_pct','Preço rentável em Ads excede '+CURVE_ADS_POLICY.maxAboveMarketPct+'% acima da média.',
   {marketAverage:avg,maxMarketPrice:ceiling});
- return {eligible:true,status:solution.finalPrice<=avg+0.009?'within_market':'within_40_pct',
+ return {eligible:true,status:solution.finalPrice<=avg+0.009?'within_market':'within_60_pct',
   reason:'Projeção financeira aprovada para triagem; revise taxas reais antes de anunciar.',
   marketAverage:avg,maxMarketPrice:ceiling,
+  maxAboveMarketPct:CURVE_ADS_POLICY.maxAboveMarketPct,
   suggestedSalePrice:solution.finalPrice,estimatedNetProfit:solution.profit,
   estimatedMarginPct:round2(solution.marginPct),
   priceGapPct:round2((solution.finalPrice/avg-1)*100),
@@ -65,3 +67,4 @@ export function curveAdsRejectionStats(rows=[]){
  }
  return {excludedByPrice:excluded.length,rejectedReasons};
 }
+
