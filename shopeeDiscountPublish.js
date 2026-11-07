@@ -21,18 +21,24 @@ export function promotionFromQuote(q){
  const buyerAfterCoupon=brl(promo*(1-couponPct/100));
  if(Math.abs(buyerAfterCoupon-Number(q.customerPrice))>0.011)
   throw Error('Preço após cupom não confere com o plano salvo. Recalcule antes de publicar.');
- // Preço da Minha Promoção (vitrine) e preço com cupom seguem a MESMA
- // regra 0/9. Rejeitar planos v3 gerados pelo algoritmo antigo, nos quais
- // o cupom ficou com centavos inválidos. Recalcular sem enviar nada à Shopee.
+ // Na margem manual v6, apenas o BRUTO e o preço anunciável exigem 0/9.
+ // O preço após cupom é condicional, mas SEMPRE integra o cálculo do lucro.
+ // A política anterior continua obrigatória nos demais planos.
+ const conditionalManual=q.priceEndingRuleVersion===6&&
+  q.priceEndingPolicy==='listed_price_coupon_conditional'&&
+  q.marginOverride===true&&q.variableDiscount===true;
+ const legacy=q.priceEndingRuleVersion===4&&q.priceEndingPolicy==='both_checkout_and_visible';
  const allowed=x=>Math.round(x*100)%10===0||Math.round(x*100)%10===9;
  if(!Number.isFinite(Number(q.marketplaceDisplayPrice))||
     Math.abs(promo-Number(q.marketplaceDisplayPrice))>0.011)
   throw Error('Preço promocional visível divergente do plano salvo. Recalcule a SKU.');
- if(!allowed(promo)||!allowed(buyerAfterCoupon))
-  throw Error('Preço na Shopee ou após cupom fora da regra de centavos 0/9. Recalcule a SKU em Otimização para obter os dois valores corretos.');
- if(q.priceEndingRuleVersion!==4||q.priceEndingPolicy!=='both_checkout_and_visible')
-  throw Error('Plano calculado pela versão anterior da regra de centavos. Recalcule a SKU em Otimização antes de concluir o desconto.');
- if(q.marginOverride===true&&Number(q.netMarginPct)+0.001<Number(q.targetMarginPct))
+ if(!allowed(promo)||(!conditionalManual&&!allowed(buyerAfterCoupon))||
+    (conditionalManual&&!allowed(gross)))
+  throw Error('Preço na Shopee ou após cupom fora da regra de centavos 0/9. Recalcule a SKU em Otimização para obter os valores corretos.');
+ if(!legacy&&!conditionalManual)
+  throw Error('Plano calculado por uma versão não autorizada da regra de centavos. Recalcule a SKU em Otimização antes de concluir o desconto.');
+ if(q.marginOverride===true&&Number(q.netMarginPct)+0.001<
+    Math.max(Number(q.targetMarginPct),Number(q.minMarginPct)))
   throw Error('A margem escolhida na barra não foi preservada. Recalcule a SKU.');
  if(promo<=0||promo>=gross)throw Error('Desconto inválido para publicação.');
  return {gross,promo,buyerAfterCoupon,couponPct,discountPct:Number(q.discountPct)};

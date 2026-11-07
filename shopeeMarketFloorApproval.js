@@ -42,8 +42,10 @@ export function unresearchedMarginApprovalEligible(q,{sellerApproved=false}={}){
  if(sellerApproved!==true||q?.variableDiscount!==true||
    q.discountRecommendationSource!=='base_not_researched'||
    q.marketResearch?.verified===true||q.readyForManualReview!==true||
-   q.appliedInShopee!==false||q.priceEndingRuleVersion!==4||
-   q.priceEndingPolicy!=='both_checkout_and_visible')return false;
+   q.appliedInShopee!==false||
+   !(q.priceEndingRuleVersion===4&&q.priceEndingPolicy==='both_checkout_and_visible'||
+     q.priceEndingRuleVersion===6&&q.priceEndingPolicy==='listed_price_coupon_conditional'&&q.marginOverride===true))
+   return false;
  const n=x=>Number(x),cost=n(q.unitCost),gross=n(q.grossPrice),
   discount=n(q.discountPct),coupon=n(q.couponPct),
   promo=n(q.marketplaceDisplayPrice),checkout=n(q.customerPrice),
@@ -54,10 +56,10 @@ export function unresearchedMarginApprovalEligible(q,{sellerApproved=false}={}){
   shipping,packing].every(Number.isFinite);
  if(!finite||cost<=0||gross<=0||discount<=0||discount>50||
     coupon<0||coupon>=90||promo<=0||checkout<=0||
-    minimum<0||desired<minimum||margin+0.002<desired||
+    minimum<0||margin+0.002<Math.max(desired,minimum)||
     profit<=0||gross>3*(cost+shipping+packing)+0.031||
     Math.abs(promo-Math.round(gross*(1-discount/100)*100)/100)>0.011||
     Math.abs(checkout-Math.round(promo*(1-coupon/100)*100)/100)>0.011)return false;
  const ending=value=>[0,9].includes(((Math.round(value*100)%10)+10)%10);
- return [gross,promo,checkout].every(ending);
+ return (q.priceEndingRuleVersion===6?[gross,promo]:[gross,promo,checkout]).every(ending);
 }

@@ -131,9 +131,9 @@ test('Otimização de anúncios: desconto variável dos kits na SKU 305350, sem 
  assert.ok(q.discountPct>0&&q.discountPct<=50);
  assert.notEqual(q.discountPct,20,'A taxa antiga não pode ser fixa na SKU 305350');
  assert.ok(q.netMarginPct>=15);
- assert.equal(q.priceEndingRuleVersion,4);
- assert.equal(q.priceEndingPolicy,'both_checkout_and_visible');
- for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+ assert.equal(q.priceEndingRuleVersion,6);
+ assert.equal(q.priceEndingPolicy,'listed_price_coupon_conditional');
+ for(const value of [q.grossPrice,q.marketplaceDisplayPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10),'Final 0/9: '+value);
  const same=calculateShopeeSale(Math.round(q.grossPrice*100),
   {...settings,discountPct:q.discountPct},9199);

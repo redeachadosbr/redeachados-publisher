@@ -299,6 +299,35 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
   grossMultiplier:3,maxDiscountPct:50};
 }
 
+// Apenas na margem MANUAL: selecionar um preço efetivamente próximo à meta.
+// O preço exibido (Minha Promoção) e o bruto continuam com finais comerciais
+// 0/9. O cupom da loja é condicional, portanto seu valor líquido não deve
+// bloquear o ajuste do valor anunciado. A projeção financeira mantém cupom,
+// comissão, taxas e custos para proteger a margem, sem publicar nada na Shopee.
+function closestManualOptimizationQuote(cost,c,desired){
+ const total=cost+c.shipping+c.packing;
+ const ceiling=Math.min(BRL_LIMIT,money(total*3));
+ const grossCents=Math.floor(ceiling/10)*10;
+ if(grossCents<=0)throw Error('Preço bruto do fornecedor insuficiente para simulação.');
+ const costCents=money(cost);
+ let best=null;
+ for(let basis=1;basis<=5000;basis++){
+  const discountPct=basis/100;
+  const financial=calculateShopeeSale(grossCents,{...c,discountPct},costCents);
+  const displayCents=money(financial.marketplaceDisplayPrice);
+  if(!attractiveCents.has(displayCents%100)||
+     financial.marginPct+1e-8<desired||financial.profit<=0)continue;
+  const deviation=financial.marginPct-desired;
+  if(!best||deviation<best.deviation-1e-9||
+     (Math.abs(deviation-best.deviation)<=1e-9&&
+      financial.saleCents<best.financial.saleCents)){
+   best={grossCents,discountPct,financial,deviation};
+  }
+ }
+ if(!best)throw Error('Não há preço viável para esta margem com custo, taxas, desconto até 50% e bruto até 3× o custo. Revise a margem ou os custos; nenhum preço foi publicado.');
+ return best;
+}
+
 // Otimizacao de anuncios individuais: compartilhar o motor de desconto
 // variavel dos Kits Inteligentes. A porcentagem salva em settings.discountPct
 // nao e um desconto fixo: o motor a recalcula conforme a margem e o custo.
@@ -313,12 +342,13 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
  const desired=Math.max(c.marginPct,c.minMarginPct);
  // Mesma regra efetiva dos kits: bruto de ate 3x custos, desconto 0..50%,
  // lucro protegido e terminacoes 0/9 no bruto, vitrine e apos cupom.
- const base=quoteShopeeKitPrice({unitCost:cost,settings:c});
- let chosen={grossCents:money(base.grossPrice),discountPct:base.discountPct,
-  financial:calculateShopeeSale(money(base.grossPrice),
-   {...c,discountPct:base.discountPct},money(cost))};
+ const base=marginOverride?null:quoteShopeeKitPrice({unitCost:cost,settings:c});
+ let chosen=marginOverride?closestManualOptimizationQuote(cost,c,desired):
+  {grossCents:money(base.grossPrice),discountPct:base.discountPct,
+   financial:calculateShopeeSale(money(base.grossPrice),
+    {...c,discountPct:base.discountPct},money(cost))};
  let status=marginOverride?'MARGEM_MANUAL':'PROTEGIDO';
- let notice='Desconto variável calculado pela margem e pelo custo WeDrop, com a mesma regra dos kits: preço bruto até 3× o custo total, desconto máximo de 50% e finais de centavos 0/9.';
+ let notice='Desconto variável calculado com custo WeDrop, bruto até 3× o custo total, desconto máximo de 50% e terminação 0/9 no preço anunciado.';
  const validEnding=n=>attractiveCents.has(((n%100)+100)%100);
  if(market!==null&&!marginOverride){
   const target=money(market);
@@ -360,19 +390,21 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
    }
   }
  }else if(marginOverride){
-  notice+=' A margem definida na barra tem prioridade sobre a referência de mercado.';
+  notice+=' A margem definida na barra determina o desconto e o preço anunciado. O cupom de '+c.couponPct+'% é condicional: entra no lucro, mas seu preço hipotético pode ter centavos diferentes de 0/9.';
  }else notice+=' Sem pesquisa comparável, o desconto é calculado pelo custo e pela margem, nunca fixado em 20%.';
  const f=chosen.financial;
  if(marginOverride&&f.marginPct>desired+0.3)
   notice+=' Meta desejada: '+desired.toFixed(2).replace('.',',')+
    '%. Margem viável: '+f.marginPct.toFixed(2).replace('.',',')+
    '%. A margem escolhida é um mínimo. Sob o cupom de '+c.couponPct+
-   '% e terminações obrigatórias 0/9 no preço bruto, na vitrine e após cupom, '+
-   'não há uma combinação comercial mais próxima sem reduzir abaixo da meta. '+
-   'Ajustar a meta dentro dessa faixa pode manter o mesmo preço, sem falha de atualização.';
+   '% e as terminações 0/9 do preço anunciado, '+
+   'esta é a combinação mais próxima sem reduzir abaixo da margem protegida. '+
+   (c.marginPct<c.minMarginPct?'A meta da barra está abaixo do piso mínimo de '+c.minMarginPct+'%. ':'')+
+   'Ajustar a meta dentro do mesmo intervalo pode conservar o valor por arredondamento.';
  if(chosen.discountPct<=0||chosen.discountPct>50||
-    f.marginPct+1e-8<c.minMarginPct||
-    ![chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents].every(validEnding))
+    f.marginPct+1e-8<desired||
+    !(marginOverride?[chosen.grossCents,money(f.marketplaceDisplayPrice)]:
+      [chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents]).every(validEnding))
   throw Error('Desconto variável inviável com a margem e terminações exigidas. Nenhum preço foi alterado.');
  const minGross=minimumGrossForNetMargin(cost,{...c,discountPct:chosen.discountPct},c.minMarginPct);
  const floor=minGross===null?null:
@@ -383,7 +415,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   buyerAfterCoupon:f.finalPrice,customerPrice:f.finalPrice,
   customerPriceBeforeRounding:f.finalPrice,
   attractiveEndingApplied:true,attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
-  priceEndingRuleVersion:4,priceEndingPolicy:'both_checkout_and_visible',
+  priceEndingRuleVersion:marginOverride?6:4,
+  priceEndingPolicy:marginOverride?'listed_price_coupon_conditional':'both_checkout_and_visible',
   netProfit:f.profit,netMarginPct:Number(f.marginPct.toFixed(3)),
   minMarginPct:c.minMarginPct,targetMarginPct:c.marginPct,
   marketAverage:market,marketGapPct:market===null?null:

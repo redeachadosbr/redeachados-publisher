@@ -5260,10 +5260,15 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
   const cents=Math.round(Number(value)*100)%10;
   return cents===0||cents===9;
  };
- // Revalidar sempre AMBOS os preços efetivos do plano salvo e a versão
- // da política. Não confundir a vitrine com checkout após o cupom opcional.
+ // A política manual v6 protege 0/9 no bruto e no anúncio real. O cupom
+ // é condicional e foi descontado no lucro; não bloquear sua terminação
+ // quando o vendedor escolhe explicitamente a margem e autoriza a prévia.
+ const conditionalManual=quote.priceEndingRuleVersion===6&&
+  quote.priceEndingPolicy==='listed_price_coupon_conditional'&&
+  quote.marginOverride===true&&quote.variableDiscount===true;
  if(!attractiveVisiblePrice(beforePublish.promo)||
-    !attractiveVisiblePrice(beforePublish.buyerAfterCoupon))
+    (conditionalManual&&!attractiveVisiblePrice(beforePublish.gross))||
+    (!conditionalManual&&!attractiveVisiblePrice(beforePublish.buyerAfterCoupon)))
   throw Error('Plano de desconto fora da regra 0/9: Shopee R$ '+
    beforePublish.promo.toFixed(2)+' e com cupom R$ '+
    beforePublish.buyerAfterCoupon.toFixed(2)+

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import {quoteShopeeOptimizationPrice} from '../shopeePricing.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,
   readDiscountPages,signDiscountPreview,verifyDiscountPreview,
   shopDiscountMembershipSignal} from '../shopeeDiscountPublish.js';
@@ -138,4 +139,18 @@ test('plano antigo com preço após cupom terminado em 2 é rejeitado antes da S
  const invalid={...q,grossPrice:83.24,marketplaceDisplayPrice:66.59,customerPrice:65.92,
   priceEndingRuleVersion:3,priceEndingPolicy:'visible_price_margin_priority',marginOverride:true};
  assert.throws(()=>promotionFromQuote(invalid),/fora da regra de centavos 0\/9/);
+});
+
+test('cotação manual v6 pode aproximar margem da balança com cupom condicional',()=>{
+ const q=quoteShopeeOptimizationPrice({unitCost:10.99,
+  settings:{marginPct:12,minMarginPct:5,discountPct:20,couponPct:1,
+   taxPct:4,flashPct:0,adsPct:0,sellerType:'cpf'},marginOverride:true});
+ assert.equal(q.priceEndingRuleVersion,6);
+ assert.ok(q.netMarginPct>=12&&q.netMarginPct<14);
+ const plan=promotionFromQuote({...q,readyForManualReview:true,appliedInShopee:false});
+ assert.equal(plan.promo,q.marketplaceDisplayPrice);
+ assert.equal(plan.buyerAfterCoupon,q.customerPrice);
+ assert.equal(Math.round(plan.promo*100)%10,9);
+ const broken={...q,marketplaceDisplayPrice:q.marketplaceDisplayPrice+0.01};
+ assert.throws(()=>promotionFromQuote(broken),/Preço promocional visível divergente/);
 });

@@ -5106,11 +5106,15 @@ function optimizerManualDiscountQualified(q){
  const cost=n(q?.unitCost),extra=n(q?.breakdown?.shipping||0)+n(q?.breakdown?.packing||0);
  return Boolean(q?.variableDiscount===true&&q.discountRecommendationSource==='base_not_researched'&&
   q.marketResearch?.verified!==true&&q.readyForManualReview===true&&q.appliedInShopee===false&&
-  q.priceEndingRuleVersion===4&&q.priceEndingPolicy==='both_checkout_and_visible'&&
+  (q.priceEndingRuleVersion===4&&q.priceEndingPolicy==='both_checkout_and_visible'||
+   q.priceEndingRuleVersion===6&&q.priceEndingPolicy==='listed_price_coupon_conditional'&&
+   q.marginOverride===true)&&
   n(q.discountPct)>0&&n(q.discountPct)<=50&&n(q.grossPrice)>0&&
   n(q.grossPrice)<=3*(cost+extra)+0.031&&n(q.netProfit)>0&&
-  n(q.netMarginPct)+0.002>=n(q.targetMarginPct)&&n(q.targetMarginPct)>=n(q.minMarginPct)&&
-  [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice].every(allowed));
+  n(q.netMarginPct)+0.002>=Math.max(n(q.targetMarginPct),n(q.minMarginPct))&&
+  (q.priceEndingRuleVersion===6?
+   [q.grossPrice,q.marketplaceDisplayPrice]:
+   [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice]).every(allowed));
 }
 function optimizerManualDiscountIdentity(q){
  return q?[q.sku,q.itemId,q.modelId,q.calculatedAt,q.grossPrice,q.discountPct,
@@ -10077,10 +10081,15 @@ function shDiscountQuoteHasValidCents(q){
  const gross=Number(q?.grossPrice),discount=Number(q?.discountPct);
  const promo=Math.round(gross*(1-discount/100)*100)/100;
  const checkout=Math.round(promo*(1-Number(q?.couponPct||0)/100)*100)/100;
- return Number(q?.priceEndingRuleVersion)===4&&
-  q?.priceEndingPolicy==='both_checkout_and_visible'&&
+ const conditionalManual=Number(q?.priceEndingRuleVersion)===6&&
+  q?.priceEndingPolicy==='listed_price_coupon_conditional'&&
+  q?.marginOverride===true&&q?.variableDiscount===true;
+ const legacy=Number(q?.priceEndingRuleVersion)===4&&
+  q?.priceEndingPolicy==='both_checkout_and_visible';
+ return (legacy||conditionalManual)&&
   Number.isFinite(promo)&&Number.isFinite(checkout)&&promo>0&&checkout>0&&
-  [0,9].includes(cents(promo))&&[0,9].includes(cents(checkout))&&
+  [0,9].includes(cents(promo))&&
+  (conditionalManual?[0,9].includes(cents(gross)):[0,9].includes(cents(checkout)))&&
   Math.abs(promo-Number(q.marketplaceDisplayPrice))<0.011&&
   Math.abs(checkout-Number(q.customerPrice))<0.011;
 }
