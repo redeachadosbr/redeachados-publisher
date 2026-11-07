@@ -104,6 +104,15 @@ export function curveSkuSearchQuery(name){
  if(measure&&!head.some(t=>t===measure[0]))head.push(measure[0]);
  return head.join(' ').slice(0,70);
 }
+// A vitrine pode deixar de mostrar produtos por causa da ordem dos termos.
+// Pesquisas adicionais conservam a identidade e a capacidade de 10 kg.
+export function curveSkuSearchVariants(name){
+ const primary=curveSkuSearchQuery(name);
+ if(!primary)return [];
+ if(kitchenScaleVariantCompatible(name,name)!==true)return [primary];
+ return [...new Set([primary,'balanca eletronica cozinha 10kg',
+  'balanca digital precisao 10kg','balanca cozinha 10kg'])];
+}
 export function curveSkuSearchPlan(catalog,{keyword=''}={}){
  const term=normal(keyword).slice(0,70),buckets=new Map();
  for(const row of catalog){
@@ -126,11 +135,15 @@ export function curveSkuSearchPlan(catalog,{keyword=''}={}){
  while(remaining>0){
   for(const group of groups){
    if(cursor>=group.length)continue;
-   const entry=group[cursor],key=normal(entry.query);
-   if(!lookup.has(key)){
-    const task={query:entry.query,skus:[entry.sku],category:entry.bucket};
-    lookup.set(key,task);plan.push(task);
-   }else lookup.get(key).skus.push(entry.sku);
+   const entry=group[cursor];
+   for(const query of curveSkuSearchVariants(entry.name)){
+    const key=normal(query);
+    if(!lookup.has(key)){
+     const task={query,skus:[entry.sku],category:entry.bucket};
+     lookup.set(key,task);plan.push(task);
+    }else if(!lookup.get(key).skus.includes(entry.sku))
+     lookup.get(key).skus.push(entry.sku);
+   }
    remaining--;
   }
   cursor++;

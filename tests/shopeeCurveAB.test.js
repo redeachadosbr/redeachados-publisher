@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {curveGroup,curveSearchTerms,matchCurveOffers,pickCurveResults,
- officialFeaturedSearchUrl,seoTitleFromEvidence,curveSkuSearchPlan,curveSkuSearchQuery} from '../shopeeCurveAB.js';
+ officialFeaturedSearchUrl,seoTitleFromEvidence,curveSkuSearchPlan,curveSkuSearchQuery,curveSkuSearchVariants} from '../shopeeCurveAB.js';
 import {categoryMatches} from '../shopeeKitBuilder.js';
 
 const photo='https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/teste-xl.jpg';
@@ -630,6 +630,14 @@ test('média de mercado percorre amostras de 2, 5 e 10 balanças comparáveis',(
 });
 
 
+test('SKU de balança 10kg pesquisa quatro variantes reais, não apenas uma',()=>{
+ const plan=curveSkuSearchPlan([{supplier_sku:'PL001.U02',product_data:{
+  name:'Balança Digital de Cozinha 10kg',rawAvailability:'Disponível'}}]);
+ assert.equal(plan.length,4);
+ assert.ok(plan.every(row=>row.skus.includes('PL001.U02')));
+ assert.ok(curveSkuSearchVariants('Balança Digital de Cozinha 10kg')
+  .every(query=>query.includes('10kg')));
+});
 test('balanças 10kg com título reduzido entram na média, modelos incompatíveis não',()=>{
  const catalog=[{supplier_sku:'PL001.U02',product_data:{
   name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];
