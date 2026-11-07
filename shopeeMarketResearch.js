@@ -253,9 +253,9 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
 }
 
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);
-async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
+async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId,curveRecovery=false}){
  const searchedAt=new Date().toISOString(),keywords=marketSearchKeywords(title);
- const queries=marketSearchQueries(title);
+ const queries=marketSearchQueries(title).slice(0,curveRecovery?3:REDE_ACHADOS_MARKET_RULES.maxQueries);
  const base={source:'shopee_affiliate_product_offers',searchTerms:keywords,
   searchedQueries:[],researchedAt:searchedAt,verified:false,reference:null,count:0,sample:[]};
  if(!queries.length)return {...base,status:'insufficient_product_description',
@@ -275,7 +275,7 @@ async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
    const response=await fetch(endpoint,{method:'POST',headers:{
     'Content-Type':'application/json',
     'Authorization':'SHA256 Credential='+id+', Timestamp='+now+', Signature='+signature},
-    body:payload,signal:AbortSignal.timeout(8500)});
+    body:payload,signal:AbortSignal.timeout(curveRecovery?6000:8500)});
    if(!response.ok)throw Error('HTTP '+response.status);
    const result=await response.json();
    if(result?.errors?.length)throw Error(safeError(result.errors[0]));
@@ -283,14 +283,20 @@ async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
     throw Error('Dados incompletos no retorno de ofertas');
    searchedQueries.push(term);
    offers.push(...result.data.productOfferV2.nodes);
-   assessment=evaluateMarketOffers({title,offers,ownShopId,ownItemId,queriedAt:searchedAt});
-   if(assessment.verified&&assessment.count>=MARKET_COMPARISON_MIN)break;
+   assessment=evaluateMarketOffers({title,offers,ownShopId,ownItemId,
+    queriedAt:searchedAt,...(curveRecovery?{minOffers:2,maxOffers:10,
+     allowSameShop:true,strictPriceCluster:true,
+     priceClusterRatio:kitchenScaleVariantCompatible(title,title)===true?1.6:1.45}:{})});
+   if(assessment.verified&&assessment.count>=(curveRecovery?5:MARKET_COMPARISON_MIN))break;
   }catch(error){
    errors.push(String(error.message||error).slice(0,145));
    if(/credential|signature|unauthorized|forbidden|auth|rate.limit|limite de requis/i.test(String(error.message||error)))break;
   }
  }
- assessment ||=evaluateMarketOffers({title,offers,ownShopId,ownItemId,queriedAt:searchedAt});
+ assessment ||=evaluateMarketOffers({title,offers,ownShopId,ownItemId,
+  queriedAt:searchedAt,...(curveRecovery?{minOffers:2,maxOffers:10,
+   allowSameShop:true,strictPriceCluster:true,
+   priceClusterRatio:kitchenScaleVariantCompatible(title,title)===true?1.6:1.45}:{})});
  const status=assessment.verified?'verified':searchedQueries.length?
   'insufficient_comparables':'provider_error';
  const message=assessment.verified?
@@ -307,7 +313,7 @@ async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
 // Bad/missing credentials are cached for only 45 seconds.
 const marketCache=new Map();
 export async function lookupShopeeCompetitors(input){
- const key=[String(input.ownShopId||''),String(input.ownItemId||''),normalize(input.title)].join('|');
+ const key=[String(input.ownShopId||''),String(input.ownItemId||''),normalize(input.title),input.curveRecovery===true?'curvas':'default'].join('|');
  const old=marketCache.get(key),now=Date.now();
  if(old&&now<old.expiresAt)return old.promise;
  const promise=lookupShopeeCompetitorsUncached(input);
