@@ -3,6 +3,7 @@
 // Ads não são deduzidos até existir atribuição comprovada sem duplicidades.
 import {readWeDropCosts,readWeDropSkuLinks,readFinanceCatalogProfiles} from './wedropCosts.js';
 import {isFinancePaid} from './shopeeFinancePaid.js';
+import {readFinanceOrderCosts} from './shopeeFinanceOrderCosts.js';
 
 export const MAX_FINANCE_ORDERS=100;
 export function finiteMoney(raw){
@@ -150,8 +151,8 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
   const originalEscrow=finiteMoney(income.escrow_amount);
   const refundPending=returnRefs.length>0&&adjustedEscrow===null;
   const payout=finiteMoney(income.escrow_amount_after_adjustment??income.escrow_amount);
-  const items=Array.isArray(income.items)&&income.items.length
-    ?income.items:Array.isArray(detail?.item_list)?detail.item_list:[];
+  const items=Array.isArray(detail?.item_list)&&detail.item_list.length
+    ?detail.item_list:Array.isArray(income.items)?income.items:[];
   const costs=[],missing=[];
   const skuFromItem=item=>{
     const modelRequired=Number(item.model_id||0)>0&&!String(item.model_sku||'').trim();
@@ -198,6 +199,8 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
     buyerTotal:finiteMoney(income.buyer_total_amount),
     grossProductSales:orderMerchandiseSubtotal(detail),
     payout,totalCost,balanceBeforeAds,marginBeforeAds,
+    costSource:totalCost===null?'missing':'wedrop_catalog_estimate',
+    supplierCredit:0,externalExpense:0,supplierReference:null,
     payoutConfirmed:status==='COMPLETED'&&!refundPending,
     provisional,adjustedEscrow:adjustedEscrow!==null,
     refundPending,returnRefs,
@@ -215,7 +218,7 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
     },
     reason:ready?(
       provisional?'Repasse previsto pela Shopee, sujeito a alterações até a conclusão.':
-      onlySku?'Repasse concluído, custo confirmado. Ads e encargos externos não atribuídos.':
+      onlySku?'Repasse concluído, custo estimado a partir do catálogo WeDrop; conferência da compra pendente. Ads e encargos externos não atribuídos.':
       'Pedido com vários SKUs: resultado só pode ser atribuído ao pedido, não individualmente ao SKU.'
     ):!items.length?'A Shopee não retornou os itens do pedido.':
       payout===null?'Valor de repasse indisponível.':
@@ -331,13 +334,32 @@ export async function readFinanceReturns(cfg,auth,callApi,range,{now=Math.floor(
    records:[...records.values()]};
  }
 }
+export function applyActualFinanceCost(row,record){
+ if(!record||!row)return row;
+ const unit=finiteMoney(record.supplier_cost);
+ const credit=finiteMoney(record.supplier_credit);
+ const expense=finiteMoney(record.external_expense);
+ if(unit===null||unit<0||credit===null||credit<0||expense===null||expense<0)return row;
+ const original=finiteMoney(row.totalCost);
+ const payout=finiteMoney(row.payout);
+ const usable=payout!==null&&row.refundPending!==true;
+ const beforeAds=usable?Math.round((payout-unit+credit-expense)*100)/100:null;
+ return {...row,catalogCost:original,totalCost:unit,costSource:'wedrop_order_recorded',
+   supplierCredit:credit,externalExpense:expense,
+   supplierReference:String(record.source_reference||''),supplierUpdatedAt:record.updated_at||null,
+   ready:usable,balanceBeforeAds:beforeAds,
+   marginBeforeAds:beforeAds!==null&&payout>0?Math.round(beforeAds/payout*10000)/100:null,
+   reason:usable?'Repasse Shopee e custo de compra WeDrop informado por pedido; verificar documento de origem.':
+    row.reason};
+}
 export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor(Date.now()/1000),timeRange=null}={}){
   const range=timeRange||financeRange({days},now);
   days=range.days;
   if(!Number.isSafeInteger(Number(auth.shopId)))throw Error('Loja inválida.');
-  const [supplierCosts,confirmedLinks]=await Promise.all([
-    readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId)
+  const [supplierCosts,confirmedLinks,orderCostRows]=await Promise.all([
+    readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId),readFinanceOrderCosts(auth.shopId)
   ]);
+  const actualCostByOrder=new Map(orderCostRows.map(x=>[String(x.order_sn),x]));
   const costs=new Map(supplierCosts.map(c=>
     [String(c.supplier_sku),Number(c.unit_cost)]));
   const linkMap=new Map(confirmedLinks.map(link=>[
@@ -392,7 +414,8 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   for(let i=0;i<detailTargets.length;i+=50){
     const d=await callApi(cfg,{
       path:'/api/v2/order/get_order_detail',accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{order_sn_list:detailTargets.slice(i,i+50).map(x=>x.order_sn).join(',')}
+      query:{order_sn_list:detailTargets.slice(i,i+50).map(x=>x.order_sn).join(','),
+        response_optional_fields:'item_list,total_amount,pay_time'}
     });
     if(!Array.isArray(d?.response?.order_list))
       throw Error('Não foi possível obter itens dos pedidos da Shopee.');
@@ -420,7 +443,9 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
       if(/permission|denied|403|no.?auth|forbidden/i.test(why))break;
       continue;
     }
-    rows.push(normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap));
+    rows.push(applyActualFinanceCost(
+      normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap),
+      actualCostByOrder.get(String(item.order_sn))));
   }
   // Pedidos PAGOS incluem SHIPPED/READY_TO_SHIP mesmo antes de COMPLETED.
   // Consultar escrow previsto de cada um, mas nunca chamá-lo repasse recebido.
@@ -445,7 +470,9 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
      escrow=await callApi(cfg,{path:'/api/v2/payment/get_escrow_detail',
       accessToken:auth.accessToken,shopId:auth.shopId,query:{order_sn:sn}});
     }catch(_){escrow=null;}
-    finance=normalizeEscrowOrder(order,detail,escrow,costs,linkMap,{allowProvisional:true});
+    finance=applyActualFinanceCost(
+      normalizeEscrowOrder(order,detail,escrow,costs,linkMap,{allowProvisional:true}),
+      actualCostByOrder.get(sn));
    }
    // A ausência de Payment não elimina o custo unitário já conhecido.
    if(finance.totalCost===undefined||finance.totalCost===null){
@@ -468,9 +495,13 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
    paidOrders.push({
     orderSn:sn,status,paidAt:Number(detail?.pay_time)||null,
     grossProductSales:gross,
+    buyerTotal:finiteMoney(detail?.total_amount??finance.buyerTotal),
     payout:finance.payout??null,
     payoutConfirmed:finance.payoutConfirmed===true&&!unresolved,
     totalCost:finance.totalCost??null,
+    costSource:finance.costSource||'missing',catalogCost:finance.catalogCost??null,
+    supplierCredit:finance.supplierCredit??0,externalExpense:finance.externalExpense??0,
+    supplierReference:finance.supplierReference||null,
     skuList:finance.skuList||[],items:(Array.isArray(detail?.item_list)?
      detail.item_list:[]).slice(0,20).map(item=>({
       sku:String(item.model_sku||item.item_sku||'').slice(0,90),
@@ -512,7 +543,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
       rows.every(x=>x.ready)&&salesPipeline.awaitingSettlement===0&&
       salesPipeline.goodsComplete),
     adsAttribution:'not_available',
-    caveat:'Somente pedidos COMPLETED criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
+    caveat:'Pedidos pagos e concluídos criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
       ' pedidos concluídos por consulta. Não equivale ao extrato bancário.'
   };
 }
