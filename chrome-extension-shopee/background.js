@@ -150,7 +150,7 @@ async function readPage(tabId){
  const merged=new Map();let last=null,blocked=null,labelsSeen=0,labelsInCards=0;
  for(let i=0;i<4;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
-  await delay(i===0?1500:1000);
+  await delay(i===0?2400:1400);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',
     deep:i===0||(i===3&&![...merged.values()].some(x=>x.monthlySold!=null))});
@@ -165,7 +165,7 @@ async function readPage(tabId){
    }
    const monthly=[...merged.values()].filter(x=>x.monthlySold!==null).length;
    // 2 vendas mensais são um MÍNIMO, não justificam descartar os demais preços.
-   if(merged.size>=45&&monthly>=5)break;
+   if(i>=2&&merged.size>=45&&monthly>=5&&labelsSeen<=labelsInCards)break;
   }catch{}
  }
  if(blocked&&!merged.size)return {ok:false,blocked:true,
@@ -332,7 +332,7 @@ async function batch(managerTab,nonce,jobs){
     // Se não atingir, percorrer mais páginas existentes, até o limite.
     if(related.length>=10&&relatedMonthly>=2)break;
     if(collected.size>=300)break;
-    await delay(900);
+    await delay(1500);
    }
    // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.
    if(!stopRequested&&!hardStop&&collected.size>0&&

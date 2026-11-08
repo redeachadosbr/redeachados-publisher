@@ -9,6 +9,13 @@ const ctx={URL,globalThis:null,location:{origin:'https://shopee.com.br',href:'ht
 ctx.globalThis=ctx;
 vm.runInNewContext(source,ctx);
 const parser=ctx.RAShopeeVisible;
+test('Ponte 1.2.10 espera selos mensais e evita contadores conflitantes',()=>{
+ const reader=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
+ const bg=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
+ assert.match(reader,/if\(distinct\.size>1\)return/);
+ assert.match(reader,/setTimeout\(resolve,800\)/);
+ assert.match(bg,/await delay\(i===0\?2400:1400\)/);
+});
 test('coleta do Chrome reconhece rótulo mensal somente quando explícito',()=>{
  assert.equal(parser.monthlyEvidence('950 vendidos/mês').monthlySold,950);
  assert.equal(parser.monthlyEvidence('Vendido no mês: 1,2 mil').monthlySold,1200);

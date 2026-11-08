@@ -71,8 +71,19 @@
   const fields=[];
   const text=fieldText(card,fields);
   fields.sort((a,b)=>a.text.length-b.text.length);
+  // Se o mesmo cartão tiver dois valores mensais contraditórios, nenhum
+  // deles será usado para classificar a curva.
+  const distinct=new Set();
   for(const field of fields){
    labelVisible=true;
+   const first=monthlyEvidence(field.text);
+   if(first.monthlySold===null)continue;
+   distinct.add(first.monthlySold);
+   const second=monthlyEvidence(field.text.replace(first.monthlyEvidence,' '));
+   if(second.monthlySold!==null)distinct.add(second.monthlySold);
+  }
+  if(distinct.size>1)return {...empty,monthlyLabelVisible:true};
+  for(const field of fields){
    const value=monthlyEvidence(field.text);
    if(value.monthlySold!==null)return {...value,monthlyLabelVisible:true};
   }
@@ -209,12 +220,12 @@
    const body=document.body,root=document.documentElement;
    const max=Math.max(0,Math.max(root?.scrollHeight||0,body?.scrollHeight||0)-
     (window.innerHeight||720));
-   // Até oito passos; preservar os anúncios já vistos em grids virtualizados.
-   for(let step=1;step<=8&&seen.size<100;step++){
+   // Até dez passos; dar tempo aos selos mensais em cada dobra do grid.
+   for(let step=1;step<=10&&seen.size<100;step++){
     if(blocked)break;
     const next=Math.min(max,Math.round(step*Math.max(400,(window.innerHeight||720)*0.85)));
     window.scrollTo(0,next);
-    await new Promise(resolve=>setTimeout(resolve,420));
+    await new Promise(resolve=>setTimeout(resolve,800));
     collect();
     if(next>=max)break;
    }
