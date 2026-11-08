@@ -128,8 +128,8 @@ test('botão usa versão instalada no manifesto e consulta versão real no servi
  assert.match(page,/média de 2 a 10 anúncios equivalentes/);
  assert.match(code,/chrome-extension-version/);
  assert.match(code,/Baixar extensão.*version/);
- assert.match(code,/Requer 1\.2\.9/);
- assert.match(code,/Verificando Ponte Chrome 1\.2\.9/);
+ assert.match(code,/Requer 1\.2\.10/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.10/);
 });
 
 test('relatório diferencia candidatos, SKUs sem equivalência e consultas incompletas',()=>{
