@@ -81,6 +81,40 @@ export function verifiedMonthlyEvidence(value){
   /(?<![a-z])(?:vendas|vendidos?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*(?:dias|d)\s*[:\-]?\s*\d/i.test(text)
  );
 }
+// Confere o NÚMERO do rótulo mensal, não só se o texto contém Vendido/Mês.
+export function monthlyEvidenceMatchesValue(raw,expected){
+ if(!Number.isSafeInteger(expected)||expected<0||!verifiedMonthlyEvidence(raw))return false;
+ const text=String(raw).normalize('NFC').replace(/[\u200b-\u200d\u2060\ufeff]/g,'')
+  .replace(/[\u2044\u2215\uff0f]/g,'/').replace(/\s+/g,' ').trim();
+ const quantity='(\\d[\\d.,]*(?:\\s*(?:milh(?:ão|ões)|mil|k))?\\s*\\+?)';
+ const patterns=[
+  new RegExp(quantity+'\\s*(?:vendid[oa]s?|vendas)\\s*(?:\\/|por|no|nos|em)\\s*m[eê]s','gi'),
+  new RegExp('(?:vendid[oa]s?|vendas)\\s*(?:\\/|por|no|nos|em)\\s*m[eê]s\\s*[:\\-]?\\s*'+quantity,'gi'),
+  new RegExp(quantity+'\\s*(?:vendid[oa]s?|vendas)\\s*(?:nos\\s+)?(?:[uú]ltimos\\s+)?30\\s*dias','gi'),
+  new RegExp('(?:vendas|vendid[oa]s?)\\s*(?:nos\\s+)?(?:[uú]ltimos\\s+)?30\\s*(?:dias|d)\\s*[:\\-]?\\s*'+quantity,'gi')
+ ];
+ const parse=rawValue=>{
+  const m=String(rawValue).toLowerCase().replace(/\+\s*$/,'').trim()
+   .match(/^(\d[\d.,]*)(?:\s*(milh(?:ão|ões)|mil|k))?$/i);
+  if(!m)return null;
+  const number=m[1],unit=m[2]||'';
+  let value;
+  if(unit)value=Number(number.includes(',')?number.replace(/\./g,'').replace(',','.'):
+   /^\d{1,3}(?:\.\d{3})+$/.test(number)?number.replace(/\./g,''):number);
+  else if(/^\d{1,3}(?:\.\d{3})+$/.test(number))value=Number(number.replace(/\./g,''));
+  else if(/^\d{1,3}(?:,\d{3})+$/.test(number))value=Number(number.replace(/,/g,''));
+  else value=Number(number.replace(',','.'));
+  if(!unit&&!Number.isInteger(value))return null;
+  value=Math.round(value*(/milh/.test(unit)?1000000:/mil|k/.test(unit)?1000:1));
+  return Number.isSafeInteger(value)&&value>=0?value:null;
+ };
+ const values=new Set();
+ for(const regex of patterns)for(const match of text.matchAll(regex)){
+  const count=parse(match[1]||match[2]);
+  if(count!==null)values.add(count);
+ }
+ return values.size===1&&values.has(expected);
+}
 export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
  if(!Array.isArray(rows)||rows.length>100)throw Error('Máximo de 100 anúncios por consulta.');
  const seen=new Set(),out=[];
@@ -94,7 +128,7 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
   if(productName.length<6)continue;
   const monthly=amount(row.monthlySold),historical=amount(row.historicalSold);
   const evidence=String(row.monthlyEvidence||'').slice(0,160);
-  const monthlySold=row.monthlyPeriod==='month'&&verifiedMonthlyEvidence(evidence)?monthly:null;
+  const monthlySold=row.monthlyPeriod==='month'&&monthlyEvidenceMatchesValue(evidence,monthly)?monthly:null;
   const price=Number(row.priceMin);
   if(monthlySold===null&&historical===null&&!(Number.isFinite(price)&&price>0))continue;
   out.push({itemId,shopId,productName,
@@ -112,15 +146,22 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
 // Curva A: no mínimo duas com >=900; B: no mínimo duas com >=700 (conservadora se mista).
 export function confirmChromeMonthlySamples(rows){
  return rows.map(row=>{
-  const monthly=(row.monthlyCompetitors||[]).filter(o=>
-   Number.isSafeInteger(Number(o.monthlySold))&&Number(o.monthlySold)>=700).slice(0,5);
+  // Nenhuma SKU é Curva A/B sem DUAS lojas distintas de >=700 vendas/mês.
+  const stores=new Map();
+  for(const offer of row.monthlyCompetitors||[]){
+   const shopId=String(offer?.shopId||''),monthly=Number(offer?.monthlySold);
+   if(!validId(shopId)||!Number.isSafeInteger(monthly)||monthly<700)continue;
+   const prev=stores.get(shopId);
+   if(!prev||monthly>Number(prev.monthlySold))stores.set(shopId,offer);
+  }
+  const monthly=[...stores.values()].sort((a,b)=>Number(b.monthlySold)-Number(a.monthlySold)).slice(0,5);
   const aCount=monthly.filter(o=>Number(o.monthlySold)>=900).length;
   const curve=aCount>=2?'A':monthly.length>=2?'B':null;
   const confirmed=Boolean(curve&&row.verified30);
-  return {...row,curve:curve||row.curve,curveSampleConfirmed:confirmed,
+  return {...row,curve:confirmed?curve:'PENDING',curveSampleConfirmed:confirmed,
    monthlyCompetitorCount:monthly.length,monthlyCompetitors:monthly,
    curveLabel:confirmed?'Curva '+curve+' • '+monthly.length+
-    ' lojas com vendas mensais verificadas':row.curveLabel};
+    ' lojas com vendas mensais verificadas':'A/B não comprovada: exige 2 lojas com 700+ vendas/mês'};
  });
 }
 // Produtos com custo/preço comprovadamente incompatíveis NUNCA são candidatos pendentes.
@@ -172,7 +213,7 @@ export async function importChromeOffers(shopId,{
    if(fallback.ok){
     recovered=normalizeVisibleOffers((fallback.offers||[]).map(offer=>({
      ...offer,monthlyPeriod:offer.monthlySold!==null?'month':null,
-     monthlyEvidence:offer.monthlySold!==null?'Vendido/Mês • vitrine pública Shopee':''
+     monthlyEvidence:offer.monthlySold!==null?String(offer.monthlySold)+' Vendido/Mês • vitrine pública Shopee':''
     })),{ownShopId:shopId}).map((offer,i)=>({
      ...offer,dataSource:'shopee-featured-public',
      featuredRank:i+1
@@ -249,9 +290,9 @@ export async function importChromeOffers(shopId,{
   matchedSkuIds:rows.map(row=>row.sku),
   viableSkuIds:qualified.map(row=>row.sku),
   pendingCount:pending.length,pendingSkuIds:pending.map(row=>row.sku),
-  pendingItems:pending.slice(0,20),
+  pendingItems:[],
   discardedCount:discarded.length,discardedSkuIds:discarded.map(row=>row.sku),
-  discardedItems:discarded.slice(0,20),discardedReasons,
+  discardedItems:[],discardedReasons,
   catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),

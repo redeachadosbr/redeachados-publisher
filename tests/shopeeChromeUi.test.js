@@ -149,8 +149,10 @@ test('inviáveis para Ads não aparecem como potencial e ficam na auditoria',()=
  const ui=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
  assert.doesNotMatch(ui,/Potencial • em verificação/);
  assert.match(ui,/Inviável para Ads/);
- assert.match(ui,/Descartados para Ads:/);
- assert.match(ui,/card\(item,\{rejected:true\}\)/);
+ assert.match(ui,/Auditoria separada:/);
+ assert.doesNotMatch(ui,/grid\.append\(card\(item,\{pending:true\}\)\)/);
+ assert.doesNotMatch(ui,/grid\.append\(card\(item,\{rejected:true\}\)\)/);
+ assert.match(ui,/item\.curveSampleConfirmed===true/);
  assert.match(ui,/if\(!rejected\)actions\.append\(featured\)/);
 });
 

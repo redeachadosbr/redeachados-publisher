@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates,mergeCurvePriceSamples} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates,mergeCurvePriceSamples,monthlyEvidenceMatchesValue} from '../shopeeChromeCurves.js';
 import {matchCurveOffers} from '../shopeeCurveAB.js';
 test('média é recuperada só com ofertas reais e modelos equivalentes',()=>{
  const store=new Map([['100:101',{shopId:'100',itemId:'101',
@@ -23,6 +23,32 @@ test('média é recuperada só com ofertas reais e modelos equivalentes',()=>{
  assert.equal(rows[0].avgCompetitorPrice,17.4);
  assert.ok(rows[0].competitorOffers.every(offer=>offer.price<30));
  assert.equal(rows[0].verified30,false);
+});
+test('número de Vendido/Mês deve coincidir com o próprio selo da Shopee',()=>{
+ assert.equal(monthlyEvidenceMatchesValue('866Vendido/Mês',866),true);
+ assert.equal(monthlyEvidenceMatchesValue('1mil+ Vendido/Mês',1000),true);
+ assert.equal(monthlyEvidenceMatchesValue('Vendido no mês: 1,2 mil',1200),true);
+ assert.equal(monthlyEvidenceMatchesValue('Vendas 30d: 850',850),true);
+ assert.equal(monthlyEvidenceMatchesValue('950 Vendido/Mês',12),false);
+ assert.equal(monthlyEvidenceMatchesValue('12 vendidos',12),false);
+ const rows=normalizeVisibleOffers([
+  {itemId:'102',shopId:'12',productName:'Suporte papel higiênico com lixeira',
+   priceMin:99,monthlySold:950,monthlyPeriod:'month',monthlyEvidence:'6 Vendido/Mês'},
+  {itemId:'103',shopId:'13',productName:'Suporte papel higiênico com lixeira',
+   priceMin:99,monthlySold:850,monthlyPeriod:'month',monthlyEvidence:'850 Vendido/Mês'}]);
+ assert.deepEqual(rows.map(x=>x.monthlySold),[null,850]);
+});
+test('duas lojas distintas são obrigatórias, não somar itens da mesma loja',()=>{
+ const x=confirmChromeMonthlySamples([
+  {sku:'A',verified30:true,curve:'A',monthlyCompetitors:[
+   {shopId:'8',monthlySold:1000},{shopId:'8',monthlySold:930},{shopId:'9',monthlySold:6}]},
+  {sku:'B',verified30:true,curve:'A',monthlyCompetitors:[
+   {shopId:'10',monthlySold:1000},{shopId:'11',monthlySold:800}]},
+  {sku:'C',verified30:true,curve:'B',monthlyCompetitors:[
+   {shopId:'12',monthlySold:930},{shopId:'13',monthlySold:910}]}
+ ]);
+ assert.equal(x[0].curve,'PENDING');assert.equal(x[0].curveSampleConfirmed,false);
+ assert.equal(x[1].curve,'B');assert.equal(x[2].curve,'A');
 });
 test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos/mês'),true);
@@ -75,7 +101,7 @@ test('duas lojas comprovam B acima de 700 e A acima de 900 vendas/mês',()=>{
   {sku:'UMA',curve:'A',verified30:true,monthlyCompetitors:[{monthlySold:1100}],adsCompetitiveness:{eligible:true}},
   {sku:'ACUMULADO',curve:'PENDING',verified30:false,monthlyCompetitors:[{monthlySold:1000},{monthlySold:950}],adsCompetitiveness:{eligible:true}},
   {sku:'SEMDEMANDA',curve:'LOW',verified30:true,monthlyCompetitors:[{monthlySold:600},{monthlySold:550}],adsCompetitiveness:{eligible:true}}
- ]);
+ ].map(row=>({...row,monthlyCompetitors:row.monthlyCompetitors.map((o,i)=>({...o,shopId:String(100+i)}))})));
  assert.equal(rows[0].curve,'A');
  assert.equal(rows[1].curve,'B');
  assert.deepEqual(qualifyChromeMatches(rows).map(x=>x.sku),['A','MISTA']);

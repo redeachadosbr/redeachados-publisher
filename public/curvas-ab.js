@@ -309,8 +309,8 @@
   q('curveScannedCount').textContent=nf.format(result.skuSearchesCompleted||0);
   q('curveOfferCount').textContent=nf.format(result.offerCount||0);
   q('curveFoundCount').textContent=nf.format(found);
-  q('curveVerifiedCount').textContent=nf.format(result.rowsWith30Days||0);
-  q('curveResultsMeta').textContent=(result.items||[]).length+' de '+result.requested+
+  q('curveVerifiedCount').textContent=nf.format((result.items||[]).filter(x=>x.curveSampleConfirmed===true).length);
+  q('curveResultsMeta').textContent=(result.items||[]).filter(x=>x.curveSampleConfirmed===true).length+' de '+result.requested+
    ' solicitados · '+nf.format(result.skuQueriesCompleted||0)+' buscas por SKU · consulta '+
    (result.checkedAt?new Date(result.checkedAt).toLocaleString('pt-BR'):'atual');
   q('curveProgressNote').textContent=
@@ -318,34 +318,26 @@
    nf.format(result.catalogCount||0)+' SKUs da categoria · '+
    nf.format(result.remainingSkuQueries||0)+' consultas ainda não efetuadas.';
   q('curveContinueSearch').hidden=true;
-  for(const item of result.items||[])grid.append(card(item));
-  const pending=Array.isArray(result.pendingItems)?result.pendingItems:[];
-  const discarded=Array.isArray(result.discardedItems)?result.discardedItems:[];
-  if(pending.length){
-   const note=t('p','curve-evidence','Pendentes de dados: '+result.pendingCount+
-    ' SKU(s) sem comprovação mensal ou com preço/custo ainda insuficientes. '+
-    'Itens com inviabilidade financeira comprovada NÃO aparecem nesta lista.');
-   note.style.gridColumn='1 / -1';grid.append(note);
-   for(const item of pending)grid.append(card(item,{pending:true}));
-  }
-  if(Number(result.discardedCount)>0){
+  // Mostrar SOMENTE produtos com Curva A/B comprovada e elegíveis para Ads.
+  const approved=(result.items||[]).filter(item=>
+   (item.curve==='A'||item.curve==='B')&&item.verified30===true&&
+   item.curveSampleConfirmed===true&&Number(item.monthlyCompetitorCount)>=2&&
+   item.adsCompetitiveness?.eligible===true);
+  for(const item of approved)grid.append(card(item));
+  const pendingCount=Number(result.pendingCount||0),discardedCount=Number(result.discardedCount||0);
+  if(pendingCount||discardedCount){
    const audit=t('details','curve-discarded-audit');
-   audit.style.gridColumn='1 / -1';audit.style.width='100%';
-   audit.style.padding='12px 15px';audit.style.border='1px solid #e2d2cf';
-   audit.style.borderRadius='12px';
+   audit.style.gridColumn='1 / -1';
    audit.append(t('summary','',
-    'Descartados para Ads: '+result.discardedCount+
-    ' SKU(s) — custo maior que a média, margem inviável ou estoque indisponível. Ver auditoria.'));
-   const auditGrid=t('div','curve-discarded-grid');
-   auditGrid.style.display='grid';
-   auditGrid.style.gridTemplateColumns='repeat(auto-fit,minmax(320px,1fr))';
-   auditGrid.style.gap='12px';auditGrid.style.marginTop='12px';
-   for(const item of discarded)auditGrid.append(card(item,{rejected:true}));
-   audit.append(auditGrid);grid.append(audit);
+    'Auditoria separada: '+pendingCount+' sem Curva A/B comprovada e '+
+    discardedCount+' inviáveis para Ads'));
+   audit.append(t('p','curve-evidence',
+    'A tela principal mostra exclusivamente SKUs com duas lojas distintas acima de 700 vendas mensais e viabilidade financeira. '+
+    'Os demais anúncios não são classificados como Curva A ou B.'));
+   grid.append(audit);
   }
-  if(!result.items?.length&&!pending.length&&!Number(result.discardedCount))
-   grid.append(t('div','curve-empty',
-    'Nenhuma oportunidade encontrada. Verifique a correspondência e as fontes da pesquisa.'));
+  if(!approved.length)grid.append(t('div','curve-empty',
+   'Nenhuma Curva A/B confirmada nesta etapa. Apenas produtos comprovados e elegíveis aparecem aqui.'));
   const prefix=result.shortage?
    (result.competitiveOnly?'Curvas A/B competitivas para Ads: ':result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
    result.items.length+' dos '+result.requested+
