@@ -56,9 +56,12 @@ function brandLogo(n,compact=false){
 }
 const brandAttr=n=>{const b=brandFor(n);return 'data-brand="'+esc(b.key)+'" style="--shop-color:'+b.primary+';--shop-accent:'+b.secondary+'"';};
 const approvedDiscount=o=>{
- const price=Number(o.price), old=Number(o.original_price);
- // An amount is not a verified "de" price until its evidence was reviewed.
+ const price=Number(o.price);
+ // A verified previous price is necessary. "Preço médio" from a different product
+ // or an unreviewed imported amount must NEVER be shown as a discount.
  const verified=o.discount_evidence_verified===true||o.previous_price_verified===true;
+ const raw=o.original_price??o.prior_price??o.old_price;
+ const old=raw===null||raw===undefined||raw===''?NaN:Number(raw);
  if(!verified||!Number.isFinite(price)||!Number.isFinite(old)||old<=price||price<=0)return null;
  const pct=Math.round((old-price)/old*100);
  return pct>=1&&pct<=95?{pct,old}:null;
@@ -172,7 +175,9 @@ function drawPremiumOffers(){
       '<div class="ob-mini-fallback" hidden><span>'+productGlyph(o)+'</span><small>Sem foto do produto</small></div>':
       '<div class="ob-mini-fallback"><span>'+productGlyph(o)+'</span><small>Foto ainda indisponível</small></div>';
    const imageTag=media&&media.kind==='reference'?'<small class="ob-mini-image-credit">Foto ilustrativa</small>':'';
-   const pct=disc?'<span class="ob-mini-discount">−'+disc.pct+'%</span>':'';
+   const pct=disc?
+      '<span class="ob-mini-discount" title="Preço anterior verificado: '+esc(brl(disc.old))+'">−'+disc.pct+'%</span>':
+      '<span class="ob-mini-offer-badge" title="Promoção verificada; o encarte não informou preço anterior para calcular o desconto">OFERTA</span>';
    const old=disc?'<s>'+brl(disc.old)+'</s>':'';
    const branchHint=branchIds.size>1?branchIds.size+' filiais':esc(o.store||o.district||'Blumenau');
    const sourceUrl=safeUrl(o.source_url||'');
