@@ -35,4 +35,25 @@ assert.match(premium,/addTracked\(\)/);
 assert.match(css,/\.ob-mini-add/);
 assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(css,/\.ob-mini-photo/);
+
+const startDiscount=premium.indexOf('const approvedDiscount=o=>{');
+const endDiscount=premium.indexOf('const proofStatus=',startDiscount);
+assert.ok(startDiscount>0&&endDiscount>startDiscount,'price discount helper must exist');
+const discountHelper=premium.slice(startDiscount,endDiscount);
+const discounts=vm.runInNewContext(discountHelper+`\n({
+  proven:approvedDiscount({price:80,original_price:100,discount_evidence_verified:true}),
+  provenFromLeaflet:approvedDiscount({price:80,prior_price:100,previous_price_verified:true}),
+  unreviewed:approvedDiscount({price:80,original_price:100}),
+  absent:approvedDiscount({price:80,discount_evidence_verified:true}),
+  higherPromoPrice:approvedDiscount({price:110,original_price:100,discount_evidence_verified:true})
+})`,{}, {timeout:1000});
+assert.equal(discounts.proven.pct,20,'show 20% only with reviewed previous price');
+assert.equal(discounts.provenFromLeaflet.pct,20,'verified leaflet prior price computes 20%');
+assert.equal(discounts.unreviewed,null,'never invent discount from unreviewed value');
+assert.equal(discounts.absent,null,'no previous price means no percent label');
+assert.equal(discounts.higherPromoPrice,null,'higher current price cannot count as discount');
+assert.match(premium,/ob-mini-offer-badge/,'show offer tag if no discount reference exists');
+assert.match(css,/#installApp/,'hide unneeded app installation control');
+assert.match(css,/\.ob-mini-discount/,'show discount tag on photo');
+
 console.log('OB_V5_REAL_LIST_SAVE_DUPLICATE_AND_MOBILE_CARDS_PASS');
