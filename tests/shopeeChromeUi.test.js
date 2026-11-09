@@ -32,7 +32,7 @@ test('exige a extensão Shopee Chrome 1.2.11 para corrigir a leitura mensal',()=
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
  assert.equal(manifest.version,'1.2.11');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=10/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=11/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -128,8 +128,8 @@ test('botão usa versão instalada no manifesto e consulta versão real no servi
  assert.match(page,/média de 2 a 10 anúncios equivalentes/);
  assert.match(code,/chrome-extension-version/);
  assert.match(code,/Baixar extensão.*version/);
- assert.match(code,/Requer 1\.2\.10/);
- assert.match(code,/Verificando Ponte Chrome 1\.2\.10/);
+ assert.match(code,/Requer 1\.2\.11/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.11/);
 });
 
 test('relatório diferencia candidatos, SKUs sem equivalência e consultas incompletas',()=>{
