@@ -92,7 +92,8 @@
       button.disabled=true;
       button.removeAttribute('data-ob-branch-id');
       const count=button.querySelector('.ob-branch-offers-count');
-      if(count)count.textContent='—';
+      // Evita mutação redundante: o MutationObserver observa childList e poderia entrar em ciclo.
+      if(count && count.textContent!=='—')count.textContent='—';
     }
   }
   function dialog(){
