@@ -16,7 +16,6 @@ def high_precision_candidates(text: str, store_id: str, source_url: str, start: 
     """Never guess dates or merge adjacent products; OCR candidates ALWAYS need review."""
     if not start or not end or not (start <= current_date <= end):
         return []
-    import daily_collect
     result, seen = [], set()
     for raw in text.splitlines()[:5000]:
         line = ' '.join(raw.split())
@@ -36,7 +35,7 @@ def high_precision_candidates(text: str, store_id: str, source_url: str, start: 
             continue
         if re.search(r'(?i)\b(?:válid[oa]|preço|economia|ofertas?|novembro|dezembro|categoria)\b', name):
             continue
-        price = daily_collect.price(price_match.group(1))
+        price = round(float(price_match.group(1).replace(',','.')),2)
         if price is None or price > 5000:
             continue
         pack = package_match.group(0).strip()
