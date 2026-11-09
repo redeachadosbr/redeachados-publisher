@@ -1,0 +1,251 @@
+/* Oferta Blumenau V10 — iPhone/Android full-width repair.
+   Correção de overflow lateral: cards, filtros, busca e menu inferior
+   cabem no viewport, mantendo a rolagem vertical e as ações existentes. */
+@media (max-width:760px){
+  html{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    overscroll-behavior-x:none;
+  }
+  body.ob-premium{
+    width:100%;
+    max-width:100%;
+    margin:0;
+    overflow-x:hidden;
+    overscroll-behavior-x:none;
+  }
+  @supports (overflow:clip){
+    html,body.ob-premium{overflow-x:clip}
+  }
+  body.ob-premium .topbar,
+  body.ob-premium .topinner,
+  body.ob-premium .apparea,
+  body.ob-premium .content{
+    box-sizing:border-box;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    margin-left:0;
+    margin-right:0;
+  }
+  body.ob-premium .apparea{
+    display:block;
+    grid-template-columns:minmax(0,1fr);
+  }
+  body.ob-premium .content{
+    overflow-x:clip;
+    padding-inline:clamp(9px,3vw,14px);
+    padding-bottom:calc(105px + env(safe-area-inset-bottom,0px));
+  }
+  body.ob-premium .topinner{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+    padding-inline:clamp(10px,3vw,14px);
+  }
+  body.ob-premium .topinner .brand{
+    min-width:0;
+    max-width:calc(100% - 82px);
+  }
+  body.ob-premium .topinner .headright{
+    min-width:0;
+    max-width:100%;
+  }
+  body.ob-premium .topinner .ob-search{
+    box-sizing:border-box;
+    order:3;
+    display:flex;
+    flex:0 0 100%;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    margin:0;
+    overflow:hidden;
+    align-items:center;
+  }
+  body.ob-premium .topinner .ob-search input{
+    min-width:0;
+    max-width:100%;
+    width:100%;
+    flex:1 1 0%;
+    font-size:16px; /* iOS não amplia a tela ao focar no campo */
+    text-overflow:ellipsis;
+  }
+
+  /* Filtros: impedir select com largura intrínseca maior que o celular. */
+  body.ob-premium [data-page="ofertas"],
+  body.ob-premium [data-page="ofertas"] .secthead,
+  body.ob-premium [data-page="ofertas"] .filterbar,
+  body.ob-premium [data-page="ofertas"] .filters,
+  body.ob-premium [data-page="ofertas"] .filterrow,
+  body.ob-premium [data-page="ofertas"] .toolbar{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+  body.ob-premium [data-page="ofertas"] select,
+  body.ob-premium [data-page="ofertas"] input{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+  body.ob-premium [data-page="ofertas"] .filters,
+  body.ob-premium [data-page="ofertas"] .filterrow{
+    flex-wrap:wrap;
+  }
+  /* Cards: duas colunas realmente proporcionais, sem alargar o body. */
+  body.ob-premium #offersGrid.ob-photo-grid{
+    box-sizing:border-box;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    gap:clamp(7px,2.1vw,10px);
+    margin-inline:0;
+    padding:7px 2px 19px;
+    align-items:stretch;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid > .ob-mini-offer{
+    box-sizing:border-box;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    margin-inline:0;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-photo-box{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:calc(100% - 14px);
+  }
+  body.ob-premium #offersGrid.ob-photo-grid img.ob-mini-photo{
+    max-width:100%;
+    min-width:0;
+    height:100%;
+    object-fit:contain;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-content,
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-price-row,
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-price-col{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-price-row{
+    gap:4px;
+    align-items:end;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-price-col strong{
+    font-size:clamp(17px,4.9vw,23px);
+    letter-spacing:-.7px;
+    white-space:nowrap;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-add{
+    box-sizing:border-box;
+    flex:0 0 36px;
+    width:36px;
+    height:36px;
+    min-width:36px;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-add svg{
+    width:19px;
+    height:19px;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-proof{
+    min-width:0;
+    max-width:100%;
+  }
+
+  /* Barra inferior: 5 itens com partes iguais e fixos na viewport real. */
+  body.ob-premium .bottomnav{
+    position:fixed;
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:2px;
+    align-items:center;
+    justify-items:stretch;
+    box-sizing:border-box;
+    inset-inline:0;
+    left:0;
+    right:0;
+    bottom:0;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    height:auto;
+    min-height:67px;
+    margin:0;
+    padding:6px 5px calc(7px + env(safe-area-inset-bottom,0px));
+    z-index:1000;
+    overflow:hidden;
+  }
+  body.ob-premium .bottomnav [data-tab]{
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    margin:0;
+    padding:5px 1px 4px;
+    font-size:clamp(8px,2.4vw,10px);
+    line-height:1.1;
+    text-align:center;
+    white-space:normal;
+    overflow:hidden;
+  }
+  body.ob-premium .bottomnav [data-tab] .ob-icon{
+    flex:0 0 auto;
+    width:28px;
+    height:28px;
+    margin:0 auto;
+  }
+  body.ob-premium .bottomnav [data-tab] > span:not(.ob-icon){
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    overflow-wrap:normal;
+    word-break:normal;
+    font-size:inherit;
+    line-height:1.16;
+    text-align:center;
+  }
+
+  /* Outras páginas seguem a mesma largura; listas podem rolar dentro,
+     nunca empurrar a aplicação para fora da tela. */
+  body.ob-premium [data-page],
+  body.ob-premium [data-page="encartes"] .obf-grid,
+  body.ob-premium [data-page="mercados"] .marketgrid,
+  body.ob-premium [data-page="mercados"] #storesGrid{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+  body.ob-premium [data-page="encartes"] .obf-grid{
+    grid-template-columns:minmax(0,1fr);
+  }
+  body.ob-premium [data-page="mercados"] .marketcard,
+  body.ob-premium [data-page="encartes"] .obf-card{
+    min-width:0;
+    max-width:100%;
+  }
+}
+@media (max-width:360px){
+  body.ob-premium #offersGrid.ob-photo-grid{gap:6px;padding-inline:0}
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-content{padding-inline:7px}
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-price-col strong{
+    font-size:clamp(16px,5vw,19px);
+    letter-spacing:-.8px;
+  }
+  body.ob-premium #offersGrid.ob-photo-grid .ob-mini-add{
+    flex-basis:33px;width:33px;height:33px;min-width:33px;
+  }
+  body.ob-premium .bottomnav{padding-inline:3px;gap:0}
+  body.ob-premium .bottomnav [data-tab]{font-size:8px;padding-inline:0}
+}
