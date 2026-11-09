@@ -4,11 +4,11 @@ import json,re
 from datetime import datetime
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-PACK=re.compile(r'(?<!\\w)(?:\\d+\\s*[x×]\\s*)?\\d+(?:[,.]\\d+)?\\s*(?:kg|g|ml|l|un(?:id(?:ades?)?)?)\\b',re.I)
+PACK=re.compile(r'(?<!\w)(?:\d+\s*[x×]\s*)?\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l|un(?:id(?:ades?)?)?)\b',re.I)
 def price(v):
     if isinstance(v,(int,float)):p=float(v)
     elif isinstance(v,str):
-        s=re.sub(r'[^\\d,.]','',v)
+        s=re.sub(r'[^\d,.]','',v)
         if not s:return None
         if '.' in s and ',' in s:p=float(s.replace('.','').replace(',','.')) if s.rfind(',')>s.rfind('.') else float(s.replace(',',''))
         elif ',' in s:p=float(s.replace(',','.'))
