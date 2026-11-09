@@ -136,6 +136,27 @@ for _label,_url in _accurate:
    _data=_rp.read(600000)
    print('OB_IMAGE_SIZE',_label,'status',_rp.status,'type',_rp.headers.get('Content-Type'),'size',_image_size_from_bytes(_data),'content_length',_rp.headers.get('Content-Length'),'bytes_sampled',len(_data))
  except Exception as _ex:print('OB_IMAGE_SIZE',_label,'error',str(_ex)[:120])
+# Compare other campaigns from the same publisher without assuming the regional edition matches.
+import html as _html_entities
+for _tag,_url in [
+ ('food09','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-481894/'),
+ ('brf09','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-brf-de-segunda-feira-09-11-2026-481895/'),
+ ('seara30','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-seara-de-sexta-feira-30-10-2026-479115/')
+]:
+ try:
+  _rq=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0','Accept':'text/html'})
+  with _ur.urlopen(_rq,timeout=8) as _rp:_source=_rp.read(350000).decode('utf-8','replace')
+  _meta=_qr.search(r'<meta[^>]*property="og:image"[^>]*>',_source,_qr.I)
+  _full=_html_entities.unescape(_meta.group(0)) if _meta else ''
+  _uri=_qr.search(r'content="(https://[^"]+)"',_full)
+  _candidate=_uri.group(1) if _uri else None
+  _p1=_qr.findall(r'[^"<> ]{0,150}'+('481894' if _tag=='food09' else '481895' if _tag=='brf09' else '479115')+r'/1\.jpg[^"<> ]{0,40}',_source,_qr.I)
+  if not _candidate:print('OB_ALT_CATALOG',_tag,'html_found','image_unknown');continue
+  _irq=_ur.Request(_candidate,headers={'User-Agent':'Mozilla/5.0','Accept':'image/webp,image/jpeg'})
+  with _ur.urlopen(_irq,timeout=8) as _img:_ib=_img.read(650000)
+  print('OB_ALT_CATALOG',_tag,'size',_image_size_from_bytes(_ib),'bytes',len(_ib),'url',_candidate,'page2_urls',str(_p1[:2])[:250])
+ except Exception as _exc:
+  print('OB_ALT_CATALOG',_tag,'error',str(_exc)[:170])
 # END TEMP diagnostic.
 # Enforce consistent login form/server policy and accurate authentication errors.
 (folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
