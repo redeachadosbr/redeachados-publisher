@@ -13,8 +13,8 @@ test('Ponte 1.2.11 espera selos mensais e evita contadores conflitantes',()=>{
  const reader=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
  const bg=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
  assert.match(reader,/if\(distinct\.size>1\)return/);
- assert.match(reader,/setTimeout\(resolve,800\)/);
- assert.match(bg,/await delay\(i===0\?900:i===1\?1300:1000\)/);
+ assert.match(reader,/setTimeout\(resolve,350\)/);
+ assert.match(bg,/await delay\(i===0\?550:350\)/);
 });
 test('coleta do Chrome reconhece rótulo mensal somente quando explícito',()=>{
  assert.equal(parser.monthlyEvidence('950 vendidos/mês').monthlySold,950);

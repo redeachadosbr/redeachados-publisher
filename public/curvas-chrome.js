@@ -35,7 +35,7 @@
   summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(pending);
   const diagnostics=s.sourceStats||{};
   const causes=[
-   pending+' candidato(s) aguardando dados para Ads',
+   pending+' candidato(s) aguardando demanda ou preço para Ads',
    discarded+' SKU(s) descartadas por custo, margem ou estoque',
    noMatch+' SKU(s) sem produto equivalente encontrado',
    missingSearch+' SKU(s) com consulta incompleta ou sem importação',
@@ -55,7 +55,7 @@
  }
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
   carregando:'Carregando Shopee',lendo:'Lendo anúncios',
-  recuperando:'Restaurando janela para carregar Shopee',
+  recuperando:'Recuperando anúncios Shopee',
   comparando:'Conferindo concorrência',continuando:'Avançando na categoria',
   importando:'Cruzando catálogo WeDrop',
   validando:'Validando Curva e preço',concluido:'Pesquisa concluída',
@@ -124,8 +124,8 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=12));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.12 para corrigir a leitura de Vendido/Mês.'});
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=13));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.13 para corrigir a leitura de Vendido/Mês.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -150,11 +150,11 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.12 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.13 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.12, substitua os arquivos da pasta instalada, clique em Recarregar em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.13, substitua os arquivos da pasta instalada, clique em Recarregar em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -167,12 +167,13 @@
     searchedSkuIds:new Set(),attemptedSkuIds:new Set(),
     matchedSkuIds:new Set(),viableSkuIds:new Set(),
      pendingSkuIds:new Set(),discardedSkuIds:new Set(),targetReached:false,
-     batchStartScanned:0,sourceStats:{monthly_captured:0,
+     batchStartScanned:0,noVisibleStreak:0,monthlyFailureStreak:0,
+     sourceStats:{monthly_captured:0,
       monthly_labels_unbound:0,monthly_not_rendered:0,monthly_capture_failed:0,
       no_visible_offers:0,featured_public_recovered:0}};
    offset=plan.nextOffset;
-   updateStage('iniciando','Janela auxiliar minimizada • primeiro lote com '+plan.jobs.length+' consultas.',active);
-   say('Pesquisa em janela minimizada; nenhuma aba é adicionada à sua janela principal.');
+   updateStage('iniciando','Janela auxiliar sem foco • primeiro lote com '+plan.jobs.length+' consultas.',active);
+   say('Pesquisa em janela auxiliar independente, sem alterar suas guias abertas.');
    window.postMessage({kind:'RA_CURVE_CHROME_START',nonce,jobs:plan.jobs},ORIGIN);
   }catch(error){
    active=null;button.disabled=false;
@@ -186,6 +187,22 @@
    s.scanned++;
    const reason=String(m.stats?.sourceStatus||'');
    if(Object.hasOwn(s.sourceStats,reason))s.sourceStats[reason]++;
+   s.noVisibleStreak=reason==='no_visible_offers'?s.noVisibleStreak+1:0;
+   s.monthlyFailureStreak=['monthly_capture_failed','monthly_labels_unbound']
+    .includes(reason)?s.monthlyFailureStreak+1:0;
+   // Falhas persistentes da fonte: pausar, não consumir todo o catálogo.
+   // Ausência de rótulo mensal não comprova que um produto vende pouco.
+   if(s.noVisibleStreak>=3||s.monthlyFailureStreak>=8){
+    s.blocked=true;
+    const detail=s.noVisibleStreak>=3?
+     'Shopee não apresentou cartões legíveis em 3 consultas consecutivas.':
+     'Shopee não forneceu vendas mensais vinculadas em 8 consultas consecutivas.';
+    window.postMessage({kind:'RA_CURVE_CHROME_CANCEL',nonce:s.nonce},ORIGIN);
+    updateStage('erro',detail+
+     ' Pesquisa pausada para corrigir a fonte; nenhuma Curva foi inventada.',s);
+    say(detail+' Confira a janela Shopee, atualize a Ponte Chrome e reinicie a pesquisa.');
+    return;
+   }
   const job=s.plan.jobs.find(x=>x.query===m.query);
   for(const sku of job?.skus||[])s.attemptedSkuIds.add(String(sku));
   if(m.error){

@@ -38,7 +38,7 @@ test('curva exige 2 lojas distintas com >=700 vendidos/mês',()=>{
 });
 test('busca limitada a 3 páginas e 5 preços para triagem inicial',()=>{
  const c=build();
- assert.equal(c.MAX_SEARCH_PAGES,3);
+ assert.equal(c.MAX_SEARCH_PAGES,2);
  assert.equal(c.PRICE_SCREEN_SAMPLE,5);
  assert.match(code,/for\(let page=0;page<MAX_SEARCH_PAGES;page\+\+\)/);
  assert.match(code,/labelsSeen>0&&labelsInCards===0/);

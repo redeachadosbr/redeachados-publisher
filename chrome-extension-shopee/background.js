@@ -29,7 +29,7 @@ async function researchTab(managerTabId,nonce,url){
   await chrome.storage.session.remove(SESSION_KEY);
  }
  // É uma janela real minimizada: não promete processamento 100% invisível.
- const win=await chrome.windows.create({url,focused:false,state:'minimized',type:'normal'});
+ const win=await chrome.windows.create({url,focused:false,state:'normal',type:'normal'});
  if(!Number.isInteger(win?.id))throw Error('Chrome não autorizou a janela minimizada.');
  let tabId=win.tabs?.[0]?.id;
  if(!Number.isInteger(tabId)){
@@ -41,7 +41,7 @@ async function researchTab(managerTabId,nonce,url){
   throw Error('Janela auxiliar não apresentou uma aba válida.');
  }
  try{
-  if(win.state!=='minimized')await chrome.windows.update(win.id,{state:'minimized'});
+  // Janela auxiliar sem foco não é minimizada: o Chrome precisa renderizar a Shopee.
   await chrome.storage.session.set({[SESSION_KEY]:{
    nonce,managerTab:managerTabId,windowId:win.id,tabId
   }});
@@ -142,7 +142,7 @@ const relatedToQuery=(query,offer)=>{
 };
 // Apenas cinco anúncios quase idênticos e uma faixa de preço homogênea
 // permitem dispensar a pesquisa mensal. A decisão final é do servidor.
-const MAX_SEARCH_PAGES=3;
+const MAX_SEARCH_PAGES=2;
 const PRICE_SCREEN_SAMPLE=5;
 const strictlyRelatedToQuery=(query,offer)=>{
  const target=[...new Set(normalizeTerms(query))];
@@ -185,12 +185,12 @@ const offerPriority=(query,offer)=>{
 };
 async function readPage(tabId,job=null){
  const merged=new Map();let last=null,blocked=null,labelsSeen=0,labelsInCards=0;
- for(let i=0;i<3;i++){
+ for(let i=0;i<2;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
-  await delay(i===0?900:i===1?1300:1000);
+  await delay(i===0?550:350);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',
-    deep:i===1||(i===3&&![...merged.values()].some(x=>x.monthlySold!=null))});
+    deep:i===1});
    if(result?.blocked){blocked=result;break;}
    if(!result?.ok||!Array.isArray(result.offers))continue;
    last=result;
@@ -390,7 +390,12 @@ async function batch(managerTab,nonce,jobs){
     if(related.length<=lastRelated&&highMonthly<=lastHighMonthly)stagnantPages++;
     else stagnantPages=0;
     lastRelated=related.length;lastHighMonthly=highMonthly;
-    if(collected.size>=300||page>=1&&(stagnantPages>0||highMonthly===0))break;
+    // Com cinco preços e zero lojas de alta demanda na primeira página,
+    // avançar para outra SKU sem repetir a pesquisa aprofundada de preço.
+    // Não classificar ausência de contador como baixo volume de vendas.
+    if(!data.offers?.length||
+     (page===0&&related.length>=PRICE_SCREEN_SAMPLE&&highMonthly===0)||
+     collected.size>=180||(page>=1&&stagnantPages>0))break;
     await delay(350);
    }
    // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.

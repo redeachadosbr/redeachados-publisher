@@ -1,6 +1,6 @@
-# Ponte Chrome Rede Achados BR — 1.2.12
+# Ponte Chrome Rede Achados BR — 1.2.13
 
-Versão 1.2.12: rolagem mais lenta e segura, aguarda o carregamento do selo Vendido/Mês, não aceita selos mensais conflitantes no mesmo cartão; o Manager mostra só Curvas A/B comprovadas.
+Versão 1.2.13: filtro por custo com 5 anúncios equivalentes; exige 2 lojas com 700+ vendas/mês antes da média de mercado e análise de margem para Ads. Janela auxiliar sem foco (não minimizada) para corrigir renderização; até 2 páginas e rolagem curta por pesquisa; falhas consecutivas da Shopee interrompem a coleta com diagnóstico, sem inventar vendas.
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.

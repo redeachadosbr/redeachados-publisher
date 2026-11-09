@@ -224,7 +224,7 @@ export async function importChromeOffers(shopId,{
    sales:offer.sales??prev.sales}:offer);
  }
  const pricedRows=matchCurveOffers({catalog:state.catalog,
-  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId,deferMarketUntilDemand:true});
  const costFirstSkippedMonthly=canSkipCurveDemandRecovery(pricedRows,task.skus);
  // Segundo caminho de recuperação: somente quando a Ponte trouxe ofertas,
  // mas NENHUMA venda mensal. A vitrine pública é uma fonte opcional, não
@@ -232,7 +232,8 @@ export async function importChromeOffers(shopId,{
  let recoverySource='not_needed',recoveryReason='',recoveredMonthly=0;
  let recovered=[];
  const pricedOpportunity=pricedRows.some(row=>task.skus.includes(row.sku)&&
-  row.avgCompetitorPrice!==null&&row.adsCompetitiveness?.eligible===true);
+  Number(row.marketCandidateCount||0)>=2&&
+   !SKIP_MONTHLY_REJECTIONS.has(row.adsCompetitiveness?.status));
  if(pricedOpportunity&&normalized.length&&
     !normalized.some(o=>o.monthlySold!==null)&&!costFirstSkippedMonthly){
   if(Date.now()<Number(state.featuredUnavailableUntil||0)){
@@ -271,7 +272,7 @@ export async function importChromeOffers(shopId,{
  // Com 1/2 anúncio relacionado, recuperar ofertas com preços verificáveis
  // da API de Afiliados, quando configurada. Vendas/mês continuam independentes.
  const initialRows=recovered.length?matchCurveOffers({catalog:state.catalog,
-  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId}):pricedRows;
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId,deferMarketUntilDemand:true}):pricedRows;
  const priceRecovery=[];
  if(marketResearchConfigured()){
   const missing=task.skus.filter(sku=>{
@@ -305,7 +306,7 @@ export async function importChromeOffers(shopId,{
  state.queries++;
  state.lastAt=new Date().toISOString();
  const allMatches=matchCurveOffers({catalog:state.catalog,
-  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId,deferMarketUntilDemand:true});
  // Não contabilizar SKU ainda não pesquisada que apenas coincidiu com
  // um anúncio pesquisado para outra SKU da mesma categoria.
  const captured=[...state.offers.values()];

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.2.12",
+  "version": "1.2.13",
   "description": "Amplia a captura de títulos, preços e vendas mensais e reaproveita pesquisas já abertas na Shopee.",
   "permissions": [
     "tabs",

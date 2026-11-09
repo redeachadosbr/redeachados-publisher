@@ -276,7 +276,8 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  };
 }
 
-export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map(),today=new Date().toISOString().slice(0,10),ownShopId='0'}={}){
+export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map(),today=new Date().toISOString().slice(0,10),ownShopId='0',
+ deferMarketUntilDemand=false}={}){
  const inventory=catalog.map(item=>{
   const d=item.product_data||{};
   return {sku:String(item.supplier_sku||''),name:String(d.name||'').trim(),
@@ -366,7 +367,37 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   // Várias ofertas independentes com volume mensal são necessárias para
   // validar a oportunidade. Não somar as vendas das diferentes lojas.
   const comparable=[...(offersBySku.get(row.sku)||new Map()).values()];
-  const market=addMarketAnalysis(row,comparable,checkedAt,ownShopId);
+  // Etapa 1: filtrar custo com prova homogênea; etapa 2: duas lojas
+  // com >=700 vendas/mês; etapa 3: média de preços e viabilidade Ads.
+  const demandStores=new Set(comparable.filter(offer=>
+   intSales(offer.monthlySold)!==null&&intSales(offer.monthlySold)>=700)
+   .map(offer=>String(offer.shopId)));
+  const demandReady=demandStores.size>=2;
+  const uniquePrices=new Map();
+  for(const offer of comparable){
+   const price=num(offer.priceMin),key=String(offer.shopId)+':'+String(offer.itemId);
+   if(price!==null&&price>0)uniquePrices.set(key,price);
+  }
+  const prices=[...uniquePrices.values()];
+  // Cinco anúncios comparáveis (não duplicados), todos no custo ou abaixo,
+  // com dispersão de preço limitada; uma única oferta barata não reprova.
+  const earlyCostReject=prices.length>=5&&Number(row.cost)>0&&
+   Math.max(...prices)<=Number(row.cost)&&
+   Math.max(...prices)/Math.min(...prices)<=1.3;
+  const market=deferMarketUntilDemand&&!demandReady?{
+   ...row,avgCompetitorPrice:null,competitorOfferCount:0,
+   competitorOffers:[],keywords:[],seoTitle:row.name,
+   seoMethod:'Análise de palavras-chave aguarda demanda mensal validada',
+   featuredSearchUrl:officialFeaturedSearchUrl(row.name.split(/[,|-]/)[0]||row.name),
+   priceEvidence:earlyCostReject?
+    'Triagem financeira: 5 ou mais ofertas equivalentes abaixo do custo WeDrop.':
+    'Triagem de demanda pendente: exigidas 2 lojas com pelo menos 700 vendas/mês.',
+   adsCompetitiveness:earlyCostReject?
+    {eligible:false,status:'cost_above_market',
+     reason:'Cinco ou mais anúncios equivalentes abaixo ou no custo WeDrop; média aprofundada dispensada.'}:
+    {eligible:false,status:'awaiting_curve',
+     reason:'Não foi comprovada demanda mensal de 2 lojas independentes.'}
+  }:addMarketAnalysis(row,comparable,checkedAt,ownShopId);
   market.marketCandidateCount=comparable.length;
   // Somente anúncios do mesmo grupo de modelo e preço podem comprovar
   // vendas mensais da curva. Não somar procura de acessórios/versões distintas.

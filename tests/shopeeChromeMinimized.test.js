@@ -85,7 +85,7 @@ test('releitura da vitrine preserva 11 preços mesmo quando só 2 cartões mostr
  const result=await local.readPage(15);
  assert.equal(result.ok,true);
  assert.equal(result.offers.length,11);
- assert.equal(result.monthlyCards,3);
+ assert.equal(result.monthlyCards,2);
  assert.equal(result.offers[0].priceMin,16.9);
  assert.equal(result.offers[0].monthlySold,3000);
 });

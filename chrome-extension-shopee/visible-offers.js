@@ -221,11 +221,11 @@
    const max=Math.max(0,Math.max(root?.scrollHeight||0,body?.scrollHeight||0)-
     (window.innerHeight||720));
    // Até dez passos; dar tempo aos selos mensais em cada dobra do grid.
-   for(let step=1;step<=10&&seen.size<100;step++){
+   for(let step=1;step<=6&&seen.size<100;step++){
     if(blocked)break;
     const next=Math.min(max,Math.round(step*Math.max(400,(window.innerHeight||720)*0.85)));
     window.scrollTo(0,next);
-    await new Promise(resolve=>setTimeout(resolve,800));
+    await new Promise(resolve=>setTimeout(resolve,350));
     collect();
     if(next>=max)break;
    }

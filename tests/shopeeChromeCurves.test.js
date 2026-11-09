@@ -195,3 +195,29 @@ test('custo primeiro dispensa pesquisa mensal somente para SKUs inviáveis',()=>
  assert.equal(canSkipCurveDemandRecovery(rows,['A','X']),false);
  assert.equal(canSkipCurveDemandRecovery(rows,[]),false);
 });
+
+test('triagem da Ponte só aprofunda a média após confirmar duas lojas de alta demanda',()=>{
+ const catalog=[{supplier_sku:'BAL-TESTE',product_data:{
+  name:'Balança Digital de Cozinha 10kg',rawAvailability:'Disponível'}}];
+ const offers=Array.from({length:5},(_,i)=>({
+  shopId:String(100+i),itemId:String(200+i),
+  productName:'Balança Digital de Cozinha 10kg Alta Precisão',
+  priceMin:18+i,priceMax:18+i,sales:200+i,monthlySold:null,
+  dataSource:'shopee-featured-chrome'
+ }));
+ const costly=matchCurveOffers({catalog,offers,
+  costs:[{supplier_sku:'BAL-TESTE',unit_cost:35}],deferMarketUntilDemand:true})[0];
+ assert.equal(costly.adsCompetitiveness.status,'cost_above_market');
+ assert.equal(costly.avgCompetitorPrice,null);
+ assert.equal(costly.marketCandidateCount,5);
+ const pending=matchCurveOffers({catalog,offers,
+  costs:[{supplier_sku:'BAL-TESTE',unit_cost:10}],deferMarketUntilDemand:true})[0];
+ assert.equal(pending.adsCompetitiveness.status,'awaiting_curve');
+ assert.equal(pending.avgCompetitorPrice,null);
+ const withDemand=offers.map((offer,i)=>({...offer,monthlySold:i<2?950-i*100:null}));
+ const qualifying=matchCurveOffers({catalog,offers:withDemand,
+  costs:[{supplier_sku:'BAL-TESTE',unit_cost:10}],deferMarketUntilDemand:true})[0];
+ assert.equal(qualifying.monthlyCompetitorCount,2);
+ assert.ok(qualifying.avgCompetitorPrice>0);
+ assert.ok(qualifying.competitorOfferCount>=2);
+});

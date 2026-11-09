@@ -27,12 +27,12 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
  assert.match(ui,/mínimo 2 lojas/);
 });
 
-test('exige a extensão Shopee Chrome 1.2.12 para corrigir a leitura mensal',()=>{
+test('exige a extensão Shopee Chrome 1.2.13 para corrigir a leitura mensal',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.12');
+ assert.equal(manifest.version,'1.2.13');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=12/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=13/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -58,7 +58,7 @@ test('a Ponte Chrome reutiliza janela minimizada e expõe etapas, andamento e ca
  const manager=read('../chrome-extension-shopee/manager.js');
  const page=read('../public/index.html');
  const chromeUi=read('../public/curvas-chrome.js');
- assert.match(background,/chrome\.windows\.create\(\{url,focused:false,state:'minimized'/);
+ assert.match(background,/chrome\.windows\.create\(\{url,focused:false,state:'normal'/);
  assert.match(background,/restoreResearchWindow\(managerTab,nonce\)/);
  assert.match(background,/chrome\.storage\.session\.set/);
  assert.match(background,/chrome\.tabs\.update\(tab\.id,\{url\}\)/);
