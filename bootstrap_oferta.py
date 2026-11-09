@@ -112,6 +112,15 @@ for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','tra
 if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
     raise RuntimeError('Missing offers navigation page')
 print('OB_UI_MARKUP_CONTRACT_PASS')
+# Temporary read-only audit of existing favorites and comparison data structures.
+import re as _ob_audit_re
+_ob_app=(folder/'static/app.js').read_text(encoding='utf-8')
+for _ob_match in list(_ob_audit_re.finditer(r'(?:async\\s+)?function\\s+(?:addTracked|loadTracked|drawTracked|refreshAll|compare|renderTracked|saveTracked|loadSaved|drawSaved|toggleFavorite)\\s*\\(',_ob_app))[:18]:
+    print('OB_FAVORITES_AUDIT',_ob_app[_ob_match.start():_ob_match.start()+1850].replace('\\n',' | '))
+for _ob_token in ('trackedName','trackedItems','localStorage','salvos','trackeds','favorite'):
+    _ob_indices=[m.start() for m in _ob_audit_re.finditer(_ob_audit_re.escape(_ob_token),_ob_app,flags=_ob_audit_re.I)]
+    print('OB_FAVORITES_TOKEN',_ob_token,len(_ob_indices),[_ob_app[max(0,p-150):p+230].replace('\\n',' | ') for p in _ob_indices[:3]])
+
 # Authenticated diagnostic endpoint: permits real readback of the live product catalogue
 # from Supabase-backed SQLite without exposing private offers publicly.
 _backend_path=folder/'server.py'
