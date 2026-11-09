@@ -55,8 +55,8 @@ async def source_probe(request: Request):
 def patch_source(path):
     p=Path(path);s=p.read_text(encoding='utf-8')
     if "@app.post('/api/internal/source-probe')" in s:return
-    anchor="'/api/internal/ingest', '/robots.txt'"
+    anchor="'/api/internal/catalog-selftest', '/robots.txt'"
     if anchor not in s:raise RuntimeError('Private source auth anchor moved')
-    s=s.replace(anchor,"'/api/internal/ingest', '/api/internal/source-probe', '/robots.txt'",1)
+    s=s.replace(anchor,"'/api/internal/catalog-selftest', '/api/internal/source-probe', '/robots.txt'",1)
     s+="\n"+PROBE
     p.write_text(s,encoding='utf-8')
