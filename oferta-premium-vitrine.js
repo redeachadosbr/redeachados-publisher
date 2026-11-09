@@ -157,6 +157,47 @@ function drawPremiumOffers(){
  }).join('');
 }
 
+async function hydrateVerifiedLeaflets(){
+ // Resilient: if the authenticated evidence service is unavailable, keep legacy offers unchanged.
+ try{
+   const response=await fetch('/api/verified-leaflet-offers?limit=400',{credentials:'same-origin',cache:'no-store'});
+   if(!response.ok)return;
+   const result=await response.json();
+   if(!result||result.ok!==true||!Array.isArray(result.data))return;
+   const day=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
+   for(let i=offers.length-1;i>=0;i--){
+      if(String(offers[i].id||'').startsWith('ob-v3-evidence-'))offers.splice(i,1);
+   }
+   const norm=x=>String(x||'').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g,' ');
+   for(const ev of result.data.slice(0,400)){
+     const store=stores.find(x=>x.id===ev.store_id);
+     const price=Number(ev.promotional_price),old=Number(ev.prior_price);
+     if(!store||!ev.source_url||!(price>0&&price<100000)||!ev.product_name||
+       !ev.valid_from||!ev.valid_until||ev.valid_from>day||ev.valid_until<day)continue;
+     const discountOk=Number.isFinite(old)&&old>price&&old<100000;
+     const existing=offers.find(x=>x.store_id===ev.store_id&&norm(x.name)===norm(ev.product_name)&&
+        Number(x.price)===price&&(!ev.package||norm(x.package)===norm(ev.package)));
+     if(existing){
+       if(discountOk){
+         existing.original_price=old;existing.discount_evidence_verified=true;
+       }
+       continue;
+     }
+     const item={
+       id:'ob-v3-evidence-'+ev.id,store_id:ev.store_id,network:ev.network||store.rede,
+       name:ev.product_name,brand:ev.brand||'',package:ev.package||'',category:'Outros',
+       store:store.filial||store.nome||store.bairro||ev.store_id,
+       district:store.bairro||'Blumenau',
+       price:price,original_price:discountOk?old:null,
+       discount_evidence_verified:discountOk,starts_on:ev.valid_from,ends_on:ev.valid_until,
+       image_url:ev.image_url||null,source_url:ev.document_url||ev.source_url,
+       condition:'Evidência de encarte aprovada e vigente',
+       source_type:'leaflet',verified_at:ev.reviewed_at||null,
+     };
+     offers.push(item);
+   }
+ }catch(_err){/* Old verified offers must remain usable if provenance is offline. */}
+}
 function refreshTrustStrip(){
  const root=document.getElementById('obTrustStrip');if(!root)return;
  const visible=visibleOffers();
@@ -208,7 +249,7 @@ function init(){
  makeLayout();
  drawOffers=drawPremiumOffers;
  const origRefresh=refreshAll;
- refreshAll=async function(){await origRefresh();drawMarkets();drawCategories();refreshTrustStrip()};
+ refreshAll=async function(){await origRefresh();await hydrateVerifiedLeaflets();drawMarkets();drawCategories();refreshTrustStrip();drawOffers()};
  document.getElementById('refreshOffers').onclick=refreshAll;
  document.getElementById('searchOffer').oninput=()=>{const top=document.getElementById('obSearch');if(top)top.value=document.getElementById('searchOffer').value;drawOffers();};
  document.getElementById('filterNetwork').onchange=()=>{buildFilterStore();drawMarkets();drawOffers()};
