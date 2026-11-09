@@ -114,7 +114,7 @@ const productGlyph=o=>{
 
 function marketSelect(net){
  const input=document.getElementById('filterNetwork');
- if(input){input.value=net;buildFilterStore();drawMarkets();drawOffers();refreshTrustStrip();selectPage('ofertas')}
+ if(input){input.value=net;buildFilterStore();drawMarkets();drawOffers();selectPage('ofertas')}
 }
 function drawMarkets(){
  const node=document.getElementById('obMarkets');if(!node)return;
@@ -245,17 +245,6 @@ async function hydrateVerifiedLeaflets(){
    }
  }catch(_err){/* Old verified offers must remain usable if provenance is offline. */}
 }
-function refreshTrustStrip(){
- const root=document.getElementById('obTrustStrip');if(!root)return;
- const visible=visibleOffers();
- const fiscal=Math.max(visible.filter(x=>x.source_type==='fiscal').length,Number(window.obFiscalVerifiedCount||0));
- const promo=visible.filter(x=>x.source_type!=='fiscal').length;
- const dist=visible.filter(x=>approvedDiscount(x)).length;
- root.innerHTML='<div class="ob-trust-stat"><strong>✓ '+promo+' ofertas conferidas</strong><small>Produtos aprovados com fonte original e validade</small></div>'+
- '<div class="ob-trust-stat"><strong>◉ '+fiscal+' preços fiscais</strong><small>Somente observações integradas com origem autorizada</small></div>'+
- '<div class="ob-trust-stat"><strong>−'+dist+' descontos comprovados</strong><small>Percentual visível só com preço anterior verificado</small></div>';
-}
-window.obRefreshTrustStrip=refreshTrustStrip;
 function makeLayout(){
  document.body.classList.add('ob-premium');
  const nav=document.querySelector('.sidebar');
@@ -270,13 +259,6 @@ function makeLayout(){
  offersPage.prepend(categories);
  const markets=document.createElement('section');markets.className='ob-section';markets.innerHTML='<div class="ob-label"><h3>Ofertas por supermercado</h3><small>Filtre sua rede favorita</small></div><div id="obMarkets" class="ob-markets"></div>';
  categories.after(markets);
- const trust=document.createElement('section');
- trust.className='ob-section';
- trust.innerHTML='<div class="ob-label"><h3>Informação que você pode conferir</h3><small>Preços sem simulação</small></div>'+
- '<div id="obTrustStrip" class="ob-trust-strip" aria-live="polite"></div>'+
- '<div class="ob-evidence-legend"><span>✓ Encarte verificado</span><span>◉ Preço fiscal observado</span><span>％ Desconto com comparação comprovada</span></div>'+
- '<small class="ob-trust-note">Preço observado não significa promoção. Percentuais de desconto só aparecem após comprovação da base de comparação.</small>';
- markets.after(trust);
  const tiles=document.createElement('section');tiles.className='ob-foottiles';tiles.innerHTML='<button data-ob-page="comparar">'+icon('compare')+'<span>Comparar preços<small>Veja opções válidas para cada produto</small></span></button><button data-ob-page="encartes">'+icon('flyer')+'<span>Encartes da semana<small>Confira campanhas e folhetos oficiais</small></span></button><button data-ob-page="salvos">'+icon('list')+'<span>Minha lista<small>Salve os produtos que deseja comprar</small></span></button>';
  offersPage.after(tiles);
  drawCategories();
@@ -313,12 +295,12 @@ function init(){
  makeLayout();
  drawOffers=drawPremiumOffers;
  const origRefresh=refreshAll;
- refreshAll=async function(){await origRefresh();await hydrateVerifiedLeaflets();drawMarkets();drawCategories();refreshTrustStrip();drawOffers()};
+ refreshAll=async function(){await origRefresh();await hydrateVerifiedLeaflets();drawMarkets();drawCategories();drawOffers()};
  document.getElementById('refreshOffers').onclick=refreshAll;
  document.getElementById('searchOffer').oninput=()=>{const top=document.getElementById('obSearch');if(top)top.value=document.getElementById('searchOffer').value;drawOffers();};
  document.getElementById('filterNetwork').onchange=()=>{buildFilterStore();drawMarkets();drawOffers()};
  document.getElementById('filterStore').onchange=drawOffers;
- drawMarkets();drawOffers();refreshTrustStrip();refreshAll();
+ drawMarkets();drawOffers();refreshAll();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
