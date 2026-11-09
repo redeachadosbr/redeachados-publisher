@@ -58,6 +58,17 @@ subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 # Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
 (folder/'oferta-direct-image-fallback.py').write_text((root/'oferta-direct-image-fallback.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'oferta-direct-image-fallback.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
+# Strict official-source ingestion: original Cooper magazine images and safe OCR retries.
+(folder/'oferta_source_v09.py').write_text((root/'oferta_source_v09.py').read_text(encoding='utf-8'),encoding='utf-8')
+source_patch=runpy.run_path(str(folder/'oferta_source_v09.py'),run_name='__bootstrap_no_exec__')
+source_patch['patch_source'](str(folder/'server.py'))
+# Build assertions: OCR must not publish/guess price or infer missing dates.
+check=source_patch['high_precision_candidates']
+assert len(check('Arroz Tipo 1 5 kg 21,99','BLU-001','https://www.redetop.com.br/', '2026-11-01','2026-11-10','2026-11-08'))==1
+assert not check('Arroz Tipo 1 5 kg de R$ 29,99 por R$ 21,99','BLU-001','https://www.redetop.com.br/', '2026-11-01','2026-11-10','2026-11-08')
+assert not check('Arroz Tipo 1 5 kg 21,99','BLU-001','https://www.redetop.com.br/', None,'2026-11-10','2026-11-08')
+assert not check('Arroz Tipo 1 5 kg 21,99','BLU-001','https://www.redetop.com.br/', '2026-10-01','2026-11-01','2026-11-08')
+print('OB_STRICT_PRICE_GUARD_TESTS_PASS')
 page.write_text(html,encoding='utf-8')
 
 
@@ -101,14 +112,3 @@ import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
 print('Oferta Blumenau: secure app prepared')
-
-
-# OFFER_SOURCE_AUDIT_START
-import ast as _ofa_ast
-_ofa_tree=_ofa_ast.parse(_backend_source)
-for _ofa_name in ('sync_sources','scan_leaflets','read_brochure','extract_leaflets','detect_candidate_lines','insert_candidates','actual_flyer'):
-    _ofa_node=next((n for n in _ofa_tree.body if isinstance(n,(_ofa_ast.FunctionDef,_ofa_ast.AsyncFunctionDef)) and n.name==_ofa_name),None)
-    if _ofa_node:
-        _ofa_code=_ofa_ast.get_source_segment(_backend_source,_ofa_node) or ''
-        print('OFA_AUDIT_'+_ofa_name.upper()+' '+_ofa_code[:8500].replace('\n',' | '),flush=True)
-# OFFER_SOURCE_AUDIT_END
