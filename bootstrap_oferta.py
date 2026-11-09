@@ -71,4 +71,16 @@ print('OB_BACKEND_OFFER_LINES',[_line.strip()[:180] for _line in _backend.splitl
 print('OB_FRONT_GLOBALS',[_line.strip()[:180] for _line in _front.splitlines() if _ob_re.search(r'^(?:let|const|var|async function|function)\s+(?:offers|stores|leaflets|refreshAll|drawOffers|loadOffers|sanitize|buildFilterStore|selectPage|fmtDate|money)',_line.strip())][:25])
 print('OB_FRONT_API_ENDPOINTS',sorted(set(_ob_re.findall(r'/(?:api/[a-zA-Z0-9/_-]+)',_front)))[:45])
 
+
+import ast as _ob_ast
+_ast=_ob_ast.parse(_backend)
+for _fn in ('OfferPayload','offer_fingerprint','checks_offer','insert_offer','map_offer','add_offer','refresh_state'):
+    _node=next((_n for _n in _ast.body if isinstance(_n,(_ob_ast.FunctionDef,_ob_ast.AsyncFunctionDef,_ob_ast.ClassDef)) and _n.name==_fn),None)
+    if _node:
+        _text=_ob_ast.get_source_segment(_backend,_node) or ''
+        print('OB_FUNC_'+_fn.upper(),_text[:2700].replace('\n',' | '))
+for _target in ('async function refreshAll()', 'function drawOffers()', 'function buildFilterStore()'):
+    _i=_front.find(_target)
+    if _i!=-1:print('OB_JS_'+_target.replace(' ','_'),_front[_i:_i+1400].replace('\n',' | '))
+
 print('Oferta Blumenau: secure app prepared')
