@@ -156,6 +156,17 @@ assert 'data-page="encartes"' in html and 'data-page="gestao"' in html
 assert html.index('/static/ob-flyer-gallery-v6.js')>html.index('/static/ob-premium.js')
 assert not any(line.lstrip().startswith('print(') and 'LEAFLET_INSPECT' in line for line in (root/'bootstrap_oferta.py').read_text(encoding='utf-8').splitlines())
 print('OB_V6_FLYERS_GALLERY_INTEGRATION_PASS')
+# V7: page-independent neon-glass sidebar overlay; preserve navigation and data handlers.
+_neon_css=(root/'oferta-sidebar-neon-v7.css').read_text(encoding='utf-8')
+assert 'body.ob-premium .sidebar .sidebtn.active' in _neon_css
+assert 'body.ob-premium .bottomnav' in _neon_css
+assert 'url(http' not in _neon_css and '@import' not in _neon_css
+(folder/'static/ob-sidebar-neon-v7.css').write_text(_neon_css,encoding='utf-8')
+if '/static/ob-sidebar-neon-v7.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-sidebar-neon-v7.css?v=20261109v7"></head>')
+assert '/static/ob-sidebar-neon-v7.css?v=20261109v7' in html
+assert html.index('/static/ob-sidebar-neon-v7.css') > html.index('/static/ob-flyer-gallery-v6.css')
+print('OB_V7_NEON_MENU_INTEGRATION_PASS')
 page.write_text(html,encoding='utf-8')
 
 
