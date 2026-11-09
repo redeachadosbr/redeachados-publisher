@@ -24,6 +24,40 @@ s.textContent='.ob-intel{background:linear-gradient(140deg,#f7fbff,#f6fff8);bord
 document.head.appendChild(s);
 }
 function note(s){const el=document.getElementById('obIntelNote');if(el)el.textContent=s;}
+async function importBatch(files){
+if(!files.length)return;
+const tok=document.getElementById('adminToken')?.value.trim()||'';
+const store=document.getElementById('adminStore')?.value||'';
+const source=document.getElementById('adminSource')?.value.trim()||'';
+const start=document.getElementById('startDate')?.value||'';
+const end=document.getElementById('endDate')?.value||'';
+if(!tok||!store||!source||!start||!end){note('Para importar em lote: informe a chave administrativa, filial, fonte oficial e as duas datas da promoção em Gestão.');return;}
+if(start>end){note('As datas estão invertidas. Corrija antes de enviar os arquivos.');return;}
+if(files.length>25){note('Selecione até 25 imagens ou PDFs por lote.');return;}
+for(const file of files){if(file.size>8*1024*1024||!/\.(?:pdf|png|jpe?g|webp)$/i.test(file.name)){note('Arquivo não suportado: '+file.name+'. Use JPG, PNG, WEBP ou PDF de até 8 MB.');return;}}
+let inserted=0,failed=0;
+const previews=[];
+for(let i=0;i<files.length;i++){
+ const file=files[i];note('Lendo arquivo '+(i+1)+' de '+files.length+': '+file.name);
+ try{
+   const b64=await new Promise((ok,fail)=>{
+     const reader=new FileReader();reader.onload=()=>ok(String(reader.result).split(',')[1]||'');
+     reader.onerror=()=>fail(Error('Falha ao ler arquivo'));reader.readAsDataURL(file);
+   });
+   const res=await fetch('/api/admin/import-file',{method:'POST',credentials:'same-origin',
+     headers:{'Content-Type':'application/json','X-Admin-Token':tok},
+     body:JSON.stringify({store_id:store,source_url:source,starts_on:start,ends_on:end,filename:file.name,base64:b64})});
+   const result=await res.json().catch(()=>({detail:'Resposta inválida do serviço OCR'}));
+   if(!res.ok)throw Error(String(result.detail||'Falha HTTP '+res.status));
+   inserted+=Number(result.inserted||0);
+   if(result.preview)previews.push('Arquivo '+file.name+' — '+(result.method||'OCR')+'\n'+String(result.preview).slice(0,1800));
+ }catch(e){failed++;previews.push('Não processado: '+file.name+' — '+String(e.message||e));}
+}
+const preview=document.getElementById('obOCRPreview');
+if(preview)preview.textContent=previews.join('\n\n').slice(0,10000)||'Nenhum texto reconhecido.';
+note('Lote concluído: '+files.length+' arquivos, '+inserted+' sugestões para revisão e '+failed+' falhas. NENHUM preço foi publicado automaticamente. Abra a fila de candidatos antes de aprovar.');
+if(typeof loadCandidates==='function')try{await loadCandidates()}catch(e){}
+}
 function init(){
 const management=document.querySelector('[data-page="gestao"]');
 if(!management||document.getElementById('obIntel'))return;
@@ -32,19 +66,23 @@ root.innerHTML='<h2>🧠 Inteligência de Ofertas · 8 redes</h2>'+
 '<p>Preços só entram no catálogo com produto, embalagem, filial, origem e validade conferidos. Um site acessível não garante preços legíveis.</p>'+
 '<div class="ob-intel-tools"><button type="button" class="primary" data-ob-intel-refresh>Ver cobertura real</button>'+
 '<button type="button" data-ob-intel-sync>Verificar fontes agora</button>'+
-'<button type="button" data-ob-intel-ocr>Reprocessar encartes</button></div>'+
+'<button type="button" data-ob-intel-ocr>Reprocessar encartes</button>'+'<button type="button" data-ob-intel-batch>Importar lote de fotos/PDF</button>'+'<input id="obBatchFiles" type="file" multiple accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" style="display:none"></div>'+
 '<div id="obIntelNote" class="ob-intel-notice">Informe sua chave administrativa em Gestão e selecione “Ver cobertura real”.</div>'+
 '<div id="obIntelNetworks" class="ob-intel-networks"></div>'+
 '<div class="ob-intel-notice">📲 Recebeu ofertas no WhatsApp? Salve a foto ou PDF, selecione filial e datas na Gestão e importe. O reconhecimento gera sugestões para revisão, não inventa preços.</div>'+
 '<details><summary style="cursor:pointer;font-weight:700">Texto reconhecido do último arquivo importado</summary>'+
 '<pre id="obOCRPreview">Nenhum arquivo lido nesta sessão.</pre></details>';
 management.prepend(root);
+const batchInput=root.querySelector('#obBatchFiles');
+if(batchInput)batchInput.addEventListener('change',()=>{const files=[...(batchInput.files||[])];batchInput.value='';importBatch(files)});
 root.addEventListener('click',async e=>{
 const refresh=e.target.closest('[data-ob-intel-refresh]');
 const scan=e.target.closest('[data-ob-intel-sync]');
 const ocr=e.target.closest('[data-ob-intel-ocr]');
+const batch=e.target.closest('[data-ob-intel-batch]');
 const upload=e.target.closest('[data-ob-intel-upload]');
 if(refresh){await coverage();return;}
+if(batch){const input=document.getElementById('obBatchFiles');if(input)input.click();return;}
 if(scan){const b=document.getElementById('syncBtn');if(b){b.click();note('Verificação iniciada pelo painel Gestão. Consulte o resultado abaixo.')}return;}
 if(ocr){const b=document.getElementById('scanBtn');if(b){b.click();note('Reprocessamento iniciado. Nenhum preço será aprovado sem revisão.')}return;}
 if(upload){
