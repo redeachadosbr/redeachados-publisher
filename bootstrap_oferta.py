@@ -56,7 +56,7 @@ if '/static/ob-premium.css' not in html:
 if '/static/ob-premium-v3.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
 if '/static/ob-premium.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v51" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 # Stable V4 pricing engine and UI for category leaders and existing favorites.
 (folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
@@ -69,7 +69,7 @@ subprocess.run(['node',str(root/'oferta-compare-tests-v4.cjs')],cwd=str(root),ch
 if '/static/ob-smart-compare-v4.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-smart-compare-v4.css?v=20261109v4"></head>')
 if '/static/ob-photo-cards-v5.css' not in html:
-    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-photo-cards-v5.css?v=20261109v5"></head>')
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-photo-cards-v5.css?v=20261109v51"></head>')
 if '/static/ob-compare-engine-v4.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-compare-engine-v4.js?v=20261109v4" defer></script></body>')
 if '/static/ob-smart-compare-v4.js' not in html:
@@ -82,6 +82,9 @@ assert 'data-ob-brand' in photo_code and 'data-ob-package' in photo_code
 assert 'addTracked()' in photo_code and 'drawOffers()' in photo_code
 assert 'ob-mini-add' in (folder/'static/ob-photo-cards-v5.css').read_text(encoding='utf-8')
 subprocess.run(['node',str(root/'oferta-photo-list-tests-v5.cjs')],cwd=str(root),check=True)
+assert '#installApp' in (folder/'static/ob-photo-cards-v5.css').read_text(encoding='utf-8')
+assert 'ob-mini-offer-badge' in (folder/'static/ob-premium.js').read_text(encoding='utf-8')
+print('OB_V51_DISCOUNT_AND_INSTALL_REMOVAL_PASS')
 print('OB_V5_PHOTO_LIST_UI_CONTRACT_PASS')
 print('OB_V4_CATEGORY_COMPARE_AND_FAVORITES_READY')
 # Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
