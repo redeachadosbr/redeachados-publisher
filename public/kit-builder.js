@@ -381,55 +381,111 @@ function kitWizardExecutionFeedback(message,state='info'){
  node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
 }
 function kitWizardExecutionAudit(){
- const formal=$('#kitPublishPanel'),home=$('#kitDetail'),mount=$('#kitWizardExecutionMount');
- const newKit=kitWizardStage===10&&kitWizardIsNewUnpublished();
- // Reutilizar o MESMO formulario e seus listeners, sem duplicar o publicador.
- if(formal&&home&&mount){
-  const parent=newKit?mount:home;
-  if(formal.parentElement!==parent)parent.append(formal);
-  formal.hidden=!newKit;
- }
- const area=$('#kitWizardExecutionAccess');
- if(!area)return;
- let audit=$('#kitWizardExecutionDiagnostics');
- if(!audit){
-  audit=elt('section','kit-wizard-execution-diagnostics');
-  audit.id='kitWizardExecutionDiagnostics';
-  audit.setAttribute('aria-label','Diagnóstico e pendências do kit');
-  audit.style.cssText='padding:14px 16px;margin:0 0 14px;border:1px solid #cddff6;border-radius:14px;background:#f7faff;color:#16365e';
-  area.prepend(audit);
- }
- audit.hidden=kitWizardStage!==10;
- if(audit.hidden)return;
- audit.replaceChildren();
- const checks=new Set(kitWizardChecked());
- const pending=Array.from({length:9},(_,i)=>i+1).filter(n=>!checks.has(n));
- audit.append(elt('strong','',newKit?
-  '🛒 NOVO KIT · Ainda sem Item ID publicado':
-  '🔎 ANÚNCIO EXISTENTE · Conferir o Item ID antes de executar'));
- audit.append(elt('p','',newKit?
-  'O botão inicia a conferência do Kit Formal: vínculos, estoque, logística, 9 fotos e prévia. Somente a confirmação final cria um anúncio.':
-  'O botão consulta o anúncio real e executa somente as pendências autorizadas, sem criar outro anúncio.'));
- if(pending.length){
-  audit.append(elt('p','','Etapas sem conferência local: '+pending.map(n=>
-   String(n).padStart(2,'0')+' '+KIT_WIZARD_TITLES[n-1]).join(' · ')+
-   '. Clique abaixo para abrir a etapa necessária.'));
-  const actions=elt('div','kit-wizard-pending-actions');
-  actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
-  for(const n of pending){
-   const b=elt('button','kit-secondary','Revisar '+String(n).padStart(2,'0')+' · '+KIT_WIZARD_TITLES[n-1]);
-   b.type='button';b.addEventListener('click',()=>kitWizardSetStage(n,{scroll:true}));
-   actions.append(b);
+ const panel=$('#kitPublishPanel'),home=$('#kitDetail');
+ if(panel&&home){if(panel.parentElement!==home)home.append(panel);panel.hidden=true;}
+ $('#kitWizardExecutionDiagnostics')?.remove();
+ const button=$('#kitWizardOpenExecution');
+ if(button)button.textContent='▶ Executar na Shopee';
+}
+let kitWizardNewKitBusy=false;
+async function kitWizardExecuteNewKit(){
+ if(kitWizardNewKitBusy||kitPublishBusy)return;
+ const button=$('#kitWizardOpenExecution'),sku=String(prepared?.kit?.kitSku||'');
+ if(!sku)return kitWizardExecutionFeedback('Abra um kit salvo.','error');
+ const say=(msg,type='info')=>kitWizardExecutionFeedback(msg,type);
+ kitWizardNewKitBusy=true;
+ if(button){button.disabled=true;button.textContent='Executando...';}
+ try{
+  if(!kitSaved){
+   say('Salvando as informações...');
+   if(!await saveDraft())throw Error('Não consegui salvar título e descrição.');
   }
-  audit.append(actions);
- }else{
-  audit.append(elt('p','','Etapas 01–09 marcadas como conferidas neste navegador. A publicação ainda depende de validação real da Shopee.'));
+  if(prepared?.kit?.kitSku!==sku)throw Error('Outro kit foi selecionado.');
+  say('Conferindo o kit na Shopee...');
+  const publication=(await api('/api/shopee/kits/publish/status',{body:{kitSku:sku}}))?.publication||{};
+  if(publication.itemId||['publishing','uncertain','published_pending','published'].includes(String(publication.status||'')))
+   throw Error('O kit já foi enviado ou a resposta está pendente. Confirme na Shopee antes de tentar novamente.');
+  if(kitDraftNeedsRefresh||!kitStockReady)throw Error('Estoque ou custo WeDrop precisa de atualização.');
+  await kitReadinessCheck();
+  if(!kitReadiness)throw Error($('#kitPublishStatus')?.textContent||'Produtos não confirmados na Shopee.');
+  if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
+  if(prepared?.kit?.kitSku!==sku)throw Error('O kit mudou durante a conferência.');
+  const principal=String(prepared.kit.components?.[0]?.sku||'');
+  if(![...$('#kitMainSku').options].some(x=>x.value===principal))
+   throw Error('Não consegui identificar o produto principal.');
+  $('#kitMainSku').value=principal;
+  const channels=kitReadiness.channels||[],channel=$('#kitLogisticId');
+  if(!channels.some(x=>String(x.id)===String(channel.value))){
+   if(channels.length!==1)throw Error('Falta confirmar o canal de envio; há várias opções disponíveis.');
+   channel.value=String(channels[0].id);
+  }
+  const missing=[['#kitWeightKg','peso'],['#kitLengthCm','comprimento'],['#kitWidthCm','largura'],
+   ['#kitHeightCm','altura']].filter(([field])=>!(Number($(field)?.value)>0)).map(x=>x[1]);
+  if(missing.length)throw Error('Faltam medidas reais do pacote: '+missing.join(', ')+'. Não posso inventá-las.');
+  if(images.size<9){
+   for(const row of await kitPhotoStore.list(sku)){
+    if(images.has(row.slot))continue;
+    if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
+       /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&
+       await kitStoredPhotoApproved(row))images.set(row.slot,row.dataUrl);
+   }
+   renderImageSlots();
+  }
+  if(images.size!==9||Array.from({length:9},(_,i)=>i+1).some(n=>!images.has(n)))
+   throw Error('As 9 imagens não estão disponíveis. Recupere-as na etapa 02.');
+  if(!kitWizardChecked().includes(2))throw Error('É preciso conferir as 9 imagens na etapa 02.');
+  await restoreKitVideo(sku);
+  if(kitWizardChecked().includes(3)&&!kitVideoData&&!kitVideoRemote?.ready)
+   throw Error('Vídeo conferido, mas não encontrado. Revise a etapa 03.');
+  const approved=window.confirm('PUBLICAR ESTE KIT NA SHOPEE?\n\n'+
+   prepared.kit.components.map(x=>x.name).join(' + ')+
+   '\nPreço bruto: '+money(prepared.kit.quote.grossPrice)+
+   '\nEmbalagem: '+$('#kitWeightKg').value+' kg; '+
+   [$('#kitLengthCm').value,$('#kitWidthCm').value,$('#kitHeightCm').value].join(' × ')+' cm.'+
+   '\n\nConfirmo os produtos, as 9 fotos fiéis e o envio de tudo em um pacote.'+
+   '\nO desconto é uma etapa separada, depois da criação.\n\nConfirmar?');
+  if(!approved){say('Publicação cancelada. Nenhum anúncio foi criado.');return;}
+  $('#kitContentsReviewed').checked=true;
+  $('#kitPhotosReviewed').checked=true;
+  $('#kitSingleParcelConfirmed').checked=true;
+  say('Enviando as imagens aprovadas...');
+  if(kitShopeePhotoSlots.size<9)await kitSendPhotos();
+  if(kitShopeePhotoSlots.size!==9)
+   throw Error($('#kitPublishStatus')?.textContent||'As imagens não foram confirmadas.');
+  if(kitVideoData&&!kitVideoRemote?.ready){
+   say('Enviando o vídeo salvo...');
+   const response=await fetch('/api/shopee/kits/video/prepare',{
+    method:'POST',headers:{'Content-Type':'application/octet-stream','x-kit-sku':sku,
+     'x-video-filename':encodeURIComponent(kitVideoData.name)},body:kitVideoData.blob});
+   let progress=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(progress.error||'Falha no envio do vídeo.');
+   for(let i=0;i<40&&!progress.ready;i++){
+    if(prepared?.kit?.kitSku!==sku)throw Error('O kit foi alterado durante o vídeo.');
+    if(progress.phase==='processing')await kitVideoSleep(2500);
+    progress=await api('/api/shopee/kits/video/advance',{body:{kitSku:sku}});
+   }
+   if(!progress.ready)throw Error('A Shopee ainda não confirmou o vídeo. Tente novamente sem reenviar as imagens.');
+   kitVideoRemote=progress;kitVideoUI();
+  }
+  if(kitVideoData&&kitVideoRemote?.ready)$('#kitVideoInclude').checked=true;
+  say('Conferindo a prévia...');
+  await kitPreparePublishPreview();
+  if(!kitPublishToken)throw Error($('#kitPublishStatus')?.textContent||'Prévia recusada.');
+  say('Criando anúncio na Shopee...');
+  const result=await api('/api/shopee/kits/publish/execute',{body:{
+   kitSku:sku,fields:kitPublishFields(),token:kitPublishToken,confirm:true
+  }});
+  if(!result.itemId)throw Error('A Shopee não confirmou o Item ID. Não repita antes de verificar o catálogo.');
+  kitItemId=result.itemId;clearKitPublishApproval();
+  $('#kitPublishedMessage').textContent=result.message||'Publicação enviada.';
+  say('✓ Kit criado na Shopee! Item ID '+kitItemId+'. Desconto ainda não aplicado.','success');
+  void loadDrafts();
+ }catch(error){
+  say('Não foi possível executar: '+String(error?.message||error).slice(0,440),'error');
+ }finally{
+  kitWizardNewKitBusy=false;
+  if(button){button.disabled=false;button.textContent='▶ Executar na Shopee';}
  }
- if(newKit){
-  audit.append(elt('p','','A conferência local não equivale a anúncio publicado. O formulário de publicação e os motivos de bloqueio aparecem abaixo.'));
- }
- const action=$('#kitWizardOpenExecution');
- if(action)action.textContent=newKit?'▶ Verificar pendências e preparar publicação':'▶ Executar pendências no anúncio existente';
 }
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
@@ -504,7 +560,7 @@ function kitWizardMountTechnical(){
  const progress=$('#kitOptimizeStatus');
  if(!node||!normal)return;
  const mounts={5:'#kitWizardTechnicalMount',7:'#kitWizardVariantsMount',
-  9:'#kitWizardDiscountMount',10:'#kitWizardExecutionMount'};
+  9:'#kitWizardDiscountMount'};
  const destination=mounts[kitWizardStage];
  const mount=destination&&prepared?.kit&&!$('#kitDetail')?.hidden?$(destination):null;
  if(mount){
@@ -976,7 +1032,8 @@ function kitWizardSetStage(stage,{scroll=false}={}){
   if(originalStage&&!originalStage.classList.contains('is-current'))originalStage.click();
  }
  const previous=$('#kitWizardPrevious'),next=$('#kitWizardNext');
- if(previous)previous.disabled=kitWizardStage<=1;
+ if(previous){previous.disabled=kitWizardStage<=1;previous.hidden=kitWizardStage===10;}
+ const smallprint=$('#kitWizardWork .kit-wizard-safety');if(smallprint)smallprint.hidden=kitWizardStage===10;
  if(next){next.disabled=kitWizardStage===0||kitWizardStage===10;next.textContent=kitWizardStage===10?'Fim das 10 etapas':'Próxima etapa →';}
  if(prepared&&kitWizardStage>0){
   if(kitWizardStage===4||kitWizardStage===6){
@@ -1045,9 +1102,7 @@ function kitWizardInit(){
   // existente para editar como se fosse este novo Kit Formal.
   if(kitWizardIsNewUnpublished()){
    kitWizardExecutionIntent=false;
-   kitWizardExecutionAudit();
-   kitWizardExecutionFeedback('Conferindo as exigências do novo Kit Formal. Nenhum anúncio foi criado.','info');
-   await kitPublishGuideNext();
+   await kitWizardExecuteNewKit();
    return;
   }
   if(!kitSaved){
@@ -2235,8 +2290,10 @@ async function kitSendPhotos(){
   for(const [slot,photo] of [...images.entries()].sort((a,b)=>a[0]-b[0])){
    if(kitShopeePhotoSlots.has(slot))continue;
    kitPublishStatus('Enviando foto '+slot+' para Shopee MediaSpace, SEM publicar o anúncio...');
+   const blob=String(photo||'').match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/i);
+   if(!blob)throw Error('Imagem '+slot+' não possui um arquivo PNG, JPG ou WebP válido.');
    const result=await api('/api/shopee/kits/publish/media',{body:{
-    kitSku:prepared.kit.kitSku,slot,mime:'image/png',imageBase64:photo.split(',')[1]
+    kitSku:prepared.kit.kitSku,slot,mime:blob[1].toLowerCase(),imageBase64:blob[2]
    }});
    kitShopeePhotoSlots.set(slot,result.imageId);
    $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
