@@ -46,30 +46,20 @@ runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['pat
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
 
-# Temporary, read-only inspection of leaflet gallery markup and original handlers.
-_ob_orig_js=(folder/'static/app.js').read_text(encoding='utf-8')
-_ob_orig_html=html
-for _tag in ('function drawLeaflets(', 'function renderLeaflets(', 'function loadLeaflets(', 'function openLeaflet(', 'leafletsGrid', 'leafletGrid', 'leafletCard', 'data-page="encartes"', 'let leaflets=', 'function refreshAll(', 'function safeUrl('):
-  _target=_ob_orig_js if 'data-page' not in _tag else _ob_orig_html
-  _p=_target.find(_tag)
-  print('OB_V6_LEAFLET_INSPECT',_tag,_p,repr(_target[max(0,_p-200):_p+5000] if _p>=0 else 'NOT_FOUND'))
-_ob_orig_css=(folder/'static/styles.css')
-if _ob_orig_css.exists():
-  _cc=_ob_orig_css.read_text(encoding='utf-8')
-  for _tag in ('.sidebar', '.sidebtn', '.leaflet', '.leaflets', '.flyer', '.encarte'):
-    _p=_cc.find(_tag)
-    print('OB_V6_STYLE_INSPECT',_tag,_p,repr(_cc[_p:_p+650] if _p>=0 else 'NOT_FOUND'))
-
 html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
                   'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
 # Premium 3D interface: additive CSS/JS; never change authenticated API or price records.
 (folder/'static/ob-premium.css').write_text((root/'oferta-premium-visual.css').read_text(encoding='utf-8'),encoding='utf-8')
 (folder/'static/ob-premium.js').write_text((root/'oferta-premium-vitrine.js').read_text(encoding='utf-8'),encoding='utf-8')
 (folder/'static/ob-premium-v3.css').write_text((root/'oferta-premium-v3.css').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-flyer-gallery-v6.css').write_text((root/'oferta-flyer-gallery-v6.css').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-flyer-gallery-v6.js').write_text((root/'oferta-flyer-gallery-v6.js').read_text(encoding='utf-8'),encoding='utf-8')
 if '/static/ob-premium.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium.css?v=20261109"></head>')
 if '/static/ob-premium-v3.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
+if '/static/ob-flyer-gallery-v6.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v61"></head>')
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v52" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
@@ -156,6 +146,16 @@ if '/static/ob-intel.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-intel.js?v=20261109smart10" defer></script></body>')
 if '/static/ob-v3-center.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v32" defer></script></body>')
+# The leaflet gallery runs after the original app.js and additive UI scripts.
+if '/static/ob-flyer-gallery-v6.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-flyer-gallery-v6.js?v=20261109v61" defer></script></body>')
+subprocess.run(['node','--check',str(folder/'static/ob-flyer-gallery-v6.js')],check=True)
+subprocess.run(['node',str(root/'oferta-flyer-gallery-tests-v6.cjs')],cwd=str(root),check=True)
+assert 'id="leafletGrid"' in html and 'id="onlyActive"' in html
+assert 'data-page="encartes"' in html and 'data-page="gestao"' in html
+assert html.index('/static/ob-flyer-gallery-v6.js')>html.index('/static/ob-premium.js')
+assert 'OB_V6_LEAFLET_INSPECT' not in (root/'bootstrap_oferta.py').read_text(encoding='utf-8')
+print('OB_V6_FLYERS_GALLERY_INTEGRATION_PASS')
 page.write_text(html,encoding='utf-8')
 
 
