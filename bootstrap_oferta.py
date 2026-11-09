@@ -28,6 +28,17 @@ runpy.run_path(str(folder/'daily_upgrade.py'),run_name='__bootstrap_no_exec__')[
 # Show genuine flyer images and filter misidentified navigation links.
 (folder/'upgrade_v07.py').write_bytes(base64.b64decode((root/'oferta-upgrade-v07.b64').read_text(encoding='ascii')))
 runpy.run_path(str(folder/'upgrade_v07.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
+# Optional Portuguese image OCR, using open-source JS instead of a paid API.
+(folder/'ocr_fallback.cjs').write_text((root/'ocr_fallback.cjs').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'upgrade_v08.py').write_text((root/'upgrade_v08.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'upgrade_v08.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
+import subprocess
+try:
+    npm=subprocess.run(['npm','install','--prefix',str(folder),'--no-audit','--no-fund','--save-exact','tesseract.js@7.0.0'],
+                       capture_output=True,text=True,timeout=105,check=False)
+    print('OCR_DEPENDENCY_READY' if npm.returncode==0 else 'OCR_DEPENDENCY_UNAVAILABLE')
+except (OSError,subprocess.TimeoutExpired):
+    print('OCR_DEPENDENCY_UNAVAILABLE')
 # Update the old SQLite-only warning: state is now stored in Supabase.
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
