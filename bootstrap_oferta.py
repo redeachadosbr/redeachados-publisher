@@ -47,5 +47,13 @@ page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
 html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
                   'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
+# Premium 3D interface: additive CSS/JS; never change authenticated API or price records.
+(folder/'static/ob-premium.css').write_text((root/'oferta-premium-visual.css').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-premium.js').write_text((root/'oferta-premium-vitrine.js').read_text(encoding='utf-8'),encoding='utf-8')
+if '/static/ob-premium.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium.css?v=20261109"></head>')
+if '/static/ob-premium.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109" defer></script></body>')
+subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 page.write_text(html,encoding='utf-8')
 print('Oferta Blumenau: secure app prepared')
