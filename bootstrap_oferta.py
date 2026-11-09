@@ -234,7 +234,7 @@ subprocess.run(['node','--check',str(folder/'static/ob-branch-offers-v11.js')],c
 if '/static/ob-branch-offers-v11.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-branch-offers-v11.css?v=20261109v11"></head>')
 if '/static/ob-branch-offers-v11.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-branch-offers-v11.js?v=20261109v11" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-branch-offers-v11.js?v=20261109v11hotfix1" defer></script></body>')
 assert html.count('/static/ob-branch-offers-v11.js')==1
 assert html.count('/static/ob-branch-offers-v11.css')==1
 assert html.index('/static/ob-branch-offers-v11.js')>html.index('/static/ob-market-cards-v9.js')
