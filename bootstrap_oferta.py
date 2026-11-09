@@ -56,7 +56,7 @@ if '/static/ob-premium.css' not in html:
 if '/static/ob-premium-v3.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
 if '/static/ob-premium.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v51" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v52" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 # Stable V4 pricing engine and UI for category leaders and existing favorites.
 (folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
@@ -73,7 +73,7 @@ if '/static/ob-photo-cards-v5.css' not in html:
 if '/static/ob-compare-engine-v4.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-compare-engine-v4.js?v=20261109v4" defer></script></body>')
 if '/static/ob-smart-compare-v4.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-smart-compare-v4.js?v=20261109v4" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-smart-compare-v4.js?v=20261109v42" defer></script></body>')
 if '/static/ob-photo-cards-v5.css' not in html: 
     raise RuntimeError('Foto-first card styles must be included')
 photo_code=(folder/'static/ob-premium.js').read_text(encoding='utf-8')
@@ -126,10 +126,21 @@ _js_path.write_text(_jscode.replace(_old,_new,1),encoding='utf-8')
 (folder/'static/ob-v3-center.js').write_text((root/'oferta-v3-center.js').read_text(encoding='utf-8'),encoding='utf-8')
 subprocess.run(['node','--check',str(folder/'static/ob-v3-center.js')],check=True)
 subprocess.run(['node','--check',str(folder/'static/ob-intel.js')],check=True)
+# The public Offers page must prioritize products; fiscal provenance and proof are
+# still available through authenticated admin tools, never as an empty shopper section.
+_ui_main=(folder/'static/ob-premium.js').read_text(encoding='utf-8')
+_ui_trust=(folder/'static/ob-v3-center.js').read_text(encoding='utf-8')
+_ui_compare=(folder/'static/ob-smart-compare-v4.js').read_text(encoding='utf-8')
+assert 'obTrustStrip' not in _ui_main and 'Informação que você pode conferir' not in _ui_main
+assert 'obFiscalSection' not in _ui_trust and 'Preços fiscais observados' not in _ui_trust
+assert 'obV3Admin' in _ui_trust and 'admin_provenance' not in _ui_trust
+assert 'page.append(section)' in _ui_compare and 'obBestPrices' in _ui_compare
+assert 'ob-mini-offer' in _ui_main and 'data-ob-list' in _ui_main
+print('OB_V52_SHOPPING_FOCUS_NO_EMPTY_TRUST_SECTIONS_PASS')
 if '/static/ob-intel.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-intel.js?v=20261109smart10" defer></script></body>')
 if '/static/ob-v3-center.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v3" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v32" defer></script></body>')
 page.write_text(html,encoding='utf-8')
 
 
