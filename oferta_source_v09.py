@@ -7,17 +7,16 @@ import re
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
-import daily_collect
 
 _PRODUCT_PRICE = re.compile(r'(?<![\d,.])(?:R\$\s*)?(\d{1,4},\d{2})(?!\d)')
-_PACK = daily_collect.PACK
+_PACK = re.compile(r'(?<!\w)(?:\d+\s*[x×]\s*)?\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l|un(?:id(?:ades?)?)?)\b',re.I)
 _NOISE = re.compile(r'(?i)\b(?:leve\s*\d|pague\s*\d|2[ªa]\s*unidade|desconto|por cento|cupom|parcel|frete|taxa|cadastro|club[e]?|app|pelo aplicativo|a cada 100\s*g|compre\s*\d)\b|%|\b(?:de|por)\s*R\$')
 
 def high_precision_candidates(text: str, store_id: str, source_url: str, start: str | None, end: str | None, current_date: str):
     """Never guess dates or merge adjacent products; OCR candidates ALWAYS need review."""
     if not start or not end or not (start <= current_date <= end):
         return []
+    import daily_collect
     result, seen = [], set()
     for raw in text.splitlines()[:5000]:
         line = ' '.join(raw.split())
@@ -61,6 +60,8 @@ async def discover_cooper_magazines(client, html: str, job: dict, page_url: str,
     """
     if job.get('network') != 'Cooper' or not job.get('store_id'):
         return []
+    from bs4 import BeautifulSoup
+    import daily_collect
     soup = BeautifulSoup(html, 'html.parser')
     out, seen = [], set()
     for a in soup.select('a[href]')[:180]:
