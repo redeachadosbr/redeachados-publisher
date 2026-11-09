@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const browser={};
+const browser={URL}; // vm contexts do not expose the browser URL constructor by default.
 vm.runInNewContext(fs.readFileSync('oferta-flyer-gallery-v6.js','utf8'),browser,{timeout:3000});
 const G=browser.OBFlyerGalleryV6;
 assert.ok(G&&typeof G.group==='function','gallery module loads and exports grouping logic');
