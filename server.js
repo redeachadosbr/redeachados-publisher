@@ -627,8 +627,8 @@ app.post('/api/shopee/kits/publish/readiness',mustLogin,requireWeDropAdmin,async
  try{
   const {auth,cfg}=await getValidAuth(req);
   const kitSku=String(req.body?.kitSku||'');
-  const {linked,blockers,options,uploadedImageIds}=await kitPublicationReadiness({cfg,auth,kitSku});
-  res.json({ok:true,kitSku,linked,blockers,channels:options.channels,
+  const {linked,blockers,options,uploadedImageIds,autoRecovered}=await kitPublicationReadiness({cfg,auth,kitSku});
+  res.json({ok:true,kitSku,linked,blockers,autoRecovered,channels:options.channels,
    limits:options.limits,uploadedImageIds,
    note:'Somente prévia. A criação real exige outra aprovação explícita.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
