@@ -54,6 +54,13 @@ async def v3_selftest(request:Request):
         'leaflets_pending':evidence.get('leaflets_pending',0),
         'reviews_pending':evidence.get('reviews_pending',0)}
 
+@app.get('/api/verified-leaflet-offers')
+async def verified_leaflet_offers(limit:int=400):
+    # Private login middleware protects this route. The service-role key never leaves the server.
+    if limit<1 or limit>500:
+        raise HTTPException(422,'Limite inválido')
+    return await v3_provenance_call({'action':'list_leaflets','limit':limit})
+
 @app.post('/api/admin/provenance')
 async def admin_provenance(payload:dict=Body(...),x_admin_token:Optional[str]=Header(None)):
     auth(x_admin_token)
