@@ -37,6 +37,8 @@ def patch_source(server_path):
     if new not in s:
         if old not in s:raise RuntimeError('Image OCR fallback anchor missing')
         s=s.replace(old,new,1)
+    # Include only bounded public-source diagnostics in the authenticated cron response.
+    s=s.replace("'new_candidates':result['new_candidates'],", "'new_candidates':result['new_candidates'],'details':result['details'][:3],")
     p.write_text(s,encoding='utf-8')
 
 if __name__=='__main__':
