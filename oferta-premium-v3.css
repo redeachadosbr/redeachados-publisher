@@ -129,3 +129,9 @@ body.ob-premium .ob-evidence-legend span:nth-child(3){background:#fff7e8;color:#
 .ob-v3-fiscal-side a{font-size:11px;color:#19709d;text-decoration:underline}
 .ob-v3-empty{border:1px dashed #aecac3;color:#718d86;padding:15px;background:#fff;font-size:11px;line-height:1.55;border-radius:13px}
 @media(max-width:560px){.ob-v3-form{grid-template-columns:1fr}.ob-v3-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ob-v3-fiscal-card{padding:10px}.ob-v3-fiscal-side strong{font-size:20px}}
+
+body.ob-premium .ob-icon.clean{--ob-light:#a1f2f5;--ob-mid:#18a3b8;--ob-dark:#176d82}
+body.ob-premium .ob-icon.drink{--ob-light:#ffe8a2;--ob-mid:#f28c27;--ob-dark:#bd5416}
+body.ob-premium .ob-icon.hygiene{--ob-light:#ead0ff;--ob-mid:#ad73e5;--ob-dark:#7545ab}
+body.ob-premium .ob-icon.cart{--ob-light:#ffebab;--ob-mid:#efbb4d;--ob-dark:#ad7a1c}
+body.ob-premium .ob-icon.pin{--ob-light:#cfe7ff;--ob-mid:#6b9bdf;--ob-dark:#2b62a2}
