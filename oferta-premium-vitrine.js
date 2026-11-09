@@ -152,7 +152,7 @@ function drawPremiumOffers(){
        '<div class="ob-terms">'+esc(o.condition||label)+'</div></div>'+
     '<div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Válido até '+esc(fmtDate(o.ends_on))+'</span>'+
        '<span class="ob-source-pill">'+esc(label)+'</span>'+proof+'</div>'+
-    '<div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'">'+icon('list')+' Lista</button>'+
+    '<div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'" data-ob-brand="'+esc(o.brand||'')+'" data-ob-package="'+esc(o.package||'')+'">'+icon('list')+' Lista</button>'+
        '<button class="second" type="button" data-ob-compare="'+esc(o.name)+'">'+icon('compare')+' Comparar</button></div></article>';
  }).join('');
 }
@@ -245,6 +245,7 @@ function drawCategories(){
  const root=document.getElementById('obCategories');if(!root)return;
  root.innerHTML=catDefs.map(([cat,ico])=>'<button type="button" class="ob-cat '+(cat===activeCat?'active':'')+'" data-ob-cat="'+esc(cat)+'" aria-pressed="'+(cat===activeCat)+'">'+icon(ico)+'<span>'+esc(cat)+'</span></button>').join('');
 }
+window.OBPremiumPublic={brandLogo,brandAttr,icon,sourceImage};
 function init(){
  if(ready)return;ready=true;
  makeLayout();
