@@ -56,5 +56,5 @@ async def admin_coverage(x_admin_token:Optional[str]=Header(None)):
 def patch_source(server_path: str):
     p=Path(server_path);code=p.read_text(encoding='utf-8')
     if "@app.get('/api/admin/coverage')" not in code:
-        code+='\\n'+ENDPOINT
+        code+='\n'+ENDPOINT
         p.write_text(code,encoding='utf-8')
