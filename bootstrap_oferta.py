@@ -108,12 +108,6 @@ for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','tra
 if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
     raise RuntimeError('Missing offers navigation page')
 print('OB_UI_MARKUP_CONTRACT_PASS')
-# Diagnostic prints only environment VARIABLE NAMES, never key values.
-import re as _ob_re
-_contract=(folder/'remote_state.py').read_text(encoding='utf-8')
-print('OB_REMOTE_ENV_VAR_NAMES', sorted(set(_ob_re.findall(r"(?:SUPABASE|OFFER|DATABASE|DB_)[A-Z0-9_]{2,}", _contract)))[:40])
-
-
 # Authenticated diagnostic endpoint: permits real readback of the live product catalogue
 # from Supabase-backed SQLite without exposing private offers publicly.
 _backend_path=folder/'server.py'
@@ -144,6 +138,10 @@ _backend_path.write_text(_backend_source,encoding='utf-8')
 # Protected source diagnostic endpoint for first-party public URLs only.
 (folder/'oferta_probe_v11.py').write_text((root/'oferta_probe_v11.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'oferta_probe_v11.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(_backend_path))
+# Separate trust and evidence model: uses only the already configured server-to-server token.
+(folder/'oferta_v3_provenance.py').write_text((root/'oferta_v3_provenance.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'oferta_v3_provenance.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(_backend_path))
+print('OB_V3_PROVENANCE_ENDPOINTS_PREPARED')
 import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
