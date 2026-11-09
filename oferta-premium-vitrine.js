@@ -39,7 +39,7 @@ const visibleOffers=()=>{const day=new Date().toLocaleDateString('sv-SE',{timeZo
 
 const BRANDS={
  'Bistek':{key:'bistek',primary:'#c51e32',secondary:'#ffd228',word:'Bistek', logo:'https://institucional.bistek.com.br/img/icons/facebook.jpg',site:'https://www.bistek.com.br'},
- 'Cooper':{key:'cooper',primary:'#007752',secondary:'#cbec4b',word:'Cooper', logo:'https://www.cooper.coop.br/image/13825/550/0/novos-horarios-de-atendimento-da-cooper-a-partir-de-23-03.jpg',site:'https://www.cooper.coop.br'},
+ 'Cooper':{key:'cooper',primary:'#007752',secondary:'#cbec4b',word:'Cooper', logo:'https://www.cooper.coop.br/image/logo-cooper.png?a1',site:'https://www.cooper.coop.br'},
  'Fort Atacadista':{key:'fort',primary:'#ed1524',secondary:'#ffdd17',word:'FORT',logo:'https://edge.osuper.com.br/NHpE3t0gKRkjY-Vpbl0H_Vs1KJ8=/600x0/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/5e9121b8-fortcompactada400-1.png',site:'https://www.fortatacadista.com.br'},
  'Giassi':{key:'giassi',primary:'#ec771d',secondary:'#153a67',word:'Giassi',logo:'https://institucional.giassi.com.br/favicon.ico',site:'https://institucional.giassi.com.br'},
  'Rede TOP':{key:'top',primary:'#0066ad',secondary:'#ffe500',word:'TOP',logo:'https://www.redetop.com.br/institucional/img/logo-rede-top.jpg',site:'https://www.redetop.com.br'},
