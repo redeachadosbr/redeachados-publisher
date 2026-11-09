@@ -1,0 +1,231 @@
+/* Oferta Blumenau V9 — premium 3D supermarket branch cards.
+   Strictly scoped to the Supermercados page; no change to offers or flyer views. */
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9{
+  --ob-store-accent:#0b8667;
+  --ob-store-halo:rgba(20,176,119,.15);
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-width:0;
+  min-height:236px;
+  border-radius:24px;
+  border:1px solid rgba(220,238,231,.97);
+  background:
+    radial-gradient(ellipse at 92% 2%,var(--ob-store-halo),transparent 53%),
+    linear-gradient(148deg,#fff 0%,#f9fefb 47%,#f0f8f4 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.99),
+    inset 0 -2px 0 rgba(100,161,133,.10),
+    0 5px 0 rgba(77,148,121,.18),
+    0 14px 22px rgba(15,60,44,.13),
+    0 25px 39px rgba(13,52,39,.08);
+  padding:19px 22px 19px;
+  transition:transform .23s ease,box-shadow .23s ease,border-color .23s ease;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:1px 2px auto;
+  height:48%;
+  border-radius:22px 22px 55% 55%;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(255,255,255,.09) 78%,transparent);
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9::after{
+  content:"";
+  position:absolute;
+  inset:auto 19px 0;
+  height:3px;
+  border-radius:12px 12px 0 0;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--ob-store-accent),transparent);
+  opacity:.66;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 > *{
+  position:relative;
+  z-index:1;
+}
+@media (hover:hover) and (pointer:fine){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9:hover{
+    transform:translateY(-6px);
+    border-color:rgba(164,220,195,.94);
+    box-shadow:
+      inset 0 2px rgba(255,255,255,.99),
+      0 5px 0 rgba(85,156,123,.2),
+      0 20px 31px rgba(12,56,37,.18),
+      0 33px 48px rgba(10,44,31,.12),
+      0 0 0 1px var(--ob-store-halo);
+  }
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9:focus-within{
+  border-color:var(--ob-store-accent);
+  box-shadow:0 0 0 2px var(--ob-store-halo),0 15px 31px rgba(13,61,40,.16);
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .markettop{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:nowrap;
+  min-height:77px;
+  gap:9px;
+  margin:0 0 12px;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo.ob-store-logo-v9{
+  width:94px;
+  height:78px;
+  flex:0 0 94px;
+  display:grid;
+  place-items:center;
+  padding:4px;
+  border:1px solid rgba(251,255,253,.98);
+  border-radius:20px;
+  background:linear-gradient(155deg,#fff 0%,#f5fbf8 62%,#e3f4ed 100%);
+  color:var(--ob-store-accent);
+  font-size:13px;
+  font-weight:900;
+  box-shadow:
+    inset 0 2px rgba(255,255,255,1),
+    inset 0 -2px rgba(141,191,165,.19),
+    0 5px 0 rgba(141,180,159,.25),
+    0 11px 16px rgba(18,63,44,.13),
+    0 0 19px var(--ob-store-halo);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo{
+  width:81px;
+  height:65px;
+  flex:0 0 81px;
+  border:0;
+  border-radius:15px;
+  padding:5px;
+  overflow:hidden;
+  background:linear-gradient(145deg,#fff,#f7fffb);
+  box-shadow:none;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo::after{
+  height:3px;
+  left:12px;
+  right:12px;
+  background:var(--ob-store-accent);
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo img{
+  max-height:51px;
+  max-width:100%;
+  object-fit:contain;
+  filter:drop-shadow(0 3px 3px rgba(21,56,44,.11));
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo img[hidden]{
+  display:none;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo-text{
+  position:absolute;
+  font-size:clamp(11px,1.1vw,14px);
+  font-weight:1000;
+  line-height:1.1;
+  letter-spacing:-.2px;
+  color:var(--ob-store-accent);
+  text-shadow:0 1px 0 white;
+}
+@media (hover:hover) and (pointer:fine){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9:hover .marketlogo{
+    transform:translateY(-3px) rotate(-1deg);
+    box-shadow:inset 0 2px #fff,0 5px 0 rgba(141,180,159,.24),
+      0 15px 21px rgba(18,63,44,.17),0 0 27px var(--ob-store-halo);
+  }
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .markettop .statuschip{
+  max-width:calc(100% - 105px);
+  min-height:30px;
+  align-self:flex-start;
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  padding:6px 10px;
+  border:1px solid rgba(218,245,231,.92);
+  border-radius:10px;
+  color:var(--ob-store-accent);
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+  background:linear-gradient(135deg,#f4fff9,#e7f8ef);
+  box-shadow:inset 0 1px white,0 3px 0 rgba(102,159,123,.11),0 7px 11px rgba(14,71,42,.06);
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 h3{
+  margin:4px 0 9px;
+  color:#173c30;
+  font-size:clamp(14px,1.18vw,17px);
+  font-weight:950;
+  letter-spacing:-.3px;
+  line-height:1.31;
+  overflow-wrap:anywhere;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 p{
+  margin:0 0 16px;
+  color:#627e73;
+  font-size:11px;
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 a.ctaLink{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  max-width:100%;
+  min-height:38px;
+  padding:8px 13px;
+  border:1px solid rgba(141,223,177,.82);
+  border-radius:12px;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  text-decoration:none;
+  background:linear-gradient(135deg,#13b970 0%,#078958 75%,#076d48 100%);
+  box-shadow:inset 0 1px rgba(255,255,255,.45),
+    0 3px 0 rgba(1,104,66,.18),
+    0 7px 13px rgba(5,117,72,.17);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 a.ctaLink:focus-visible{
+  outline:3px solid var(--ob-store-accent);
+  outline-offset:2px;
+}
+@media (hover:hover) and (pointer:fine){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 a.ctaLink:hover{
+    transform:translateY(-2px);
+    box-shadow:inset 0 1px rgba(255,255,255,.48),
+      0 4px 0 rgba(1,104,66,.19),
+      0 11px 18px rgba(5,117,72,.27);
+  }
+}
+@media(max-width:1050px){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9{padding:16px;min-height:220px}
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo.ob-store-logo-v9{
+    width:78px;height:68px;flex-basis:78px;
+  }
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo{
+    width:68px;height:57px;flex-basis:68px;
+  }
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo .ob-logo img{max-height:44px}
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .markettop .statuschip{max-width:calc(100% - 90px)}
+}
+@media(max-width:650px){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9{
+    min-height:205px;
+    padding:14px 13px 17px;
+    border-radius:19px;
+    box-shadow:inset 0 1px #fff,0 4px 0 rgba(77,148,121,.17),
+      0 10px 18px rgba(15,60,44,.12),0 18px 27px rgba(13,52,39,.07);
+  }
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .markettop{margin-bottom:8px}
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 h3{font-size:13px}
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 p{font-size:10px}
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 a.ctaLink{font-size:10px;min-height:35px}
+}
+@media(prefers-reduced-motion:reduce){
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9,
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 .marketlogo,
+  body.ob-premium [data-page="mercados"] .marketcard.ob-store-card-v9 a.ctaLink{
+    transition:none!important;transform:none!important;
+  }
+}
