@@ -39,6 +39,9 @@ def patch_source(server_path):
         s=s.replace(old,new,1)
     # Include only bounded public-source diagnostics in the authenticated cron response.
     s=s.replace("'new_candidates':result['new_candidates'],", "'new_candidates':result['new_candidates'],'details':result['details'][:3],")
+    # Fort publishes many flyer thumbnails under campaign names such as Seara and Natal.
+    # Navigation links are discarded separately by actual_flyer().
+    s=s.replace("|festival|feira', re.I)", "|festival|feira|seara|natal|sc_fort|revista', re.I)")
     p.write_text(s,encoding='utf-8')
 
 if __name__=='__main__':
