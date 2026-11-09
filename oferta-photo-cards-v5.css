@@ -1,0 +1,144 @@
+/* Oferta Blumenau V5 — foto primeiro. Cards de produto minimalistas. */
+body.ob-premium #offersGrid.ob-photo-grid{
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+ column-gap:13px;row-gap:16px;align-items:stretch;
+}
+body.ob-premium .ob-mini-offer{
+ display:flex;flex-direction:column;min-width:0;
+ background:#fff;border:1px solid #e8eae8;border-radius:18px;
+ overflow:hidden;box-shadow:0 4px 15px rgba(30,47,35,.055);
+ transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+ contain:layout style;
+}
+body.ob-premium .ob-mini-offer:hover{
+ transform:translateY(-3px);
+ border-color:#cfe9db;box-shadow:0 12px 24px rgba(19,58,39,.12);
+}
+body.ob-premium .ob-mini-photo-box{
+ position:relative;display:grid;place-items:center;isolation:isolate;
+ width:100%;height:208px;overflow:hidden;background:#fff;
+ padding:13px 13px 6px;
+}
+body.ob-premium .ob-mini-photo{
+ display:block;width:100%;height:100%;object-fit:contain;
+ filter:none;mix-blend-mode:multiply;max-width:100%;max-height:100%;
+}
+body.ob-premium .ob-mini-photo[hidden]{display:none}
+body.ob-premium .ob-mini-brand{
+ position:absolute;z-index:4;top:7px;left:7px;
+ width:42px;height:42px;display:grid;place-items:center;
+ background:rgba(255,255,255,.98);border:1px solid #f1f3f1;border-radius:11px;
+ box-shadow:0 3px 10px #1a44301a;
+}
+body.ob-premium .ob-mini-brand .ob-logo.compact{
+ height:37px;width:37px;flex-basis:37px;box-shadow:none;border:0;padding:3px;
+}
+body.ob-premium .ob-mini-brand .ob-logo.compact:after{display:none}
+body.ob-premium .ob-mini-brand .ob-logo.compact img{height:31px;max-height:31px}
+body.ob-premium .ob-mini-discount{
+ position:absolute;top:9px;right:9px;z-index:3;
+ background:#ed3d4f;color:#fff;border-radius:9px;
+ padding:6px 8px;font-size:12px;font-weight:950;letter-spacing:-.2px;
+ box-shadow:0 4px 8px rgba(149,23,43,.16);
+}
+body.ob-premium .ob-mini-image-credit{
+ position:absolute;right:9px;bottom:5px;color:#7d8a84;background:#ffffffde;
+ padding:2px 5px;border-radius:6px;font-size:9px;
+}
+body.ob-premium .ob-mini-fallback{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+ width:100%;height:100%;border-radius:10px;background:#f7faf8;color:#7b8981;
+}
+body.ob-premium .ob-mini-fallback[hidden]{display:none}
+body.ob-premium .ob-mini-fallback span{
+ font-size:48px;filter:grayscale(.20);opacity:.62;line-height:1.2;
+}
+body.ob-premium .ob-mini-fallback small{
+ text-align:center;font-size:10px;line-height:1.25;color:#809288;
+ padding:0 10px;
+}
+body.ob-premium .ob-mini-content{
+ display:flex;flex-direction:column;flex:1;gap:5px;padding:11px 12px 12px;min-height:151px;
+}
+body.ob-premium .ob-mini-content h3{
+ margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ overflow:hidden;color:#1a3027;font-size:12.5px;font-weight:750;line-height:1.35;
+ min-height:33px;max-height:36px;
+}
+body.ob-premium .ob-mini-package{
+ color:#819087;font-size:11px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+body.ob-premium .ob-mini-market{
+ color:var(--shop-color,#2a7355);font-size:10px;font-weight:700;
+ line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+body.ob-premium .ob-mini-price-row{
+ margin-top:auto;display:flex;align-items:end;justify-content:space-between;gap:7px;padding-top:7px;
+}
+body.ob-premium .ob-mini-price-col{
+ display:flex;min-width:0;flex-direction:column;gap:1px;align-items:flex-start;
+}
+body.ob-premium .ob-mini-price-col s{font-size:11px;color:#949b95}
+body.ob-premium .ob-mini-price-col strong{
+ font-size:clamp(22px,1.9vw,29px);font-weight:1000;line-height:1.13;
+ letter-spacing:-1.0px;color:#0c7945;font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+body.ob-premium .ob-mini-add{
+ display:grid;place-items:center;flex:0 0 43px;
+ width:43px;height:43px;border-radius:12px;
+ background:linear-gradient(145deg,#23c67a,#098e56);
+ border:1px solid #18a766;color:white;
+ cursor:pointer;box-shadow:0 3px 8px rgba(11,125,75,.21);
+ transition:transform .18s ease,background .18s ease,box-shadow .18s ease;
+}
+body.ob-premium .ob-mini-add svg{width:24px;height:24px;stroke:#fff}
+body.ob-premium .ob-mini-add:hover{
+ transform:translateY(-2px);background:linear-gradient(145deg,#2cd483,#0ca45e);
+ box-shadow:0 6px 13px rgba(11,125,75,.27);
+}
+body.ob-premium .ob-mini-add:active{transform:scale(.96)}
+body.ob-premium .ob-mini-add.is-saved{
+ background:linear-gradient(140deg,#08764b,#055b3b);
+ border-color:#076e45;
+}
+body.ob-premium .ob-mini-add:focus-visible{outline:3px solid #165e49;outline-offset:2px}
+body.ob-premium .ob-mini-proof{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:5px;margin-top:5px;padding-top:7px;border-top:1px solid #f0f2f0;
+ font-size:9.5px;color:#8b978e;
+}
+body.ob-premium .ob-mini-proof a{
+ color:#6a8478;font-size:9.5px;text-decoration:underline;text-underline-offset:2px;
+}
+@media (max-width:1250px){
+ body.ob-premium #offersGrid.ob-photo-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (max-width:950px){
+ body.ob-premium #offersGrid.ob-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body.ob-premium .ob-mini-photo-box{height:190px}
+}
+@media (max-width:660px){
+ body.ob-premium #offersGrid.ob-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ body.ob-premium .ob-mini-photo-box{height:165px;padding:8px 8px 4px}
+ body.ob-premium .ob-mini-content{padding:9px 9px 10px;gap:4px;min-height:137px}
+ body.ob-premium .ob-mini-content h3{font-size:11.5px;min-height:32px}
+ body.ob-premium .ob-mini-price-col strong{font-size:23px}
+ body.ob-premium .ob-mini-add{width:40px;height:40px;flex-basis:40px;border-radius:11px}
+ body.ob-premium .ob-mini-add svg{width:22px;height:22px}
+ body.ob-premium .ob-mini-brand{width:34px;height:34px;top:6px;left:6px}
+ body.ob-premium .ob-mini-brand .ob-logo.compact{height:30px;width:30px;flex-basis:30px}
+ body.ob-premium .ob-mini-brand .ob-logo.compact img{max-height:27px}
+}
+@media (max-width:360px){
+ body.ob-premium #offersGrid.ob-photo-grid{gap:8px}
+ body.ob-premium .ob-mini-photo-box{height:142px}
+ body.ob-premium .ob-mini-price-col strong{font-size:20px}
+ body.ob-premium .ob-mini-add{width:35px;height:35px;flex-basis:35px}
+ body.ob-premium .ob-mini-add svg{width:19px;height:19px}
+ body.ob-premium .ob-mini-content h3{font-size:11px}
+ body.ob-premium .ob-mini-market{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ body.ob-premium .ob-mini-offer,
+ body.ob-premium .ob-mini-add{transition:none!important;transform:none!important}
+}
