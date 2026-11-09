@@ -181,6 +181,25 @@ assert html.index('/static/ob-promo-depth-v8.css') > html.index('/static/ob-phot
 assert all(marker in (folder/'static/ob-premium.js').read_text(encoding='utf-8') for marker in
            ('ob-mini-offer','ob-mini-photo-box','ob-mini-add','data-ob-list'))
 print('OB_V8_PROMO_DEPTH_INTEGRATION_PASS')
+# V9: make individual Supermercados cards display existing network logos with HD glass styling.
+_market_js=(root/'oferta-market-cards-v9.js').read_text(encoding='utf-8')
+_market_css=(root/'oferta-market-cards-v9.css').read_text(encoding='utf-8')
+assert "[data-page=\"mercados\"]" in _market_js and '.marketcard' in _market_js
+assert "window.OBPremiumPublic" in _market_js and 'data-obStore' not in _market_js
+assert '[data-page="mercados"]' in _market_css and 'prefers-reduced-motion' in _market_css
+assert "data-ob-market-glass-secret" not in _market_js
+assert "data-ob-list" not in _market_js
+(folder/'static/ob-market-cards-v9.js').write_text(_market_js,encoding='utf-8')
+(folder/'static/ob-market-cards-v9.css').write_text(_market_css,encoding='utf-8')
+if '/static/ob-market-cards-v9.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-market-cards-v9.css?v=20261109v9"></head>')
+if '/static/ob-market-cards-v9.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-market-cards-v9.js?v=20261109v9" defer></script></body>')
+subprocess.run(['node','--check',str(folder/'static/ob-market-cards-v9.js')],check=True)
+assert html.index('/static/ob-market-cards-v9.css') > html.index('/static/ob-promo-depth-v8.css')
+assert html.index('/static/ob-market-cards-v9.js') > html.index('/static/ob-premium.js')
+assert html.count('/static/ob-market-cards-v9.css')==1 and html.count('/static/ob-market-cards-v9.js')==1
+print('OB_V9_STORES_BRAND_INTEGRATION_PASS')
 page.write_text(html,encoding='utf-8')
 
 
