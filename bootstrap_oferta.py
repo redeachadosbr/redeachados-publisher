@@ -39,6 +39,9 @@ try:
     print('OCR_DEPENDENCY_READY' if npm.returncode==0 else 'OCR_DEPENDENCY_UNAVAILABLE')
 except (OSError,subprocess.TimeoutExpired):
     print('OCR_DEPENDENCY_UNAVAILABLE')
+# Enforce consistent login form/server policy and accurate authentication errors.
+(folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
 # Update the old SQLite-only warning: state is now stored in Supabase.
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
