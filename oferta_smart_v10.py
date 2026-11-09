@@ -13,6 +13,24 @@ def norm(value):
     s=unicodedata.normalize("NFKD",str(value or ""))
     return re.sub(r"[^a-z0-9]+"," ", "".join(c for c in s if not unicodedata.combining(c)).lower()).strip()
 
+def match_top_blumenau(label, all_stores):
+    """Use the real 'Blumenau / store name' selector; reject other cities and duplicates."""
+    parts=re.split(r"\s*/\s*", str(label or ""), maxsplit=1)
+    if len(parts)!=2 or norm(parts[0])!="blumenau":
+        return None
+    name=norm(parts[1])
+    if not name:
+        return None
+    matches=[]
+    for sid,store in all_stores.items():
+        if store.get("rede")!="Rede TOP":
+            continue
+        candidate_keys={norm(store.get("filial")),norm(store.get("bairro")),
+                        norm(store.get("nome"))}
+        if name in candidate_keys:
+            matches.append(sid)
+    return matches[0] if len(matches)==1 else None
+
 def verified_official(url, expected):
     p=urlparse(url)
     return p.scheme=="https" and p.username is None and p.password is None and (
@@ -55,14 +73,11 @@ async def parse_top_store_pages(client,html,source_url,all_stores,extract,stamp,
     """Use only unambiguous store IDs supplied by Rede TOP's *own* dropdown."""
     from bs4 import BeautifulSoup
     soup=BeautifulSoup(html,"html.parser"); found=[]
-    lookup={}
-    for sid,s in all_stores.items():
-        if s.get("rede")=="Rede TOP":
-            lookup.setdefault(norm(s.get("filial")),[]).append(sid)
     seen=set()
-    for option in soup.select("select option[value]")[:150]:
-        label=norm(option.get_text(" ",strip=True))
-        if len(lookup.get(label,[]))!=1:continue
+    for option in soup.select("#idloja option[value]")[:150]:
+        label=option.get_text(" ",strip=True)
+        sid=match_top_blumenau(label,all_stores)
+        if not sid:continue
         raw=option.get("value","").strip()
         # Numeric store ID or official path; IDs must come from dropdown.
         if re.fullmatch(r"\d{1,5}",raw):
@@ -128,4 +143,20 @@ def patch_source(path):
     src=src.replace(anchor,anchor+"""
                     leaflets += await oferta_smart_v10.discover_network(
                         client,html,job,url,ALL_STORES,extract_leaflets,today(),iso_now(),host_allowed)""",1)
+    # Monitor public Brasil Atacadista first-party magazine endpoints, not only WhatsApp.
+    # Generic campaigns do NOT authorize association with a specific Blumenau branch.
+    additions = """
+# First-party magazine sources (no invented prices or branch assignments).
+_original_source_jobs_v11 = source_jobs
+def source_jobs():
+    yield from _original_source_jobs_v11()
+    for extra in (
+        'https://brasilatacadista.com.br/encarte/encarte-semanal/',
+        'https://brasilatacadista.com.br/encarte/oferta-do-final-de-semana/',
+        'https://brasilatacadista.com.br/encarte/hortifruti-e-acougue/',
+    ):
+        yield {'url':extra,'network':'Brasil Atacadista','store_id':None}
+"""
+    if "_original_source_jobs_v11 = source_jobs" not in src:
+        src += additions
     f.write_text(src,encoding="utf-8")
