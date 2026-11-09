@@ -299,7 +299,7 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
   grossMultiplier:3,maxDiscountPct:50};
 }
 
-// Apenas na margem MANUAL: selecionar um preço efetivamente próximo à meta.
+// Apenas na margem MANUAL: selecionar o menor preço anunciado que protege a meta.
 // O preço exibido (Minha Promoção) e o bruto continuam com finais comerciais
 // 0/9. O cupom da loja é condicional, portanto seu valor líquido não deve
 // bloquear o ajuste do valor anunciado. A projeção financeira mantém cupom,
@@ -317,11 +317,15 @@ function closestManualOptimizationQuote(cost,c,desired){
   const displayCents=money(financial.marketplaceDisplayPrice);
   if(!attractiveCents.has(displayCents%100)||
      financial.marginPct+1e-8<desired||financial.profit<=0)continue;
-  const deviation=financial.marginPct-desired;
-  if(!best||deviation<best.deviation-1e-9||
-     (Math.abs(deviation-best.deviation)<=1e-9&&
-      financial.saleCents<best.financial.saleCents)){
-   best={grossCents,discountPct,financial,deviation};
+  // Meta é piso de margem. Escolher a margem matematicamente MAIS próxima
+  // pode inverter preço na virada de comissão fixa (ex.: R$ 80,00).
+  // Minimizar primeiro o preço efetivamente exibido garante que elevar a
+  // margem jamais reduza o preço sugerido para o mesmo custo e taxas.
+  if(!best||displayCents<best.displayCents||
+     (displayCents===best.displayCents&&financial.saleCents<best.financial.saleCents)||
+     (displayCents===best.displayCents&&financial.saleCents===best.financial.saleCents&&
+      discountPct>best.discountPct)){
+   best={grossCents,discountPct,financial,displayCents};
   }
  }
  if(!best)throw Error('Não há preço viável para esta margem com custo, taxas, desconto até 50% e bruto até 3× o custo. Revise a margem ou os custos; nenhum preço foi publicado.');
@@ -398,7 +402,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
    '%. Margem viável: '+f.marginPct.toFixed(2).replace('.',',')+
    '%. A margem escolhida é um mínimo. Sob o cupom de '+c.couponPct+
    '% e as terminações 0/9 do preço anunciado, '+
-   'esta é a combinação mais próxima sem reduzir abaixo da margem protegida. '+
+   'esta é a menor cotação viável sem reduzir abaixo da margem protegida. '+
    (c.marginPct<c.minMarginPct?'A meta da barra está abaixo do piso mínimo de '+c.minMarginPct+'%. ':'')+
    'Ajustar a meta dentro do mesmo intervalo pode conservar o valor por arredondamento.';
  if(chosen.discountPct<=0||chosen.discountPct>50||

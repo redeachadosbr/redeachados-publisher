@@ -69,3 +69,46 @@ test('a cotação manual não altera o cupom nem descarta seu custo',()=>{
  assert.ok(q.netMarginPct<14);
  assert.ok(q.netProfit>0);
 });
+
+
+test('SKU TX24505K custo 41,99: margem maior nunca reduz preço por causa da taxa fixa de R$ 80',()=>{
+ const quote=marginPct=>quoteShopeeOptimizationPrice({
+  unitCost:41.99,settings:{...defaults,marginPct},marginOverride:true});
+ const at12=quote(12),at15=quote(15);
+ assert.equal(at12.grossPrice,125.90);
+ assert.equal(at15.grossPrice,125.90);
+ assert.equal(at12.marketplaceDisplayPrice,73.39);
+ assert.equal(at15.marketplaceDisplayPrice,76.99);
+ assert.ok(at12.marketplaceDisplayPrice<at15.marketplaceDisplayPrice);
+ assert.ok(at12.discountPct>at15.discountPct);
+ assert.ok(at12.netMarginPct>=12&&at15.netMarginPct>=15);
+ assert.ok(at12.netProfit>0&&at15.netProfit>0);
+ assert.equal(at12.feeTier,0);
+ assert.equal(at15.feeTier,0);
+ assert.equal(at12.appliedInShopee,false);
+ assert.equal(at15.appliedInShopee,false);
+});
+
+test('barra de margem é monotônica com taxa escalonada, cupom condicional e finais 0/9',()=>{
+ for(const unitCost of [10.99,36.99,41.99,69.99,99.99]){
+  let previous=null;
+  for(let marginPct=5;marginPct<=25;marginPct++){
+   const q=quoteShopeeOptimizationPrice({
+    unitCost,settings:{...defaults,marginPct},marginOverride:true});
+   assert.ok(q.netMarginPct+0.001>=marginPct,
+    'Margem não protegida: custo '+unitCost+', meta '+marginPct);
+   assert.ok(q.discountPct>0&&q.discountPct<=50);
+   assert.ok([0,9].includes(Math.round(q.marketplaceDisplayPrice*100)%10));
+   assert.ok([0,9].includes(Math.round(q.grossPrice*100)%10));
+   assert.ok(q.grossPrice<=unitCost*3+0.01);
+   assert.ok(q.marketplaceDisplayPrice>q.buyerAfterCoupon);
+   if(previous){
+    assert.ok(q.marketplaceDisplayPrice+0.0001>=previous.marketplaceDisplayPrice,
+     'Inversão indevida: custo '+unitCost+', metas '+(marginPct-1)+'% → '+marginPct+
+     '%, preços '+previous.marketplaceDisplayPrice+' → '+q.marketplaceDisplayPrice);
+    assert.ok(q.discountPct<=previous.discountPct+0.0001);
+   }
+   previous=q;
+  }
+ }
+});
