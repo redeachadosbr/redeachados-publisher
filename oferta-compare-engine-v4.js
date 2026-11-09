@@ -110,7 +110,7 @@
  }
  function matchSaved(term,offers,day=dateNow(),extra={}){
   const search=norm(term);
-  const required=tokens(term);
+  const required=tokens(term).filter(t=>!/^[0-9]+(?:\.[0-9]+)?(?:kg|g|ml|l|un)$/.test(t));
   if(!search||!required.length)return {term,valid:[],options:[],ambiguous:false,networkCount:0};
   const wantedPack=productPack({package:extra.package||term});
   const preferredBrand=norm(extra.brand);
