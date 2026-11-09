@@ -59,4 +59,16 @@ subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 (folder/'oferta-direct-image-fallback.py').write_text((root/'oferta-direct-image-fallback.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'oferta-direct-image-fallback.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
 page.write_text(html,encoding='utf-8')
+
+# Temporary read-only build validation of the bundled app contract.
+import re as _ob_re
+_backend=(folder/'server.py').read_text(encoding='utf-8')
+_front=(folder/'static/app.js').read_text(encoding='utf-8')
+for _name in ('offers','candidates','leaflets'):
+    _ddl=_ob_re.search(r'CREATE TABLE(?: IF NOT EXISTS)?\\s+'+_name+r'\\s*\\((.*?)\\)\\s*;', _backend,_ob_re.I|_ob_re.S)
+    print('OB_DDL_'+_name.upper(), _ddl.group(1)[:2200].replace('\\n',' ') if _ddl else 'NOT_FOUND')
+print('OB_BACKEND_OFFER_LINES',[_line.strip()[:180] for _line in _backend.splitlines() if (_ob_re.search(r'(?:@app\\.|def\\s+|INSERT INTO|UPDATE\\s+)',_line) and _ob_re.search(r'offer|candidate|backup|import|approve',_line,_ob_re.I))][:55])
+print('OB_FRONT_GLOBALS',[_line.strip()[:180] for _line in _front.splitlines() if _ob_re.search(r'^(?:let|const|var|async function|function)\\s+(?:offers|stores|leaflets|refreshAll|drawOffers|loadOffers|sanitize|buildFilterStore|selectPage|fmtDate|money)',_line.strip())][:25])
+print('OB_FRONT_API_ENDPOINTS',sorted(set(_ob_re.findall(r'/(?:api/[a-zA-Z0-9/_-]+)',_front)))[:45])
+
 print('Oferta Blumenau: secure app prepared')
