@@ -117,43 +117,67 @@ function matchCategory(o){
 }
 function drawPremiumOffers(){
  const root=document.getElementById('offersGrid');if(!root)return;
+ root.classList.add('ob-photo-grid');
  const term=(document.getElementById('searchOffer')?.value||'').toLocaleLowerCase('pt-BR');
  const network=document.getElementById('filterNetwork')?.value||'';
  const sid=document.getElementById('filterStore')?.value||'';
- const found=visibleOffers().filter(o=>(!network||o.network===network)&&(!sid||o.store_id===sid)&&
+ const eligible=visibleOffers().filter(o=>(!network||o.network===network)&&(!sid||o.store_id===sid)&&
    [o.name,o.brand,o.package,o.network,o.store].join(' ').toLocaleLowerCase('pt-BR').includes(term)&&matchCategory(o))
    .sort((a,b)=>Number(a.price)-Number(b.price));
+ // Multiple branches of the SAME chain should not create eight duplicate product photos.
+ // Preserve all branch observations behind the selected store filter.
+ const unique=new Map();
+ const nameKey=x=>String(x||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');
+ for(const o of eligible){
+   const key=[o.network,nameKey(o.name),nameKey(o.brand),nameKey(o.package),Number(o.price).toFixed(2)].join('|');
+   const prev=unique.get(key);
+   if(!prev){unique.set(key,{offer:o,branchIds:new Set([o.store_id])});continue;}
+   prev.branchIds.add(o.store_id);
+ }
+ const found=[...unique.values()];
  const count=document.getElementById('offersCount');
- if(count)count.textContent=found.length+' oferta'+(found.length===1?'':'s')+' verificada'+(found.length===1?'':'s');
+ if(count)count.textContent=found.length+' produto'+(found.length===1?'':'s')+' com oferta verificada'+(found.length===1?'':'s');
  if(!found.length){
    const title=network?'Nenhuma oferta confirmada em '+network:'Sua próxima economia está aqui';
    const info='Não há produtos com preço, filial e vigência conferidos para este filtro. Explore os encartes oficiais; não publicamos valores estimados.';
    root.innerHTML='<div class="ob-empty">'+icon('search')+'<div><h3>'+esc(title)+'</h3><p>'+esc(info)+'</p><button type="button" data-ob-page="encartes">Ver encartes</button><button type="button" data-ob-page="gestao">Conferir fontes</button></div></div>';
    return;
  }
- root.innerHTML=found.map(o=>{
-   const disc=approvedDiscount(o),media=sourceImage(o),fiscal=o.source_type==='fiscal';
-   const pict=media?'<img class="ob-real-photo" loading="lazy" decoding="async" src="'+esc(media.src)+'" alt="'+esc(media.alt)+'" onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
-     '<div class="ob-product-placeholder" hidden><span>'+productGlyph(o)+'</span><small>Imagem não disponível</small></div>':
-     '<div class="ob-product-placeholder"><span>'+productGlyph(o)+'</span><small>Foto individual ainda não disponível</small></div>';
-   const imageInfo=media&&media.kind==='flyer'?'<span class="ob-photo-caption">Imagem do encarte</span>':media&&media.kind==='reference'?'<span class="ob-photo-caption">Foto ilustrativa · '+esc(media.credit)+'</span>':media&&media.kind==='product'?'<span class="ob-photo-caption">Foto vinculada ao produto</span>':'';
-   const badge=disc?'<span class="ob-discount">−'+disc.pct+'%</span>':'<span class="ob-scope">Oferta com preço conferido</span>';
-   const old=disc?'<span class="ob-old">De '+brl(disc.old)+'</span>':'';
-   const label=proofStatus(o);
-   const src=safeUrl(o.source_url||'');
-   const proof=src!=='#'?'<a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">Ver comprovante <span aria-hidden="true">↗</span></a>':'<span>Origem sem link público</span>';
-   return '<article class="ob-product ob-product-v3" '+brandAttr(o.network)+'>'+
-    '<div class="ob-photo"><span class="ob-offer-badge '+(fiscal?'ob-fiscal-badge':'')+'">'+(fiscal?'◉ Preço observado':'✓ Promoção conferida')+'</span>'+
-       badge+pict+imageInfo+'</div>'+
-    '<div class="ob-body"><div class="ob-product-market">'+brandLogo(o.network,true)+'<span><strong>'+esc(o.network)+'</strong><small>'+esc(o.store||o.district||'Blumenau')+'</small></span></div>'+
-       '<h3>'+esc(o.name)+'</h3><div class="ob-detail">'+esc(o.brand||'Marca não informada')+' · '+esc(o.package||'Embalagem não informada')+'</div>'+
-       '<div class="ob-price-plaque"><small>'+(fiscal?'PREÇO REGISTRADO':'PREÇO DO ENCARTE')+'</small><div class="ob-price">'+brl(o.price)+'</div>'+old+'</div>'+
-       '<div class="ob-unit">'+(o.unit_price?brl(o.unit_price)+' / '+esc(o.unit_kind||'unidade'):'Preço por embalagem')+'</div>'+
-       '<div class="ob-terms">'+esc(o.condition||label)+'</div></div>'+
-    '<div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Válido até '+esc(fmtDate(o.ends_on))+'</span>'+
-       '<span class="ob-source-pill">'+esc(label)+'</span>'+proof+'</div>'+
-    '<div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'" data-ob-brand="'+esc(o.brand||'')+'" data-ob-package="'+esc(o.package||'')+'">'+icon('list')+' Lista</button>'+
-       '<button class="second" type="button" data-ob-compare="'+esc(o.name)+'">'+icon('compare')+' Comparar</button></div></article>';
+ const listIcon='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h8M8 18h8"/><path d="m3 6 1.5 1.5L7 5M3 12h3M4.5 10.5v3M3 18h3M4.5 16.5v3"/></svg>';
+ const savedKeys=new Set(typeof tracked!=='undefined'&&Array.isArray(tracked)?tracked.map(nameKey):[]);
+ root.innerHTML=found.map(({offer:o,branchIds})=>{
+   const disc=approvedDiscount(o);
+   const source=sourceImage(o);
+   const media=source&&['product','reference'].includes(source.kind)?source:null;
+   const photo=media?
+      '<img class="ob-mini-photo" src="'+esc(media.src)+'" alt="'+esc(media.alt)+'" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
+      '<div class="ob-mini-fallback" hidden><span>'+productGlyph(o)+'</span><small>Sem foto do produto</small></div>':
+      '<div class="ob-mini-fallback"><span>'+productGlyph(o)+'</span><small>Foto ainda indisponível</small></div>';
+   const imageTag=media&&media.kind==='reference'?'<small class="ob-mini-image-credit">Foto ilustrativa</small>':'';
+   const pct=disc?'<span class="ob-mini-discount">−'+disc.pct+'%</span>':'';
+   const old=disc?'<s>'+brl(disc.old)+'</s>':'';
+   const branchHint=branchIds.size>1?branchIds.size+' filiais':esc(o.store||o.district||'Blumenau');
+   const sourceUrl=safeUrl(o.source_url||'');
+   const proof=sourceUrl!=='#'?'<a href="'+esc(sourceUrl)+'" target="_blank" rel="noopener noreferrer" aria-label="Ver encarte de '+esc(o.name)+'">Fonte ↗</a>':'';
+   const added=savedKeys.has(nameKey(o.name));
+   const buttonText=added?'Na sua lista':'Adicionar à lista de compras';
+   return '<article class="ob-mini-offer" '+brandAttr(o.network)+'>'+
+      '<div class="ob-mini-photo-box">'+
+        '<span class="ob-mini-brand" aria-label="'+esc(o.network)+'">'+brandLogo(o.network,true)+'</span>'+
+        pct+photo+imageTag+
+      '</div>'+
+      '<div class="ob-mini-content">'+
+        '<h3 title="'+esc(o.name)+'">'+esc(o.name)+'</h3>'+
+        '<div class="ob-mini-package">'+esc(o.package||'Embalagem não informada')+'</div>'+
+        '<div class="ob-mini-market">'+esc(o.network)+' · '+branchHint+'</div>'+
+        '<div class="ob-mini-price-row">'+
+          '<div class="ob-mini-price-col">'+old+'<strong>'+brl(o.price)+'</strong></div>'+
+          '<button class="ob-mini-add '+(added?'is-saved':'')+'" type="button" data-ob-list="'+esc(o.name)+'" data-ob-brand="'+esc(o.brand||'')+'" data-ob-package="'+esc(o.package||'')+'"'+
+          ' aria-label="'+esc(buttonText+': '+o.name)+'" title="'+esc(buttonText)+'" aria-pressed="'+(added?'true':'false')+'">'+listIcon+'</button>'+
+        '</div>'+
+        '<div class="ob-mini-proof"><span>Até '+esc(fmtDate(o.ends_on))+'</span>'+proof+'</div>'+
+      '</div>'+
+    '</article>';
  }).join('');
 }
 
@@ -237,7 +261,22 @@ function makeLayout(){
  const market=e.target.closest('[data-ob-market]');if(market){marketSelect(market.dataset.obMarket);return;}
  const cat=e.target.closest('[data-ob-cat]');if(cat){activeCat=cat.dataset.obCat;drawCategories();drawOffers();selectPage('ofertas');return;}
  const p=e.target.closest('[data-ob-page]');if(p){selectPage(p.dataset.obPage);return;}
- const li=e.target.closest('[data-ob-list]');if(li){document.getElementById('trackedName').value=li.dataset.obList;addTracked();return;}
+ const li=e.target.closest('[data-ob-list]');if(li){
+   const field=document.getElementById('trackedName');
+   if(!field)return;
+   const wasSaved=typeof tracked!=='undefined'&&Array.isArray(tracked)&&
+     tracked.some(x=>String(x).toLocaleLowerCase('pt-BR')===String(li.dataset.obList).toLocaleLowerCase('pt-BR'));
+   field.value=li.dataset.obList;
+   addTracked();
+   if(!wasSaved){
+     li.classList.add('is-saved');
+     li.setAttribute('aria-pressed','true');
+     li.setAttribute('aria-label','Produto adicionado à lista: '+li.dataset.obList);
+     li.title='Produto na lista';
+   }
+   drawOffers();
+   return;
+ }
  const cp=e.target.closest('[data-ob-compare]');if(cp){selectPage('comparar');document.getElementById('compareTerm').value=cp.dataset.obCompare;compare();}
  });
 }
