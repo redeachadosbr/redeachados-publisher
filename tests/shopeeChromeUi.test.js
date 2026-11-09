@@ -27,10 +27,10 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
  assert.match(ui,/mínimo 2 lojas/);
 });
 
-test('exige a extensão Shopee Chrome 1.2.10 para corrigir a leitura mensal',()=>{
+test('exige a extensão Shopee Chrome 1.2.11 para corrigir a leitura mensal',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.10');
+ assert.equal(manifest.version,'1.2.11');
  assert.match(code,/parts\[1\]>2/);
  assert.match(code,/Number\(parts\[2\]\|\|0\)>=10/);
 });
@@ -162,7 +162,7 @@ test('captura profunda percorre anúncios carregados por scroll e recupera janel
  assert.match(reader,/async function scanPage\(\)/);
  assert.match(reader,/window\.scrollTo/);
  assert.match(reader,/monthlyCards:offers\.filter/);
- assert.match(background,/deep:i===0/);
+ assert.match(background,/deep:i===1/);
  assert.match(background,/Number\(data\.offers\?\.length\|\|0\)<8/);
  assert.match(background,/await restoreResearchWindow\(managerTab,nonce\)/);
 });
@@ -173,6 +173,6 @@ test('pesquisa por preço tenta amostra completa de dez anúncios em vez de ence
  assert.match(bg,/related\.length>=10&&relatedMonthly>=2/);
  assert.match(bg,/offerPriority\(query,b\)-offerPriority\(query,a\)/);
  assert.match(bg,/mergeEvidence\(merged\.get\(id\),offer\)/);
- assert.match(bg,/readPage\(tabId\)/);
+ assert.match(bg,/readPage\(tabId,job=null\)/);
 });
 

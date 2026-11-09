@@ -140,20 +140,37 @@ const relatedToQuery=(query,offer)=>{
  const matched=target.filter(term=>candidate.has(term)).length;
  return matched>=Math.max(2,Math.ceil(target.length*0.6));
 };
+// Precheck estrito: 10 anúncios relacionados, distintos, de preço coerente
+// e todos no máximo ao custo mínimo das SKUs. Decisão final é do servidor.
+const costFirstReject=(job,offers=[])=>{
+ const cost=Number(job?.minSkuCost);
+ if(!Number.isFinite(cost)||cost<=0)return false;
+ const distinct=new Map();
+ for(const offer of offers){
+  const price=Number(offer?.priceMin);
+  const id=String(offer?.shopId||'')+':'+String(offer?.itemId||'');
+  if(!relatedToQuery(job.query,offer)||!/^[0-9]{1,18}:[0-9]{1,18}$/.test(id)||
+   !Number.isFinite(price)||price<=0||price>=100000)continue;
+  distinct.set(id,price);
+ }
+ if(distinct.size<10)return false;
+ const prices=[...distinct.values()],min=Math.min(...prices),max=Math.max(...prices);
+ return max<=cost&&max/min<=1.45;
+};
 const offerPriority=(query,offer)=>{
  const target=[...new Set(normalizeTerms(query))];
  const candidate=new Set(normalizeTerms(offer.productName));
  return target.filter(term=>candidate.has(term)).length*10+
   Number(offer.priceMin!==null)*2+Number(offer.monthlySold!==null);
 };
-async function readPage(tabId){
+async function readPage(tabId,job=null){
  const merged=new Map();let last=null,blocked=null,labelsSeen=0,labelsInCards=0;
  for(let i=0;i<4;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
-  await delay(i===0?2400:1400);
+  await delay(i===0?900:i===1?1300:1000);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',
-    deep:i===0||(i===3&&![...merged.values()].some(x=>x.monthlySold!=null))});
+    deep:i===1||(i===3&&![...merged.values()].some(x=>x.monthlySold!=null))});
    if(result?.blocked){blocked=result;break;}
    if(!result?.ok||!Array.isArray(result.offers))continue;
    last=result;
@@ -165,7 +182,8 @@ async function readPage(tabId){
    }
    const monthly=[...merged.values()].filter(x=>x.monthlySold!==null).length;
    // 2 vendas mensais são um MÍNIMO, não justificam descartar os demais preços.
-   if(i>=2&&merged.size>=45&&monthly>=5&&labelsSeen<=labelsInCards)break;
+   if(i===0&&costFirstReject(job,[...merged.values()]))break;
+   if(i>=1&&merged.size>=35&&monthly>=4&&labelsSeen<=labelsInCards)break;
   }catch{}
  }
  if(blocked&&!merged.size)return {ok:false,blocked:true,
@@ -220,7 +238,7 @@ async function batch(managerTab,nonce,jobs){
    // Conferir a primeira página e ampliar à segunda se a coleta mensal/preço
    // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
-   let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0;
+   let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0,costStopped=false;
    const openTab=await recoverVisibleSearchAlreadyOpen(query,(await currentSession())?.tabId);
    if(openTab){
     for(const offer of openTab.offers){
@@ -239,6 +257,12 @@ async function batch(managerTab,nonce,jobs){
    // não contam para a meta.
    for(let page=0;page<9;page++){
     if(stopRequested)break;
+    if(costFirstReject(jobs[i],[...collected.values()])){
+     costStopped=true;
+     await stage(managerTab,nonce,'comparando','Triagem rápida: preços inferiores ao custo WeDrop.',
+      i+1,jobs.length,{costFirstStopped:true,pages});
+     break;
+    }
     const existing=[...collected.values()].filter(item=>
      relatedToQuery(query,item)&&item.priceMin!==null);
     if(existing.length>=10&&existing.filter(item=>item.monthlySold!==null).length>=2)break;
@@ -252,10 +276,11 @@ async function batch(managerTab,nonce,jobs){
     if(stopRequested)break;
     await stage(managerTab,nonce,'lendo','Lendo cartões e vendas mensais da Shopee…',
      i+1,jobs.length,{page:page+1});
-    let data=await readPage(tab.id);
+    let data=await readPage(tab.id,jobs[i]);
     // A janela minimizada pode suspender renderização/lazy loading e retornar
     // apenas 1 preço apesar de dezenas de anúncios. Revalidar sem focar janela.
     if(data.ok&&!stopRequested&&page===0&&
+      !costFirstReject(jobs[i],data.offers||[])&&
       (Number(data.offers?.length||0)<8||Number(data.monthlyCards||0)<2)){
      await stage(managerTab,nonce,'recuperando',
       'Vitrine parcial: '+Number(data.offers?.length||0)+
@@ -265,7 +290,7 @@ async function batch(managerTab,nonce,jobs){
       await restoreResearchWindow(managerTab,nonce);
       await chrome.tabs.reload(tab.id);
       await waitLoaded(tab.id);
-      const refreshed=await readPage(tab.id);
+      const refreshed=await readPage(tab.id,jobs[i]);
       if(refreshed?.ok){
        const merged=new Map();
        for(const item of [...data.offers,...refreshed.offers]){
@@ -293,7 +318,7 @@ async function batch(managerTab,nonce,jobs){
       await restoreResearchWindow(managerTab,nonce);
       await chrome.tabs.reload(tab.id);
       await waitLoaded(tab.id);
-      data=await readPage(tab.id);
+      data=await readPage(tab.id,jobs[i]);
      }catch(error){
       data={ok:false,error:'Falha ao recuperar a janela auxiliar: '+
        String(error?.message||error).slice(0,150),offers:[]};
@@ -330,12 +355,18 @@ async function batch(managerTab,nonce,jobs){
      i+1,jobs.length,{related:related.length,relatedMonthly,pages});
     // Parar após encontrar até 10 candidatos com preços E 2 selos mensais.
     // Se não atingir, percorrer mais páginas existentes, até o limite.
+    if(costFirstReject(jobs[i],[...collected.values()])){
+     costStopped=true;
+     await stage(managerTab,nonce,'comparando','Preço já inviável: pesquisa mensal dispensada.',
+      i+1,jobs.length,{costFirstStopped:true,pages});
+     break;
+    }
     if(related.length>=10&&relatedMonthly>=2)break;
     if(collected.size>=300)break;
     await delay(1500);
    }
    // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.
-   if(!stopRequested&&!hardStop&&collected.size>0&&
+   if(!stopRequested&&!hardStop&&!costStopped&&collected.size>0&&
       ![...collected.values()].some(x=>x.monthlySold!==null)){
     await stage(managerTab,nonce,'recuperando',
      'Ofertas sem dados mensais: recarregando uma vez a vitrine Em Destaque.',
@@ -345,7 +376,7 @@ async function batch(managerTab,nonce,jobs){
      if(session?.tabId){
       await chrome.tabs.update(session.tabId,{url:buildUrl(query,0)});
       await waitLoaded(session.tabId);
-      const recovered=await readPage(session.tabId);
+      const recovered=await readPage(session.tabId,jobs[i]);
       if(recovered?.ok){
        labelsSeen+=Number(recovered.monthlyLabelsVisible||0);
        labelsInCards+=Number(recovered.monthlyLabelsInCards||0);
@@ -395,7 +426,8 @@ async function batch(managerTab,nonce,jobs){
      monthly:monthlyCount,monthlyLabelsVisible:labelsSeen,
      monthlyLabelsInCards:labelsInCards,sourceStatus,
      rawInspected:collected.size,openTabRecovered:openTab?.offers.length||0,
-     relevantWithPrice:offers.filter(o=>relatedToQuery(query,o)&&o.priceMin!==null).length}});
+     relevantWithPrice:offers.filter(o=>relatedToQuery(query,o)&&o.priceMin!==null).length,
+     costFirstStopped:costStopped}});
    if(hardStop)break; // CAPTCHA/verificação explícita deve parar.
    if(incomplete)await stage(managerTab,nonce,'continuando',
     'Esta consulta ficou incompleta; avançando para outra SKU da categoria.',

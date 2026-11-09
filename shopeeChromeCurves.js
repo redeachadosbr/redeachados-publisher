@@ -63,10 +63,14 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
   state.offers.clear();state.scanned.clear();state.marketAttempted.clear();
   state.queries=0;state.lastAt=null;state.featuredUnavailableUntil=0;
  }
- const jobs=state.plan.slice(offset,offset+limit).map(job=>({
-  query:job.query,skuCount:job.skus.length,skus:job.skus,
-  searchUrl:officialFeaturedSearchUrl(job.query)
- }));
+ const costIndex=new Map(state.costs.map(x=>[String(x.supplier_sku),Number(x.unit_cost)]));
+ const jobs=state.plan.slice(offset,offset+limit).map(job=>{
+  const costs=job.skus.map(sku=>costIndex.get(String(sku)));
+  return {query:job.query,skuCount:job.skus.length,skus:job.skus,
+   minSkuCost:costs.length&&costs.every(c=>Number.isFinite(c)&&c>0)?
+    Math.min(...costs):null,
+   searchUrl:officialFeaturedSearchUrl(job.query)};
+ });
  return {ok:true,catalogCount:state.catalog.length,totalQueries:state.plan.length,
   offset,nextOffset:offset+jobs.length,hasMore:offset+jobs.length<state.plan.length,jobs};
 }
@@ -169,6 +173,12 @@ export function confirmChromeMonthlySamples(rows){
 const FINAL_ADS_REJECTIONS=new Set([
  'cost_above_market','above_60_pct','unprofitable','out_of_stock'
 ]);
+const SKIP_MONTHLY_REJECTIONS=new Set([...FINAL_ADS_REJECTIONS,'missing_cost']);
+export function canSkipCurveDemandRecovery(rows,skus=[]){
+ if(!Array.isArray(skus)||!skus.length)return false;
+ const statuses=new Map(rows.map(row=>[String(row.sku),row.adsCompetitiveness?.status]));
+ return skus.every(sku=>SKIP_MONTHLY_REJECTIONS.has(statuses.get(String(sku))));
+}
 export function splitChromeAdsCandidates(rows,qualified=[]){
  const approved=new Set(qualified.map(row=>String(row.sku)));
  const pending=[],discarded=[],discardedReasons={};
@@ -199,12 +209,23 @@ export async function importChromeOffers(shopId,{
  const task=state.plan.find(j=>fold(j.query)===fold(search));
  if(!task)throw Error('Pesquisa não pertence ao catálogo WeDrop selecionado.');
  const normalized=normalizeVisibleOffers(offers,{ownShopId:shopId});
+ // Preço/custo antes de consultas adicionais de demanda.
+ for(const offer of normalized){
+  const id=offer.shopId+':'+offer.itemId,prev=state.offers.get(id);
+  state.offers.set(id,prev?{...prev,...offer,
+   monthlySold:offer.monthlySold??prev.monthlySold,
+   monthlyEvidence:offer.monthlySold!==null?offer.monthlyEvidence:prev.monthlyEvidence,
+   sales:offer.sales??prev.sales}:offer);
+ }
+ const pricedRows=matchCurveOffers({catalog:state.catalog,
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+ const costFirstSkippedMonthly=canSkipCurveDemandRecovery(pricedRows,task.skus);
  // Segundo caminho de recuperação: somente quando a Ponte trouxe ofertas,
  // mas NENHUMA venda mensal. A vitrine pública é uma fonte opcional, não
  // substituir rótulos não verificados por vendas acumuladas.
  let recoverySource='not_needed',recoveryReason='',recoveredMonthly=0;
  let recovered=[];
- if(normalized.length&&!normalized.some(o=>o.monthlySold!==null)){
+ if(normalized.length&&!normalized.some(o=>o.monthlySold!==null)&&!costFirstSkippedMonthly){
   if(Date.now()<Number(state.featuredUnavailableUntil||0)){
    recoverySource='temporarily_unavailable';
    recoveryReason='Fonte pública temporariamente indisponível; não repetir chamadas bloqueadas.';
@@ -229,7 +250,7 @@ export async function importChromeOffers(shopId,{
    }
   }
  }
- for(const offer of [...normalized,...recovered]){
+ for(const offer of recovered){
   const id=offer.shopId+':'+offer.itemId,prev=state.offers.get(id);
   // Atualização da extensão precisa substituir preços/títulos obsoletos
   // do mesmo anúncio, preservando prova mensal quando a página atual omitir o rótulo.
@@ -240,13 +261,14 @@ export async function importChromeOffers(shopId,{
  }
  // Com 1/2 anúncio relacionado, recuperar ofertas com preços verificáveis
  // da API de Afiliados, quando configurada. Vendas/mês continuam independentes.
- const initialRows=matchCurveOffers({catalog:state.catalog,
-  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+ const initialRows=recovered.length?matchCurveOffers({catalog:state.catalog,
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId}):pricedRows;
  const priceRecovery=[];
  if(marketResearchConfigured()){
   const missing=task.skus.filter(sku=>{
    const row=initialRows.find(x=>x.sku===sku);
    return row&&row.avgCompetitorPrice===null&&
+    !SKIP_MONTHLY_REJECTIONS.has(row.adsCompetitiveness?.status)&&
     Number(row.marketCandidateCount||0)<2&&!state.marketAttempted.has(sku);
   }).slice(0,2);
   for(const sku of missing)state.marketAttempted.add(sku);
@@ -306,7 +328,7 @@ export async function importChromeOffers(shopId,{
   chromeImport:{
    query:search,imported:normalized.length,
    importedWithPrice:normalized.filter(o=>o.priceMin!==null).length,
-    priceRecovery,affiliatePricesAdded:priceRecovery.reduce((sum,row)=>sum+row.added,0),
+    priceRecovery,costFirstSkippedMonthly,affiliatePricesAdded:priceRecovery.reduce((sum,row)=>sum+row.added,0),
    inspectedRawOffers:offers.length,
     skuPriceDiagnostics:task.skus.map(sku=>{
      const row=rows.find(x=>x.sku===sku);

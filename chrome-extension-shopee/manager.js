@@ -28,7 +28,7 @@
    if(!jobs.length||jobs.length>10||jobs.some(x=>!x||String(x.query||'').length<3||
     String(x.query||'').length>70))return;
    chrome.runtime.sendMessage({kind:'RA_CURVE_BROWSER_BATCH',nonce:m.nonce,
-    jobs:jobs.map(x=>({query:String(x.query)}))},response=>{
+    jobs:jobs.map(x=>({query:String(x.query),minSkuCost:Number(x.minSkuCost)>0?Number(x.minSkuCost):null}))},response=>{
     const error=chrome.runtime.lastError?.message;
     if(error||!response?.ok)publish({kind:'RA_CURVE_CHROME_ERROR',nonce:m.nonce,
      error:error||response?.error||'Extensão indisponível.'});

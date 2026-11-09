@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates,mergeCurvePriceSamples,monthlyEvidenceMatchesValue} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates,mergeCurvePriceSamples,monthlyEvidenceMatchesValue,canSkipCurveDemandRecovery} from '../shopeeChromeCurves.js';
 import {matchCurveOffers} from '../shopeeCurveAB.js';
 test('média é recuperada só com ofertas reais e modelos equivalentes',()=>{
  const store=new Map([['100:101',{shopId:'100',itemId:'101',
@@ -184,3 +184,13 @@ test('novo plano de Curvas zera evidências anteriores antes da primeira consult
  assert.match(source,/state\.queries=0/);
 });
 
+
+test('custo primeiro dispensa pesquisa mensal somente para SKUs inviáveis',()=>{
+ const rows=[{sku:'A',adsCompetitiveness:{status:'cost_above_market'}},
+  {sku:'B',adsCompetitiveness:{status:'above_60_pct'}},
+  {sku:'C',adsCompetitiveness:{status:'missing_market'}}];
+ assert.equal(canSkipCurveDemandRecovery(rows,['A','B']),true);
+ assert.equal(canSkipCurveDemandRecovery(rows,['A','C']),false);
+ assert.equal(canSkipCurveDemandRecovery(rows,['A','X']),false);
+ assert.equal(canSkipCurveDemandRecovery(rows,[]),false);
+});
