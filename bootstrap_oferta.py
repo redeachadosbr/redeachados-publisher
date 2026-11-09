@@ -200,6 +200,23 @@ assert html.index('/static/ob-market-cards-v9.css') > html.index('/static/ob-pro
 assert html.index('/static/ob-market-cards-v9.js') > html.index('/static/ob-premium.js')
 assert html.count('/static/ob-market-cards-v9.css')==1 and html.count('/static/ob-market-cards-v9.js')==1
 print('OB_V9_STORES_BRAND_INTEGRATION_PASS')
+# V10 — prevent unwanted horizontal scrolling on mobile without impacting data.
+_mobile_css=(root/'oferta-mobile-fullwidth-v10.css').read_text(encoding='utf-8')
+assert '@media (max-width:760px)' in _mobile_css
+assert 'grid-template-columns:repeat(2,minmax(0,1fr))' in _mobile_css
+assert 'grid-template-columns:repeat(5,minmax(0,1fr))' in _mobile_css
+assert 'overflow-x:clip' in _mobile_css and 'safe-area-inset-bottom' in _mobile_css
+assert 'font-size:16px' in _mobile_css and '@import' not in _mobile_css
+assert not any(x in _mobile_css for x in ('url(http','/api/','localStorage','sessionStorage'))
+(folder/'static/ob-mobile-fullwidth-v10.css').write_text(_mobile_css,encoding='utf-8')
+if '/static/ob-mobile-fullwidth-v10.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-mobile-fullwidth-v10.css?v=20261109v10"></head>')
+if 'name="viewport"' not in html and "name='viewport'" not in html:
+    html=html.replace('</head>','<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head>')
+assert html.count('/static/ob-mobile-fullwidth-v10.css')==1
+assert html.index('/static/ob-mobile-fullwidth-v10.css') > html.index('/static/ob-market-cards-v9.css')
+assert 'id="offersGrid"' in html
+print('OB_V10_MOBILE_VIEWPORT_PASS')
 page.write_text(html,encoding='utf-8')
 
 
