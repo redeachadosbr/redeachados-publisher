@@ -25,12 +25,21 @@ async def scheduled_daily(request:Request):
             'note':'Preços individuais exigem revisão'}
 
 @app.post('/api/admin/scan-leaflets')"""),
+      ("        start,end=parse_dates(haystack)", "        start,end=daily_collect.parse_date_span(haystack)"),
+      ("'scheduler_enabled':os.getenv('ENABLE_SCHEDULER')=='1'", "'scheduler_enabled':(os.getenv('ENABLE_SCHEDULER')=='1' or os.getenv('EXTERNAL_SCHEDULE_ENABLED')=='1')"),
+      ("version='0.4.0'", "version='0.6.0'"),
+      ("'version':'0.4.0'", "'version':'0.6.0'"),
     ]
     for old,new in changes:
         if new in data:continue
         if old not in data:raise ValueError('Base drift: '+old[:80])
         data=data.replace(old,new,1)
     p.write_text(data,encoding='utf-8')
+    page=p.parent/'static/index.html'
+    html=page.read_text(encoding='utf-8')
+    html=html.replace('Somente ofertas com preço e prazo aprovados. Nenhum valor inventado.',
+         'Verificações automáticas às 6h, 12h e 18h (Blumenau). Apenas ofertas com preço, filial, peso e prazo conferidos.')
+    page.write_text(html,encoding='utf-8')
 if __name__=='__main__':
     import sys
     patch_source(sys.argv[1])
