@@ -9,18 +9,6 @@ let pending=[];
 function status(note,error=false){const n=document.getElementById('obV3Status');if(n){n.textContent=note;n.className='ob-v3-status'+(error?' error':'')}}
 function storeSelect(name){const list=typeof stores!=='undefined'&&Array.isArray(stores)?stores:[];return '<label class="ob-v3-field"><span>Filial exata</span><select required name="'+html(name)+'"><option value="">Escolha a filial</option>'+list.map(s=>'<option value="'+html(s.id)+'">'+html(s.rede+' · '+(s.filial||s.nome||s.bairro||s.id))+'</option>').join('')+'</select></label>'}
 function panel(){
- const main=document.querySelector('[data-page="ofertas"]');
- if(main&&!document.getElementById('obFiscalSection')){
-  const section=document.createElement('section');
-  section.id='obFiscalSection';section.className='ob-section ob-v3-fiscal-section';
-  section.innerHTML='<div class="ob-label"><h3>◉ Preços fiscais observados</h3><small>Base separada dos encartes</small></div>'+
-   '<p class="ob-trust-note">Valores originados de documentos fiscais identificados, quando houver integração autorizada. Um preço registrado não é garantia de promoção atual.</p>'+
-   '<div class="ob-v3-toolbar"><button type="button" id="obV3FiscalRefresh">Consultar valores verificados</button>'+
-   '<span id="obFiscalTotal">Aguardando consulta</span></div><div id="obV3FiscalList" class="ob-v3-fiscal-list"></div>';
-  const markers=main.querySelector('#obTrustStrip');
-  if(markers)markers.closest('.ob-section')?.after(section);else main.append(section);
-  section.querySelector('#obV3FiscalRefresh').addEventListener('click',fiscal);
- }
  const mgmt=document.querySelector('[data-page="gestao"]');if(!mgmt||document.getElementById('obV3Admin'))return;
  const root=document.createElement('section');root.id='obV3Admin';root.className='ob-intel ob-v3-admin';
  root.innerHTML='<h2>🛡️ Central de auditoria de preços</h2>'+
@@ -67,7 +55,7 @@ function panel(){
   if(note.length<12){status('Descreva como conferiu origem, CNPJ/filial, produto e valor (mínimo de 12 caracteres).',true);return}
   if(!['verified','rejected'].includes(decision))return;
   b.disabled=true;
-  try{await adminApi({action:'review',kind,id,decision,note,reviewer:'Administrador Oferta Blumenau'});status('Decisão registrada. Apenas dados verificados podem ser exibidos.');await loadPending();await loadSummary();await fiscal();}
+  try{await adminApi({action:'review',kind,id,decision,note,reviewer:'Administrador Oferta Blumenau'});status('Decisão registrada. Apenas dados verificados podem ser exibidos.');await loadPending();await loadSummary();}
   catch(err){status(err.message,true)}finally{b.disabled=false}
  });
 }
@@ -127,26 +115,6 @@ async function submit(e,action){
  catch(err){status('Não foi possível importar: '+err.message,true)}
  finally{btn.disabled=false}
 }
-async function fiscal(){
- const list=document.getElementById('obV3FiscalList'),count=document.getElementById('obFiscalTotal');
- if(!list)return;
- count.textContent='Consultando base fiscal…';
- try{
- const r=await fetch('/api/fiscal-prices?limit=80',{credentials:'same-origin',cache:'no-store'});
- const d=await r.json().catch(()=>({detail:'Resposta inesperada'}));
- if(!r.ok)throw Error(String(d.detail||'HTTP '+r.status));
- if(!Array.isArray(d.data))throw Error('Formato inválido');
- count.textContent=d.data.length+' preços fiscais verificados';
- window.obFiscalVerifiedCount=d.data.length;
- if(typeof window.obRefreshTrustStrip==='function')window.obRefreshTrustStrip();
- list.innerHTML=d.data.length?d.data.map(x=>'<article class="ob-v3-fiscal-card">'+
-  '<div><span class="ob-v3-fiscal-proof">◉ Fiscal observado · não é promoção</span><h4>'+html(x.product_name)+'</h4>'+
-  '<small>'+html(x.brand||'')+' '+html(x.package||'')+'</small><p>Loja '+html(x.store_id)+' · '+html(date(x.observed_at))+'</p></div>'+
-  '<div class="ob-v3-fiscal-side"><strong>'+html(money(x.observed_price))+'</strong>'+
-  '<a href="'+html(safeRef(x.source_url))+'" target="_blank" rel="noopener noreferrer">Fonte ↗</a></div></article>').join(''):
-  '<div class="ob-v3-empty">Ainda não há preços fiscais verificados integrados. As promoções de encarte continuam disponíveis acima; nenhum preço foi inventado.</div>';
- }catch(e){count.textContent='Consulta indisponível';list.innerHTML='<div class="ob-v3-empty">'+html(e.message)+'</div>'}
-}
-function init(){panel();fiscal();}
+function init(){panel();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
