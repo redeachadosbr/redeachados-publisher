@@ -45,6 +45,20 @@ runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['pat
 # Update the old SQLite-only warning: state is now stored in Supabase.
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
+# TEMP diagnostic: inspect only public static UI markup/selectors (never user data or secrets).
+from bs4 import BeautifulSoup
+import re as _re
+_ui_soup=BeautifulSoup(html,'html.parser')
+_src_page=_ui_soup.select_one('[data-page="fontes"]')
+print('OB_SOURCES_STATIC_MARKUP',str(_src_page)[:5600] if _src_page else 'missing')
+for _fn in ('app.js','style.css','styles.css'):
+    _fp=folder/'static'/ _fn
+    if not _fp.exists():continue
+    _t=_fp.read_text(encoding='utf-8')
+    _hits=list(_re.finditer(r'drawSources|sourcecards|sourceCard|sourcecard|sourcegrid|sourceGrid|Fontes oficiais|Visitar site oficial|Última verificação|Página lida|Falha de acesso',_t,_re.I))
+    print('OB_SOURCES_FILE',_fn,'len',len(_t),'matches',len(_hits))
+    for _m in _hits[:16]:
+        print('OB_SOURCES_MATCH',_fn,repr(_t[max(0,_m.start()-145):_m.end()+290])[:580])
 
 html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
                   'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
