@@ -19,7 +19,7 @@ meat:'<path d="M8 21c-6-3-6-10-2-13 2-2 3-5 7-5 6-1 10 5 8 10-2 6-8 5-11 8H8Z"/>
 bag:'<rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
 };
-const icons={ofertas:'fire',mercados:'market',encartes:'flyer',comparar:'compare',salvos:'list',fontes:'offer',gestao:'lock'};
+const icons={ofertas:'fire',mercados:'market',encartes:'flyer',comparar:'compare',salvos:'heart',fontes:'offer',gestao:'lock'};
 const icon=(name,kind)=>'<span aria-hidden="true" class="ob-icon '+(kind||name)+'"><svg viewBox="0 0 24 24">'+(shapes[name]||shapes.offer)+'</svg></span>';
 const catDefs=[['Todas','offer'],['Mercearia','bag'],['Hortifruti','leaf'],['Carnes','meat'],['Laticínios','milk'],['Café','coffee'],['Limpeza','bag'],['Bebidas','bag'],['Higiene','heart']];
 const short={'Fort Atacadista':'Fort','Brasil Atacadista':'Brasil','Unibox Dinardelli':'Unibox'};
@@ -30,20 +30,71 @@ const netList=()=>[...new Set(stores.map(s=>s.rede))];
 
 // O catálogo tem fonte única: somente ofertas aprovadas e vigentes da API/Supabase.
 const visibleOffers=()=>{const day=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});return offers.filter(o=>Number(o.price)>0&&(!o.starts_on||o.starts_on<=day)&&(!o.ends_on||o.ends_on>=day));};
+
+const BRANDS={
+ 'Bistek':{key:'bistek',primary:'#c51e32',secondary:'#ffd228',word:'Bistek', logo:'https://bistek.vtexassets.com/arquivos/ids/203167-800-800?aspect=true&height=800&v=638567316873200000&width=800',site:'https://www.bistek.com.br'},
+ 'Cooper':{key:'cooper',primary:'#007752',secondary:'#cbec4b',word:'Cooper', logo:'https://www.cooper.coop.br/favicon.ico',site:'https://www.cooper.coop.br'},
+ 'Fort Atacadista':{key:'fort',primary:'#ed1524',secondary:'#ffdd17',word:'FORT',logo:'https://www.fortatacadista.com.br/favicon.ico',site:'https://www.fortatacadista.com.br'},
+ 'Giassi':{key:'giassi',primary:'#ec771d',secondary:'#153a67',word:'Giassi',logo:'https://institucional.giassi.com.br/favicon.ico',site:'https://institucional.giassi.com.br'},
+ 'Rede TOP':{key:'top',primary:'#0066ad',secondary:'#ffe500',word:'TOP',logo:'https://www.redetop.com.br/institucional/img/logo-rede-top.jpg',site:'https://www.redetop.com.br'},
+ 'Komprão':{key:'komprao',primary:'#ea222c',secondary:'#181e27',word:'Komprão',logo:'https://komprao.com.br/wp-content/themes/komprao/assets/imgs/home/LogoKomprao.webp',site:'https://komprao.com.br'},
+ 'Unibox Dinardelli':{key:'unibox',primary:'#e32936',secondary:'#1360a0',word:'UNIBOX',logo:'https://www.uniboxdinardelli.com.br/wp-content/uploads/2022/11/image-23.png',site:'https://www.uniboxdinardelli.com.br'},
+ 'Brasil Atacadista':{key:'brasil',primary:'#114cb0',secondary:'#f9d41d',word:'Brasil',logo:'https://brasilatacadista.com.br/wp-content/uploads/2025/12/Colorida-Principal.png',site:'https://brasilatacadista.com.br'}
+};
+const brandFor=n=>BRANDS[n]||{key:'other',primary:'#0b8667',secondary:'#d7f59b',word:n,logo:'',site:''};
+function brandLogo(n,compact=false){
+ const b=brandFor(n);
+ const word='<span class="ob-logo-text" aria-hidden="true">'+esc(b.word)+'</span>';
+ const img=b.logo?'<img src="'+esc(b.logo)+'" alt="Logo '+esc(n)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.hidden=true">'+word:word;
+ return '<span class="ob-logo '+(compact?'compact':'')+'" data-brand="'+esc(b.key)+'">'+img+'</span>';
+}
+const brandAttr=n=>{const b=brandFor(n);return 'data-brand="'+esc(b.key)+'" style="--shop-color:'+b.primary+';--shop-accent:'+b.secondary+'"';};
+const approvedDiscount=o=>{
+ const price=Number(o.price), old=Number(o.original_price);
+ // An amount is not a verified "de" price until its evidence was reviewed.
+ const verified=o.discount_evidence_verified===true||o.previous_price_verified===true;
+ if(!verified||!Number.isFinite(price)||!Number.isFinite(old)||old<=price||price<=0)return null;
+ const pct=Math.round((old-price)/old*100);
+ return pct>=1&&pct<=95?{pct,old}:null;
+};
+const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
+function sourceImage(o){
+ const img=safeUrl(o.image_url||'');
+ if(img!=='#')return {src:img,kind:'product',alt:'Foto verificada de '+o.name};
+ const proof=safeUrl(o.source_url||'');
+ if(proof!=='#'&&/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(proof))return {src:proof,kind:'flyer',alt:'Imagem original do encarte — não é foto individual do produto'};
+ return null;
+}
+const productGlyph=o=>{
+ const s=[o.name,o.category].join(' ').toLowerCase();
+ if(/café|cafe/.test(s))return '☕';
+ if(/iogurte|leite|queijo|requeij|láctea|lactea|pudim/.test(s))return '🥛';
+ if(/lasanha|massa|macarrão|arroz|trigo|pão|tomate/.test(s))return '🍝';
+ if(/suco|bebida/.test(s))return '🧃';
+ if(/creme dental|escova dental|enxaguante|sabonete/.test(s))return '🪥';
+ if(/lava-roupas|manchas|omo|vanish/.test(s))return '🧼';
+ if(/azeite|óleo/.test(s))return '🫒';
+ return '🛍️';
+};
+
 function marketSelect(net){
  const input=document.getElementById('filterNetwork');
  if(input){input.value=net;buildFilterStore();drawMarkets();drawOffers();selectPage('ofertas')}
 }
 function drawMarkets(){
  const node=document.getElementById('obMarkets');if(!node)return;
- const current=document.getElementById('filterNetwork')?.value||'';
- node.innerHTML='<button class="ob-market '+(!current?'active':'')+'" data-ob-market=""><span>'+icon('offer')+'</span><span><strong>Todos os mercados</strong><small>'+visibleOffers().length+' preços conferidos</small></span></button>'+
- netList().map(n=>{
- const num=visibleOffers().filter(o=>o.network===n).length;
- const fly=leaflets.filter(x=>x.network===n && x.valid_now && /\.(pdf|jpg|jpeg|png|webp)(?:$|[?&#])/i.test(x.asset_url||'')).length;
- return '<button class="ob-market '+(current===n?'active':'')+'" data-ob-market="'+esc(n)+'">'+icon('market')+'<span><strong>'+esc(short[n]||n)+'</strong><small>'+num+' preços · '+fly+' encartes</small></span></button>'
+ const selected=document.getElementById('filterNetwork')?.value||'';
+ const valid=visibleOffers(), names=netList();
+ node.innerHTML='<button class="ob-market ob-all-markets '+(!selected?'active':'')+'" type="button" data-ob-market="" aria-pressed="'+(!selected)+'"><span class="ob-market-globe">'+icon('market')+'</span><span class="ob-market-copy"><strong>Todos os mercados</strong><small>'+valid.length+' ofertas cadastradas</small></span></button>'+
+ names.map(n=>{
+   const total=valid.filter(o=>o.network===n).length;
+   const docs=leaflets.filter(x=>x.network===n&&x.valid_now&&/\.(pdf|jpe?g|png|webp)(?:$|[?&#])/i.test(x.asset_url||'')).length;
+   const descr=total?total+' preços conferidos':docs?docs+' encartes para conferir':'Sem ofertas verificadas';
+   return '<button class="ob-market ob-market-brand '+(selected===n?'active':'')+'" '+brandAttr(n)+' type="button" data-ob-market="'+esc(n)+'" aria-pressed="'+(selected===n)+'">'+brandLogo(n)+
+     '<span class="ob-market-copy"><strong>'+esc(n)+'</strong><small>'+esc(descr)+'</small></span><span class="ob-market-enter" aria-hidden="true">›</span></button>';
  }).join('');
 }
+
 function matchCategory(o){
  if(activeCat==='Todas')return true;
  const txt=[o.category,o.name,o.brand].join(' ').toLocaleLowerCase('pt-BR');
@@ -52,24 +103,46 @@ function matchCategory(o){
 }
 function drawPremiumOffers(){
  const root=document.getElementById('offersGrid');if(!root)return;
- const term=document.getElementById('searchOffer').value.toLocaleLowerCase('pt-BR');
- const net=document.getElementById('filterNetwork').value;
- const store=document.getElementById('filterStore').value;
- const found=visibleOffers().filter(o=>(!net||o.network===net)&&(!store||o.store_id===store)&&[o.name,o.brand,o.package,o.network,o.store].join(' ').toLocaleLowerCase('pt-BR').includes(term)&&matchCategory(o)).sort((a,b)=>a.price-b.price);
- document.getElementById('offersCount').textContent=found.length+' oferta'+(found.length===1?'':'s')+' verificada'+(found.length===1?'':'s');
+ const term=(document.getElementById('searchOffer')?.value||'').toLocaleLowerCase('pt-BR');
+ const network=document.getElementById('filterNetwork')?.value||'';
+ const sid=document.getElementById('filterStore')?.value||'';
+ const found=visibleOffers().filter(o=>(!network||o.network===network)&&(!sid||o.store_id===sid)&&
+   [o.name,o.brand,o.package,o.network,o.store].join(' ').toLocaleLowerCase('pt-BR').includes(term)&&matchCategory(o))
+   .sort((a,b)=>Number(a.price)-Number(b.price));
+ const count=document.getElementById('offersCount');
+ if(count)count.textContent=found.length+' oferta'+(found.length===1?'':'s')+' verificada'+(found.length===1?'':'s');
  if(!found.length){
- const title=net?'Sem preços verificados no '+net:'Buscando promoções reais por supermercado';
- const info=net?'Ainda não há produtos com preço, embalagem, filial e validade confirmados nesta rede. Consulte os encartes oficiais.':'As redes estão cadastradas. A publicação de produtos depende da conferência dos valores dos encartes; nenhum preço estimado é exibido.';
- root.innerHTML='<div class="ob-empty">'+icon('search')+'<div><h3>'+esc(title)+'</h3><p>'+esc(info)+'</p><button type="button" data-ob-page="encartes">Ver encartes</button><button type="button" data-ob-page="gestao">Cadastrar preço conferido</button></div></div>';
- return;
+   const title=network?'Nenhuma oferta confirmada em '+network:'Sua próxima economia está aqui';
+   const info='Não há produtos com preço, filial e vigência conferidos para este filtro. Explore os encartes oficiais; não publicamos valores estimados.';
+   root.innerHTML='<div class="ob-empty">'+icon('search')+'<div><h3>'+esc(title)+'</h3><p>'+esc(info)+'</p><button type="button" data-ob-page="encartes">Ver encartes</button><button type="button" data-ob-page="gestao">Conferir fontes</button></div></div>';
+   return;
  }
  root.innerHTML=found.map(o=>{
- const url=safeUrl(o.image_url||''),photo=url!=='#'?'<img loading="lazy" src="'+esc(url)+'" alt="'+esc(o.name)+'" onerror="this.remove()">':icon('bag');
- const old=Number(o.original_price)>Number(o.price)?'<span class="ob-old">'+brl(o.original_price)+'</span>':'';
- const cond=o.condition||'Preço geral';
- return '<article class="ob-product"><div class="ob-photo"><span class="ob-verified">✓ Preço conferido</span>'+photo+'</div><div class="ob-body"><span class="ob-store">'+esc(o.network)+' · '+esc(o.store)+'</span><h3>'+esc(o.name)+'</h3><div class="ob-detail">'+esc(o.brand||'Marca não informada')+' · '+esc(o.package)+'</div><div class="ob-price">'+brl(o.price)+old+'</div><div class="ob-unit">'+(o.unit_price?brl(o.unit_price)+' / '+esc(o.unit_kind):'Preço por unidade não disponível')+'</div><div class="ob-terms">'+esc(cond)+'</div></div><div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Até '+fmtDate(o.ends_on)+'</span><a href="'+esc(safeUrl(o.source_url))+'" target="_blank" rel="noopener noreferrer">Conferir fonte original ↗</a></div><div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'">+ Lista</button><button class="second" type="button" data-ob-compare="'+esc(o.name)+'">⚖ Comparar</button></div></article>'
+   const disc=approvedDiscount(o),media=sourceImage(o),fiscal=o.source_type==='fiscal';
+   const pict=media?'<img class="ob-real-photo" loading="lazy" decoding="async" src="'+esc(media.src)+'" alt="'+esc(media.alt)+'" onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
+     '<div class="ob-product-placeholder" hidden><span>'+productGlyph(o)+'</span><small>Imagem não disponível</small></div>':
+     '<div class="ob-product-placeholder"><span>'+productGlyph(o)+'</span><small>Foto individual ainda não disponível</small></div>';
+   const imageInfo=media&&media.kind==='flyer'?'<span class="ob-photo-caption">Imagem do encarte</span>':media&&media.kind==='product'?'<span class="ob-photo-caption">Foto do produto</span>':'';
+   const badge=disc?'<span class="ob-discount">−'+disc.pct+'%</span>':'<span class="ob-scope">Oferta com preço conferido</span>';
+   const old=disc?'<span class="ob-old">De '+brl(disc.old)+'</span>':'';
+   const label=proofStatus(o);
+   const src=safeUrl(o.source_url||'');
+   const proof=src!=='#'?'<a href="'+esc(src)+'" target="_blank" rel="noopener noreferrer">Ver comprovante <span aria-hidden="true">↗</span></a>':'<span>Origem sem link público</span>';
+   return '<article class="ob-product ob-product-v3" '+brandAttr(o.network)+'>'+
+    '<div class="ob-photo"><span class="ob-offer-badge '+(fiscal?'ob-fiscal-badge':'')+'">'+(fiscal?'◉ Preço observado':'✓ Promoção conferida')+'</span>'+
+       badge+pict+imageInfo+'</div>'+
+    '<div class="ob-body"><div class="ob-product-market">'+brandLogo(o.network,true)+'<span><strong>'+esc(o.network)+'</strong><small>'+esc(o.store||o.district||'Blumenau')+'</small></span></div>'+
+       '<h3>'+esc(o.name)+'</h3><div class="ob-detail">'+esc(o.brand||'Marca não informada')+' · '+esc(o.package||'Embalagem não informada')+'</div>'+
+       '<div class="ob-price-plaque"><small>'+(fiscal?'PREÇO REGISTRADO':'PREÇO DO ENCARTE')+'</small><div class="ob-price">'+brl(o.price)+'</div>'+old+'</div>'+
+       '<div class="ob-unit">'+(o.unit_price?brl(o.unit_price)+' / '+esc(o.unit_kind||'unidade'):'Preço por embalagem')+'</div>'+
+       '<div class="ob-terms">'+esc(o.condition||label)+'</div></div>'+
+    '<div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Válido até '+esc(fmtDate(o.ends_on))+'</span>'+
+       '<span class="ob-source-pill">'+esc(label)+'</span>'+proof+'</div>'+
+    '<div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'">'+icon('list')+' Lista</button>'+
+       '<button class="second" type="button" data-ob-compare="'+esc(o.name)+'">'+icon('compare')+' Comparar</button></div></article>';
  }).join('');
 }
+
 function makeLayout(){
  document.body.classList.add('ob-premium');
  const nav=document.querySelector('.sidebar');
