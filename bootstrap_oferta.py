@@ -55,5 +55,8 @@ if '/static/ob-premium.css' not in html:
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
+# Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
+(folder/'oferta-direct-image-fallback.py').write_text((root/'oferta-direct-image-fallback.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'oferta-direct-image-fallback.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
 page.write_text(html,encoding='utf-8')
 print('Oferta Blumenau: secure app prepared')
