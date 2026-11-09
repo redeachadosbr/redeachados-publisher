@@ -47,9 +47,15 @@ test('execução aprovada revalida CEST real da Shopee antes de gravar',()=>{
  assert.match(server,/CEST mudou na Shopee desde a prévia/);
  assert.doesNotMatch(server,/plannedTax&&String\(plannedTax.cest\?\?''\)!==expectedCest/);
 });
-test('interface exibe CEST existente da Shopee e preserva valor publicado',()=>{
+test('formulário fiscal usa catálogo da SKU e mantém Shopee como leitura independente',()=>{
  const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(client,/CEST já preenchido na Shopee/);
- assert.match(client,/A gravação exige autorização e confirmação pela API/);
- assert.match(client,/draft.cest=liveCest\|\|'00'/);
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(client,/const candidateCest=String\(defaults.cest/);
+ assert.match(client,/draft.cest=catalogCest;/);
+ assert.doesNotMatch(client,/draft.cest=liveCest\|\|'00'/);
+ assert.match(client,/DIVERGÊNCIA DE CEST:/);
+ assert.match(client,/CEST já preenchido na Shopee:/);
+ assert.match(server,/change.tax=\{\.\.\.change.tax,cest:wedropCestForSku\(taxSupplier\)\}/);
+ assert.match(server,/cest:wedropCestForSku\(supplier\),measure_unit:measureUnit/);
+ assert.match(server,/CEST mudou na Shopee desde a prévia/);
 });

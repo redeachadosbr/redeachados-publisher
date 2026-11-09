@@ -4477,11 +4477,13 @@ globalThis.RAKitSyncApprovedFiscal=async({sku,itemId,modelId}={})=>{
     throw Error('Ficha fiscal recuperada pertence a outra SKU ou kit.');
    const suggested=preset.taxSuggestion||{},saved=preset.taxDraft||{};
    tax={...tax,...suggested,...saved};
-   // NCM pode vir da WeDrop, mas CEST NUNCA da sugestão: pertence ao Item ID.
+   // O rascunho fiscal do kit usa a CEST sugerida no catálogo da SKU principal.
+   // O CEST já publicado permanece separado e NÃO é sobrescrito automaticamente.
    if(/^\d{8}$/.test(String(suggested.ncm||'')))tax.ncm=suggested.ncm;
    if(!w.taxCurrent||typeof w.taxCurrent!=='object'||Array.isArray(w.taxCurrent))
     throw Error('A Shopee não retornou tax_info. Recarregue a ficha fiscal antes de sincronizar o kit.');
-   tax.cest=String(w.taxCurrent.cest??'').trim()||'00';
+   const catalogCest=String(suggested.cest??'').trim();
+   tax.cest=/^(?:00|\d{7})$/.test(catalogCest)?catalogCest:'00';
    if(!/^\d{8}$/.test(String(tax.ncm||'')))
     throw Error('NCM da SKU '+sku+' ausente ou sem oito digitos no catalogo WeDrop.');
    if(!/^[0-8]$/.test(String(tax.origin||'')))
@@ -11198,21 +11200,23 @@ const optimizerTaxLabels={ncm:'NCM do produto (8 dígitos)',origin:'Origem',same
 function optimizerFiscalRender(data){
  const wrap=$('#optimizerFiscalFields');wrap.replaceChildren();
  const defaults=data.taxSuggestion||{},saved=data.taxDraft||{};
- // O CEST é conferido pela API Shopee para este Item ID.
- // Se preenchido, preservar o publicado; se vazio, sugerir 00 para envio autorizado.
- // A fonte WeDrop permanece apenas como dado de apoio, sem substituir o campo.
+ // Regra da ficha da SKU: usar CEST válido do catálogo WeDrop; se ausente,
+ // preencher o RASCUNHO com o marcador 00. taxCurrent é apenas leitura
+ // independente da Shopee; nunca confundir seu CEST com o valor do catálogo.
  const draft={...(data.taxCurrent||{}),...defaults,...saved};
  // Rascunho antigo vazio não pode esconder uma sugestão comprovada pela WeDrop
  // ou pelas regras já cadastradas no Motor Matriz.
  for(const [key,value] of Object.entries(defaults)){
   if(!String(draft[key]??'').trim()&&String(value??'').trim())draft[key]=value;
  }
- // A leitura oficial do anúncio-pai prevalece sobre os dados da WeDrop e do rascunho.
+ // A fonte do rascunho é a SKU WeDrop exata; o campo do anúncio Shopee
+ // é exibido apenas como divergência e continua protegido na publicação.
  const hasOfficialTaxReadback=Boolean(data.taxCurrent&&
   typeof data.taxCurrent==='object'&&!Array.isArray(data.taxCurrent));
  const liveCest=hasOfficialTaxReadback?String(data.taxCurrent.cest??'').trim():'';
- draft.cest=liveCest||'00';
- if(!hasOfficialTaxReadback)draft.cest='';
+ const candidateCest=String(defaults.cest??'').trim();
+ const catalogCest=/^(?:00|\d{7})$/.test(candidateCest)?candidateCest:'00';
+ draft.cest=catalogCest;
  const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
  if(existingPis)draft.pis_cofins_cst=existingPis;
  const summary=optimizerMake('p','optimizer-category-summary',
@@ -11221,23 +11225,34 @@ function optimizerFiscalRender(data){
  wrap.append(summary);
  if(!hasOfficialTaxReadback){
   wrap.append(optimizerMake('p','optimizer-warning',
-   'A Shopee ainda não forneceu o campo fiscal deste Item ID. CEST desconhecido: não presumir que está vazio nem preparar 00. Reabra a ficha para consultar o anúncio antes de salvar.'));
+   'CEST do catálogo da SKU: '+catalogCest+'. Sem leitura fiscal atual da Shopee: rascunho local apenas. Não executar atualização fiscal até a leitura oficial.'));
+ }else if(liveCest&&liveCest!==catalogCest){
+  wrap.append(optimizerMake('p','optimizer-warning',
+   'DIVERGÊNCIA DE CEST: catálogo WeDrop da SKU indica '+catalogCest+
+   ', mas CEST já preenchido na Shopee: '+liveCest+
+   '. O campo abaixo mostra SOMENTE o valor do catálogo. O CEST publicado não foi modificado; revise a classificação fiscal antes de autorizar qualquer envio.'));
  }else if(liveCest){
   wrap.append(optimizerMake('p','optimizer-category-summary',
-    '✓ CEST já preenchido na Shopee: '+liveCest+'. Valor preservado. O Motor Matriz não substituirá este campo pela WeDrop ou pelo rascunho.'));
+   '✓ CEST do catálogo da SKU confirmado: '+catalogCest+'. CEST atual da Shopee coincide. Nenhuma publicação realizada.'));
  }else{
   wrap.append(optimizerMake('p','optimizer-warning',
-    'CEST vazio na Shopee: o Motor Matriz preparou 00. A gravação exige autorização e confirmação pela API; a Shopee poderá recusar esse marcador.'));
+   'CEST não informado no catálogo: rascunho preenchido com '+catalogCest+
+   '. A Shopee está com o campo vazio. 00 é marcador da loja, não um código fiscal de sete dígitos; o envio pode ser recusado.'));
  }
  for(const [key,label] of Object.entries(optimizerTaxLabels)){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
   const value=String(draft[key]??'');
   input.type='text';input.dataset.taxField=key;input.value=value;input.maxLength=key==='evidence'?300:20;
-  if(key==='cest'){input.readOnly=true;input.title=!hasOfficialTaxReadback?'Leitura fiscal não disponível — não é possível decidir o CEST.':liveCest?'CEST já publicado na Shopee: preservar exatamente o valor.':'CEST em branco na Shopee: preencher 00 após autorização.';}
+  if(key==='cest'){
+   input.readOnly=true;
+   input.title=catalogCest==='00'?
+    'CEST não informado na ficha da SKU WeDrop: rascunho 00. A situação na Shopee é exibida separadamente.':
+    'CEST confirmado no catálogo WeDrop da SKU: '+catalogCest+'. Compare com o valor publicado na Shopee.';
+  }
   if(value&&key!=='evidence'){
    const savedValue=Object.hasOwn(saved,key)&&String(saved[key]??'').trim()!==''&&saved[key]===draft[key];
    const origin=key==='cest'?
-     (liveCest?'Leitura atual da Shopee · CEST preservado':'Campo em branco na Shopee · preenchimento 00'):
+     ((data.taxSuggestionSources||{})[key]||'Catálogo WeDrop da SKU · 00 se não informado'):
      savedValue?'Revisão salva desta SKU':
      (data.taxSuggestionSources||{})[key]||'Informação fiscal obtida do anúncio';
    const provenance=optimizerMake('small','optimizer-fiscal-filled',
@@ -11254,11 +11269,10 @@ function optimizerFiscalRender(data){
  const cest=wrap.querySelector('[data-tax-field="cest"]');
  if(cest){
   const marker=String(draft.cest||'').trim()==='00';
-  const info=optimizerMake('small','optimizer-fiscal-cest-help',!hasOfficialTaxReadback?
-    'Sem leitura oficial de tax_info: CEST não informado. Nenhum preenchimento 00 será autorizado até nova consulta.':
-    liveCest?
-    'CEST existente confirmado na Shopee para este Item ID. Não será sobrescrito durante a execução fiscal.':
-    'Campo vazio na Shopee: 00 é um marcador solicitado para preenchimento, não um CEST fiscal de 7 dígitos. O envio depende de autorização e pode ser recusado pela Shopee.');
+  const info=optimizerMake('small','optimizer-fiscal-cest-help',
+   catalogCest==='00'?
+    'CEST 00: ausência de CEST válido no catálogo da SKU. Marcador de rascunho, não classificação tributária confirmada; a Shopee pode recusá-lo.':
+    'CEST de sete dígitos informado no catálogo WeDrop da SKU. Confira a classificação tributária antes de publicar.');
   cest.closest('label')?.append(info);
  }
 }

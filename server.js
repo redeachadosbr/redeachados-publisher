@@ -1692,11 +1692,11 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
     const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
       {expectedSku:sku,expectedModelId:modelId});
     if(!['NORMAL','UNLIST'].includes(record.status))throw Error('Anúncio não está ativo.');
-    // O rascunho de lote também usa o CEST DO PRÓPRIO Item ID.
-    // Nenhuma sugestão WeDrop pode gravar o CEST de outra SKU no rascunho.
+    // Confirma o anúncio e sua tax_info para auditoria, mas o rascunho usa
+    // exclusivamente o CEST do catálogo da SKU exata (ou marcador 00).
     const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
     if(String(fiscalLive.item_id)!==String(itemId))throw Error('Item ID fiscal divergente da Shopee.');
-    const currentCest=cestForShopeeField(fiscalLive.tax_info);
+    cestForShopeeField(fiscalLive.tax_info);
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
       throw Error('Correspondência WeDrop não confirmada.');
@@ -1716,7 +1716,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
       same_state_cfop:previous.same_state_cfop||'5106',
       diff_state_cfop:previous.diff_state_cfop||'6106',
       csosn:previous.csosn||'102',pis_cofins_cst:previous.pis_cofins_cst||'99',
-      cest:currentCest,measure_unit:measureUnit,
+      cest:wedropCestForSku(supplier),measure_unit:measureUnit,
       evidence:previous.evidence||('NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'cadastro importado'))};
     fiscalMatrixSource({sku,supplier,tax});
     compileTax(tax,{tax_info:{}});
@@ -2716,8 +2716,12 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       throw Error('Motor Matriz: SKU principal do kit diverge da SKU auditada na Shopee. Refaça o vínculo do kit.');
     const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,{sku,itemId,modelId}):null;
     if(change.tax){
+      // A revisão local é vinculada ao catálogo da SKU, nunca ao valor
+      // anterior do anúncio-pai. A leitura Shopee continua obrigatória para
+      // preservar o valor publicado na execução autorizada (sem write aqui).
       const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
-      change.tax={...change.tax,cest:cestForShopeeField(fiscalLive.tax_info)};
+      cestForShopeeField(fiscalLive.tax_info);
+      change.tax={...change.tax,cest:wedropCestForSku(taxSupplier)};
     }
     if(change.stage==='fiscal'&&change.reviewed){
       // Mesmo caminho seguro das SKUs simples: permite apenas vínculo

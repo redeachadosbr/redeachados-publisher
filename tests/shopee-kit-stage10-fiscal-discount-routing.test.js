@@ -99,7 +99,7 @@ test('fiscal usa NCM da SKU exata e salva revisao antes da execucao',async()=>{
  assert.equal(done.ok,true);
  assert.equal(posts[0].tax.ncm,'12345678');
  assert.equal(posts[0].tax.origin,'2');
- assert.equal(posts[0].tax.cest,'2806100','CEST real da Shopee não pode virar sugestão 00');
+ assert.equal(posts[0].tax.cest,'00','rascunho da SKU principal usa catálogo: ausente deve virar 00');
  assert.equal(posts[0].stage,'fiscal');
  assert.equal(context.optimizerWorkflowPlan.tax.ncm,'12345678');
 });

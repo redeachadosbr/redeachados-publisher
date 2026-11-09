@@ -16,3 +16,19 @@ test('unidades KIT JOGO UN são aceitas na preparação fiscal',()=>{
 test('NCM ausente bloqueia publicação mesmo com CEST 00',()=>{
  assert.throws(()=>compileTax({...base,ncm:'',cest:'00'},{tax_info:{}}),/NCM/);
 });
+
+
+test('CEST de rascunho vem do catálogo da SKU exata e não da Shopee',async()=>{
+ const {wedropCestForSku,supplierWorkflowFacts}=await import('../shopeeSupplierFacts.js');
+ const exact={supplier_sku:'TX24505K',matchedBy:'exact-sku',source_file:'wedrop.csv',
+  product_data:{ncm:'42029200',cest:''}};
+ const oldShopee={tax_info:{cest:'2806100'}};
+ assert.equal(wedropCestForSku(exact),'00');
+ assert.equal(supplierWorkflowFacts(exact,{title:'Mochila escolar'}).taxSuggestion.cest,'00');
+ assert.equal(wedropCestForSku({...exact,product_data:{ncm:'42029200',cest:'1234567'}}),'1234567');
+ assert.equal(wedropCestForSku({...exact,matchedBy:'unreviewed',
+  product_data:{ncm:'42029200',cest:'2806100'}}),'00');
+ assert.equal(oldShopee.tax_info.cest,'2806100','nenhuma escrita na Shopee');
+ assert.equal(compileTax({...base,cest:'00'},oldShopee).cest,'2806100',
+  'transmissão existente só muda com autorização fiscal específica');
+});
