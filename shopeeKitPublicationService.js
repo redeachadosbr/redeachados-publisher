@@ -125,6 +125,7 @@ export async function kitPublicationReadiness({cfg,auth,kitSku}){
   kitShopeeOptions(cfg,auth)
  ]);
  return {kit,stored,linked:components.linked,blockers:[...components.blockers,...options.blockers],
+  autoRecovered:components.autoRecovered||[],
   options,uploadedImageIds:(media.get(key(auth.shopId,kitSku))||[]).map(x=>x.imageId),
   video:kitVideoStatus(auth.shopId,kitSku)};
 }
