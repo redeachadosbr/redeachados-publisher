@@ -75,6 +75,30 @@ def _probe_flyer_dimensions():
       except Exception as e:
         print('OB_IMAGE_PROBE',name,'error',str(e)[:160])
 _probe_flyer_dimensions()
+# Further non-fatal candidate check: official resized transform and current alternate HTML.
+import re as _qr
+from urllib.error import HTTPError as _Http
+from urllib.parse import urlparse as _parse
+import urllib.request as _ur
+_qs=[
+ ('fort_resize_1100','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x1100/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
+ ('fort_resize_0','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x0/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
+ ('portafolhetos_food_09nov','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-481894/'),
+ ('kimbino_food_09nov','https://www.kimbino.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-6481894/'),
+ ('brcatalogos_fort','https://brcatalogos.com.br/fort/ofertas-a-maior-black-blumenau-indaial-e-jaragua-do-sul'),
+]
+for _label,_url in _qs:
+ try:
+  _request=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36','Accept':'text/html,image/avif,image/webp,image/apng,image/*,*/*'})
+  with _ur.urlopen(_request,timeout=6) as _reply:
+   _response=_reply.read(400000)
+   _ct=_reply.headers.get('Content-Type','')
+   _txt=_response.decode('utf-8','ignore') if 'html' in _ct else ''
+   _found=_qr.findall(r'https?[^"\s<>]{0,230}(?:leafletscdn|kimbicdn|pdf|\.jpg|\.webp)[^"\s<>]{0,200}',_txt,_qr.I)
+   _og=_qr.findall(r'<meta[^>]+(?:og:image|twitter:image)[^>]+>',_txt,_qr.I)
+   print('OB_IMAGE_COMPARE',_label,'status',_reply.status,'ctype',_ct,'bytes',len(_response),'possible_assets',str(_found[:4])[:650],'meta',str(_og[:2])[:350])
+ except Exception as _e:
+  print('OB_IMAGE_COMPARE',_label,'error',str(_e)[:160])
 # END TEMP diagnostic.
 # Enforce consistent login form/server policy and accurate authentication errors.
 (folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
