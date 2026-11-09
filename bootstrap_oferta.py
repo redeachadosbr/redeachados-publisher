@@ -45,19 +45,6 @@ runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['pat
 # Update the old SQLite-only warning: state is now stored in Supabase.
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
-# TEMP diagnostic: inspect only public static UI markup/selectors (never user data or secrets).
-import re as _re
-_src_match=_re.search(r'<section[^>]*data-page=["\']fontes["\'][^>]*>(.*?)</section>',html,_re.I|_re.S)
-print('OB_SOURCES_STATIC_MARKUP',_src_match.group(0)[:5400] if _src_match else 'missing')
-for _fn in ('app.js','style.css','styles.css'):
-    _fp=folder/'static'/ _fn
-    if not _fp.exists():continue
-    _t=_fp.read_text(encoding='utf-8')
-    _hits=list(_re.finditer(r'drawSources|sourcecards|sourceCard|sourcecard|sourcegrid|sourceGrid|Fontes oficiais|Visitar site oficial|Última verificação|Página lida|Falha de acesso',_t,_re.I))
-    print('OB_SOURCES_FILE',_fn,'len',len(_t),'matches',len(_hits))
-    for _m in _hits[:16]:
-        print('OB_SOURCES_MATCH',_fn,repr(_t[max(0,_m.start()-145):_m.end()+290])[:580])
-
 html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
                   'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
 # Premium 3D interface: additive CSS/JS; never change authenticated API or price records.
@@ -254,6 +241,26 @@ assert html.count('/static/ob-branch-offers-v11.css')==1
 assert html.index('/static/ob-branch-offers-v11.js')>html.index('/static/ob-market-cards-v9.js')
 assert html.index('/static/ob-branch-offers-v11.css')>html.index('/static/ob-mobile-fullwidth-v10.css')
 print('OB_V11_BRANCH_OFFERS_UI_PASS')
+
+# V15 — premium status dashboard for official sources; visual-only, no scanner/API changes.
+_sources_ui_js=(root/'oferta-sources-visual-v15.js').read_text(encoding='utf-8')
+_sources_ui_css=(root/'oferta-sources-visual-v15.css').read_text(encoding='utf-8')
+assert 'data-page="fontes"' in _sources_ui_js and 'sourcesGrid' in _sources_ui_js
+assert '.obv-source-card' in _sources_ui_css and 'prefers-reduced-motion' in _sources_ui_css
+(folder/'static/ob-sources-visual-v15.js').write_text(_sources_ui_js,encoding='utf-8')
+(folder/'static/ob-sources-visual-v15.css').write_text(_sources_ui_css,encoding='utf-8')
+if '/static/ob-sources-visual-v15.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-sources-visual-v15.css?v=20261109v15"></head>')
+if '/static/ob-sources-visual-v15.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-sources-visual-v15.js?v=20261109v15" defer></script></body>')
+subprocess.run(['node','--check',str(folder/'static/ob-sources-visual-v15.js')],check=True)
+subprocess.run(['node',str(root/'oferta-sources-visual-tests-v15.cjs')],cwd=str(root),check=True)
+assert html.count('/static/ob-sources-visual-v15.js')==1
+assert html.count('/static/ob-sources-visual-v15.css')==1
+assert html.index('/static/ob-sources-visual-v15.js')>html.index('/static/ob-branch-offers-v11.js')
+assert 'id="sourcesGrid"' in html
+print('OB_V15_SOURCE_DASHBOARD_UI_PASS')
+
 page.write_text(html,encoding='utf-8')
 
 
