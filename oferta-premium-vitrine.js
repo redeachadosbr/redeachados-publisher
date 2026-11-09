@@ -29,7 +29,7 @@ const brl=v=>money(v);
 const netList=()=>[...new Set(stores.map(s=>s.rede))];
 
 // O catálogo tem fonte única: somente ofertas aprovadas e vigentes da API/Supabase.
-const visibleOffers=()=>offers.filter(o=>!o.ends_on||o.ends_on>=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}));
+const visibleOffers=()=>{const day=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});return offers.filter(o=>Number(o.price)>0&&(!o.starts_on||o.starts_on<=day)&&(!o.ends_on||o.ends_on>=day));};
 function marketSelect(net){
  const input=document.getElementById('filterNetwork');
  if(input){input.value=net;buildFilterStore();drawMarkets();drawOffers();selectPage('ofertas')}
@@ -109,7 +109,7 @@ function init(){
  document.getElementById('searchOffer').oninput=()=>{const top=document.getElementById('obSearch');if(top)top.value=document.getElementById('searchOffer').value;drawOffers();};
  document.getElementById('filterNetwork').onchange=()=>{buildFilterStore();drawMarkets();drawOffers()};
  document.getElementById('filterStore').onchange=drawOffers;
- drawMarkets();drawOffers();
+ drawMarkets();drawOffers();refreshAll();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
