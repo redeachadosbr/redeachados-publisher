@@ -61,7 +61,7 @@ if '/static/ob-premium-v3.css' not in html:
 if '/static/ob-flyer-gallery-v6.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v12hd"></head>')
 if '/static/ob-premium.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v13logo" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v14noshorcuts" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 # Stable V4 pricing engine and UI for category leaders and existing favorites.
 (folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
@@ -83,6 +83,7 @@ if '/static/ob-photo-cards-v5.css' not in html:
     raise RuntimeError('Foto-first card styles must be included')
 photo_code=(folder/'static/ob-premium.js').read_text(encoding='utf-8')
 assert 'ob-mini-offer' in photo_code and 'data-ob-list' in photo_code
+assert 'ob-foottiles' not in photo_code, 'Duplicate shortcut footer must not be created'
 assert 'data-ob-brand' in photo_code and 'data-ob-package' in photo_code
 assert 'addTracked()' in photo_code and 'drawOffers()' in photo_code
 assert 'ob-mini-add' in (folder/'static/ob-photo-cards-v5.css').read_text(encoding='utf-8')

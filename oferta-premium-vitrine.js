@@ -259,8 +259,6 @@ function makeLayout(){
  offersPage.prepend(categories);
  const markets=document.createElement('section');markets.className='ob-section';markets.innerHTML='<div class="ob-label"><h3>Ofertas por supermercado</h3><small>Filtre sua rede favorita</small></div><div id="obMarkets" class="ob-markets"></div>';
  categories.after(markets);
- const tiles=document.createElement('section');tiles.className='ob-foottiles';tiles.innerHTML='<button data-ob-page="comparar">'+icon('compare')+'<span>Comparar preços<small>Veja opções válidas para cada produto</small></span></button><button data-ob-page="encartes">'+icon('flyer')+'<span>Encartes da semana<small>Confira campanhas e folhetos oficiais</small></span></button><button data-ob-page="salvos">'+icon('list')+'<span>Minha lista<small>Salve os produtos que deseja comprar</small></span></button>';
- offersPage.after(tiles);
  drawCategories();
  document.addEventListener('click',e=>{
  const market=e.target.closest('[data-ob-market]');if(market){marketSelect(market.dataset.obMarket);return;}
