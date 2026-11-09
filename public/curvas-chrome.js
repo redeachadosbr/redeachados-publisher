@@ -156,7 +156,7 @@
    const bridge=await ping(nonce);
    if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.13, substitua os arquivos da pasta instalada, clique em Recarregar em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
-    offset:String(offset),limit:'6'});
+    offset:String(offset),limit:'1'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
    if(!plan.jobs.length&&offset>0){
     offset=0;params.set('offset','0');
@@ -172,8 +172,8 @@
       monthly_labels_unbound:0,monthly_not_rendered:0,monthly_capture_failed:0,
       no_visible_offers:0,featured_public_recovered:0}};
    offset=plan.nextOffset;
-   updateStage('iniciando','Janela auxiliar sem foco • primeiro lote com '+plan.jobs.length+' consultas.',active);
-   say('Pesquisa em janela auxiliar independente, sem alterar suas guias abertas.');
+   updateStage('iniciando','Processando uma consulta por vez até encontrar '+selected.limit+' SKUs comprovadas ou percorrer toda a categoria.',active);
+   say('Uma SKU por consulta. Leituras incompletas ficam pendentes e a busca avança automaticamente.');
    window.postMessage({kind:'RA_CURVE_CHROME_START',nonce,jobs:plan.jobs},ORIGIN);
   }catch(error){
    active=null;button.disabled=false;
@@ -190,21 +190,19 @@
    s.noVisibleStreak=reason==='no_visible_offers'?s.noVisibleStreak+1:0;
    s.monthlyFailureStreak=['monthly_capture_failed','monthly_labels_unbound']
     .includes(reason)?s.monthlyFailureStreak+1:0;
-   // Falhas persistentes da fonte: pausar, não consumir todo o catálogo.
-   // Ausência de rótulo mensal não comprova que um produto vende pouco.
-   if(s.noVisibleStreak>=3||s.monthlyFailureStreak>=8){
-    s.blocked=true;
-    const detail=s.noVisibleStreak>=3?
-     'Shopee não apresentou cartões legíveis em 3 consultas consecutivas.':
-     'Shopee não forneceu vendas mensais vinculadas em 8 consultas consecutivas.';
-    window.postMessage({kind:'RA_CURVE_CHROME_CANCEL',nonce:s.nonce},ORIGIN);
-    updateStage('erro',detail+
-     ' Pesquisa pausada para corrigir a fonte; nenhuma Curva foi inventada.',s);
-    say(detail+' Confira a janela Shopee, atualize a Ponte Chrome e reinicie a pesquisa.');
-    return;
+   // Falha de leitura pertence à consulta individual, não cancela o restante.
+   // CAPTCHA/verificação humana explícita continua sendo respeitada.
+   if(s.noVisibleStreak===3||s.monthlyFailureStreak===8){
+    const detail=s.noVisibleStreak===3?
+     'Três consultas sem cartões legíveis.':
+     'Oito consultas sem vendas mensais vinculadas.';
+    updateStage('continuando',detail+
+     ' SKU pendente; avançando automaticamente sem inventar Curvas.',s);
+    say(detail+' Seguiremos para outro SKU, mantendo o diagnóstico.');
    }
   const job=s.plan.jobs.find(x=>x.query===m.query);
   for(const sku of job?.skus||[])s.attemptedSkuIds.add(String(sku));
+  const requiresHuman=Boolean(m.error&&!m.recoverable);
   if(m.error){
    s.errors++;
    if(m.recoverable){
@@ -212,10 +210,17 @@
      String(m.error).slice(0,145)+'. Avançando para outra SKU.',s);
     say('Busca '+m.position+'/'+m.total+' incompleta. Seguindo com a categoria.');
    }else{
+    // Verificação humana/CAPTCHA não pode ser ignorada.
     s.blocked=true;
-    updateStage('erro','Shopee exige verificação: '+String(m.error).slice(0,180),s);
-    say('Pesquisa pausada: '+m.error);
+    updateStage('erro','Shopee exige verificação humana: '+String(m.error).slice(0,180),s);
+    say('Pesquisa pausada para verificação: '+m.error);
    }
+  }
+  if(!Array.isArray(m.offers)||!m.offers.length){
+   if(!m.error)s.errors++;
+   updateStage(requiresHuman?'erro':'continuando',
+    'Consulta '+s.scanned+' sem anúncios legíveis: SKU pendente. '+
+    (requiresHuman?'Conclua a verificação na Shopee.':'Seguindo para a próxima SKU.'),s);
    return;
   }
   try{
@@ -269,6 +274,8 @@
     Number(data.discardedCount||0)+' estão descartadas por custo, margem ou estoque.',s);
    say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
     data.pendingCount+' candidatos pendentes. Busca '+m.position+'/'+m.total+'.');
+   if(requiresHuman)updateStage('erro',
+    'Evidências parciais preservadas; a Shopee exige verificação humana antes da próxima pesquisa.',s);
   }catch(error){
    if(active!==s)return;
    s.errors++;
@@ -306,14 +313,14 @@
      finished='Leitura Shopee insuficiente ou verificação: '+s.found+'/'+s.selected.limit+' SKUs comprovadas. Pesquisa interrompida.';
     else if(s.plan.hasMore){
      const params=new URLSearchParams({category:s.selected.category,keyword:s.selected.keyword,
-      offset:String(offset),limit:'6'});
+      offset:String(offset),limit:'1'});
      const plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
      if(plan.jobs.length){
       s.plan=plan;s.batchStartScanned=s.scanned;offset=plan.nextOffset;
-      updateStage('navegando','Próximo lote: '+plan.jobs.length+
-       ' pesquisas, '+s.scanned+' consultas já concluídas.',s);
-      say('Continuando automaticamente: '+s.found+'/'+s.selected.limit+
-       ' SKUs classificadas, '+s.scanned+' pesquisas. Novo lote: '+plan.jobs.length+'.');
+      updateStage('navegando','Próxima consulta individual. '+s.scanned+
+       ' pesquisas feitas, '+s.found+'/'+s.selected.limit+' SKUs aprovadas.',s);
+      say('Continuando uma SKU por vez: '+s.found+'/'+s.selected.limit+
+       ' aprovadas, '+s.scanned+' consultas realizadas.');
       window.postMessage({kind:'RA_CURVE_CHROME_START',nonce:s.nonce,jobs:plan.jobs},ORIGIN);
       return;
      }

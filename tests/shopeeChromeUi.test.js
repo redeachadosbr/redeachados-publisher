@@ -176,3 +176,18 @@ test('pesquisa por preço tenta amostra completa de dez anúncios em vez de ence
  assert.match(bg,/readPage\(tabId,job=null\)/);
 });
 
+
+
+test('uma pesquisa por vez continua mesmo após 3 leituras ilegíveis',()=>{
+ const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ assert.equal((code.match(/offset:String\(offset\),limit:'1'/g)||[]).length,2);
+ assert.doesNotMatch(code,/noVisibleStreak>=3|monthlyFailureStreak>=8/);
+ assert.match(code,/s\.noVisibleStreak===3\|\|s\.monthlyFailureStreak===8/);
+ assert.match(code,/if\(!Array\.isArray\(m\.offers\)\|\|!m\.offers\.length\)/);
+ assert.match(code,/const requiresHuman=Boolean\(m\.error&&!m\.recoverable\)/);
+ assert.match(code,/if\(m\.recoverable\)/);
+ assert.match(code,/s\.found>=s\.selected\.limit/);
+ assert.match(code,/s\.plan\.hasMore/);
+ assert.match(code,/s\.blocked=true/,'só erros de verificação real bloqueiam');
+ assert.match(code,/s\.attemptedSkuIds/);
+});
