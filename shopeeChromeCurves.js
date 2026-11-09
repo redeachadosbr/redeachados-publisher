@@ -44,7 +44,11 @@ async function stateFor(shopId,input){
    .then(([catalog,costs])=>{
     const subset=catalog.filter(row=>categoryMatches(String(row.product_data?.category||''),cat)&&
      (!term||fold(String(row.product_data?.name||'')).includes(fold(term))));
-    return {catalog:subset,costs,plan:curveSkuSearchPlan(subset,{keyword:term}),
+    const costIndex=new Map(costs.map(row=>[String(row.supplier_sku),Number(row.unit_cost)]));
+    const plan=curveSkuSearchPlan(subset,{keyword:term}).map(job=>({...job,
+     skus:job.skus.filter(sku=>Number.isFinite(costIndex.get(sku))&&costIndex.get(sku)>0)
+    })).filter(job=>job.skus.length>0);
+    return {catalog:subset,costs,plan,
      offers:new Map(),scanned:new Set(),marketAttempted:new Set(),queries:0,lastAt:null};
    });
   entry={createdAt:Date.now(),promise};
@@ -225,7 +229,10 @@ export async function importChromeOffers(shopId,{
  // substituir rótulos não verificados por vendas acumuladas.
  let recoverySource='not_needed',recoveryReason='',recoveredMonthly=0;
  let recovered=[];
- if(normalized.length&&!normalized.some(o=>o.monthlySold!==null)&&!costFirstSkippedMonthly){
+ const pricedOpportunity=pricedRows.some(row=>task.skus.includes(row.sku)&&
+  row.avgCompetitorPrice!==null&&row.adsCompetitiveness?.eligible===true);
+ if(pricedOpportunity&&normalized.length&&
+    !normalized.some(o=>o.monthlySold!==null)&&!costFirstSkippedMonthly){
   if(Date.now()<Number(state.featuredUnavailableUntil||0)){
    recoverySource='temporarily_unavailable';
    recoveryReason='Fonte pública temporariamente indisponível; não repetir chamadas bloqueadas.';
@@ -267,7 +274,9 @@ export async function importChromeOffers(shopId,{
  if(marketResearchConfigured()){
   const missing=task.skus.filter(sku=>{
    const row=initialRows.find(x=>x.sku===sku);
-   return row&&row.avgCompetitorPrice===null&&
+   const hasDemand=Number(row?.monthlyCompetitors?.filter(o=>
+    Number(o.monthlySold)>=700).length||0)>=2;
+   return row&&hasDemand&&row.avgCompetitorPrice===null&&
     !SKIP_MONTHLY_REJECTIONS.has(row.adsCompetitiveness?.status)&&
     Number(row.marketCandidateCount||0)<2&&!state.marketAttempted.has(sku);
   }).slice(0,2);

@@ -140,8 +140,19 @@ const relatedToQuery=(query,offer)=>{
  const matched=target.filter(term=>candidate.has(term)).length;
  return matched>=Math.max(2,Math.ceil(target.length*0.6));
 };
-// Precheck estrito: 10 anúncios relacionados, distintos, de preço coerente
-// e todos no máximo ao custo mínimo das SKUs. Decisão final é do servidor.
+// Apenas cinco anúncios quase idênticos e uma faixa de preço homogênea
+// permitem dispensar a pesquisa mensal. A decisão final é do servidor.
+const MAX_SEARCH_PAGES=3;
+const PRICE_SCREEN_SAMPLE=5;
+const strictlyRelatedToQuery=(query,offer)=>{
+ const target=[...new Set(normalizeTerms(query))];
+ const candidate=new Set(normalizeTerms(offer?.productName));
+ if(target.length<2||target.filter(term=>candidate.has(term)).length<
+   Math.max(2,Math.ceil(target.length*0.8)))return false;
+ const crucial=target.filter(term=>/^(?:inox|plastico|eletrico|eletrica|manual|digital)$/.test(term)||
+  /^\d+(?:kg|g|ml|l|cm|w)$/.test(term));
+ return crucial.every(term=>candidate.has(term));
+};
 const costFirstReject=(job,offers=[])=>{
  const cost=Number(job?.minSkuCost);
  if(!Number.isFinite(cost)||cost<=0)return false;
@@ -149,14 +160,23 @@ const costFirstReject=(job,offers=[])=>{
  for(const offer of offers){
   const price=Number(offer?.priceMin);
   const id=String(offer?.shopId||'')+':'+String(offer?.itemId||'');
-  if(!relatedToQuery(job.query,offer)||!/^[0-9]{1,18}:[0-9]{1,18}$/.test(id)||
+  if(!strictlyRelatedToQuery(job.query,offer)||!/^[0-9]{1,18}:[0-9]{1,18}$/.test(id)||
    !Number.isFinite(price)||price<=0||price>=100000)continue;
   distinct.set(id,price);
  }
- if(distinct.size<10)return false;
+ if(distinct.size<PRICE_SCREEN_SAMPLE)return false;
  const prices=[...distinct.values()],min=Math.min(...prices),max=Math.max(...prices);
- return max<=cost&&max/min<=1.45;
+ return max<=cost&&max/min<=1.3;
 };
+// Curva A/B exige duas lojas diferentes com contadores mensais válidos.
+// Sem rótulo do mês ou com menos de 700, continua PENDENTE.
+const highMonthlyShopCount=(query,offers=[])=>new Set(offers.filter(offer=>
+ relatedToQuery(query,offer)&&offer.monthlyPeriod==='month'&&
+ Number.isSafeInteger(offer.monthlySold)&&offer.monthlySold>=700&&
+ /^\d{1,18}$/.test(String(offer.shopId||''))).map(offer=>String(offer.shopId))).size;
+const pricedRelatedCount=(query,offers=[])=>offers.filter(offer=>
+ relatedToQuery(query,offer)&&Number.isFinite(Number(offer.priceMin))&&
+ Number(offer.priceMin)>0).length;
 const offerPriority=(query,offer)=>{
  const target=[...new Set(normalizeTerms(query))];
  const candidate=new Set(normalizeTerms(offer.productName));
@@ -165,7 +185,7 @@ const offerPriority=(query,offer)=>{
 };
 async function readPage(tabId,job=null){
  const merged=new Map();let last=null,blocked=null,labelsSeen=0,labelsInCards=0;
- for(let i=0;i<4;i++){
+ for(let i=0;i<3;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
   await delay(i===0?900:i===1?1300:1000);
   try{
@@ -180,9 +200,11 @@ async function readPage(tabId,job=null){
     const id=String(offer.shopId)+':'+String(offer.itemId);
     merged.set(id,mergeEvidence(merged.get(id),offer));
    }
-   const monthly=[...merged.values()].filter(x=>x.monthlySold!==null).length;
-   // 2 vendas mensais são um MÍNIMO, não justificam descartar os demais preços.
-   if(i===0&&costFirstReject(job,[...merged.values()]))break;
+   const current=[...merged.values()];
+   const monthly=current.filter(x=>x.monthlySold!==null).length;
+   if(costFirstReject(job,current))break;
+   if(job&&pricedRelatedCount(job.query,current)>=PRICE_SCREEN_SAMPLE&&
+     highMonthlyShopCount(job.query,current)>=2)break;
    if(i>=1&&merged.size>=35&&monthly>=4&&labelsSeen<=labelsInCards)break;
   }catch{}
  }
@@ -239,6 +261,7 @@ async function batch(managerTab,nonce,jobs){
    // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
    let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0,costStopped=false;
+   let lastRelated=0,lastHighMonthly=0,stagnantPages=0;
    const openTab=await recoverVisibleSearchAlreadyOpen(query,(await currentSession())?.tabId);
    if(openTab){
     for(const offer of openTab.offers){
@@ -255,7 +278,7 @@ async function batch(managerTab,nonce,jobs){
    // A Shopee pode ter diversas páginas. 10 preços comparáveis são o alvo
    // da amostra; 2 não encerram a investigação, e anúncios de outra versão
    // não contam para a meta.
-   for(let page=0;page<9;page++){
+   for(let page=0;page<MAX_SEARCH_PAGES;page++){
     if(stopRequested)break;
     if(costFirstReject(jobs[i],[...collected.values()])){
      costStopped=true;
@@ -263,9 +286,9 @@ async function batch(managerTab,nonce,jobs){
       i+1,jobs.length,{costFirstStopped:true,pages});
      break;
     }
-    const existing=[...collected.values()].filter(item=>
-     relatedToQuery(query,item)&&item.priceMin!==null);
-    if(existing.length>=10&&existing.filter(item=>item.monthlySold!==null).length>=2)break;
+    const existing=[...collected.values()];
+    if(pricedRelatedCount(query,existing)>=PRICE_SCREEN_SAMPLE&&
+     highMonthlyShopCount(query,existing)>=2)break;
     const url=buildUrl(query,page);
     const tab=await researchTab(managerTab,nonce,url);
     await stage(managerTab,nonce,'carregando',
@@ -281,7 +304,8 @@ async function batch(managerTab,nonce,jobs){
     // apenas 1 preço apesar de dezenas de anúncios. Revalidar sem focar janela.
     if(data.ok&&!stopRequested&&page===0&&
       !costFirstReject(jobs[i],data.offers||[])&&
-      (Number(data.offers?.length||0)<8||Number(data.monthlyCards||0)<2)){
+      (Number(data.offers?.length||0)<5||
+       (Number(data.monthlyLabelsVisible||0)>0&&Number(data.monthlyCards||0)===0))){
      await stage(managerTab,nonce,'recuperando',
       'Vitrine parcial: '+Number(data.offers?.length||0)+
       ' anúncios. Restaurando sem foco para carregar mais preços e Vendido/Mês.',
@@ -350,7 +374,7 @@ async function batch(managerTab,nonce,jobs){
      relatedToQuery(query,item)&&item.priceMin!==null);
     const relatedMonthly=related.filter(item=>item.monthlySold!==null).length;
     await stage(managerTab,nonce,'comparando',
-     'Amostra: '+related.length+'/10 anúncios de preço relacionados • '+
+     'Amostra: '+related.length+'/'+PRICE_SCREEN_SAMPLE+' anúncios para triagem • '+
      relatedMonthly+' com vendas mensais • '+collected.size+' ofertas inspecionadas.',
      i+1,jobs.length,{related:related.length,relatedMonthly,pages});
     // Parar após encontrar até 10 candidatos com preços E 2 selos mensais.
@@ -361,12 +385,17 @@ async function batch(managerTab,nonce,jobs){
       i+1,jobs.length,{costFirstStopped:true,pages});
      break;
     }
-    if(related.length>=10&&relatedMonthly>=2)break;
-    if(collected.size>=300)break;
-    await delay(1500);
+    const highMonthly=highMonthlyShopCount(query,related);
+    if(related.length>=PRICE_SCREEN_SAMPLE&&highMonthly>=2)break;
+    if(related.length<=lastRelated&&highMonthly<=lastHighMonthly)stagnantPages++;
+    else stagnantPages=0;
+    lastRelated=related.length;lastHighMonthly=highMonthly;
+    if(collected.size>=300||page>=1&&(stagnantPages>0||highMonthly===0))break;
+    await delay(350);
    }
    // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.
    if(!stopRequested&&!hardStop&&!costStopped&&collected.size>0&&
+      labelsSeen>0&&labelsInCards===0&&
       ![...collected.values()].some(x=>x.monthlySold!==null)){
     await stage(managerTab,nonce,'recuperando',
      'Ofertas sem dados mensais: recarregando uma vez a vitrine Em Destaque.',
@@ -432,7 +461,7 @@ async function batch(managerTab,nonce,jobs){
    if(incomplete)await stage(managerTab,nonce,'continuando',
     'Esta consulta ficou incompleta; avançando para outra SKU da categoria.',
     i+1,jobs.length,{visible:offers.length,pages});
-   if(i+1<jobs.length)await delay(1600);
+   if(i+1<jobs.length)await delay(700);
   }
  }catch(error){
   await deliver(managerTab,{kind:'RA_CURVE_CHROME_ERROR',nonce,
