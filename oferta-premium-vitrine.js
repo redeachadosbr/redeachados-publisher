@@ -65,6 +65,15 @@ const approvedDiscount=o=>{
 };
 const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
 const REFERENCE_PRODUCT_IMAGES={
+ 'Queijo Polenghi Cream Cheese Tradicional ou Light|150 g':{url:'https://coopsp.vtexassets.com/arquivos/ids/252320-800-auto?aspect=true&height=auto&v=639071238147330000&width=800',source:'Coop SP'},
+ 'Requeijão Cremoso Lac Lélo Tradicional ou Light|180 g':{url:'https://bistek.vtexassets.com/arquivos/ids/211219/2170108%20Requeijao%20Cremoso%20Tradicional%20Lac%20Lelo%20Copo%20180g.png?v=639050328104870000',source:'Bistek'},
+ 'Massa Grano Duro Granoro|500 g':{url:'https://www.rommac.com.br/imagens/produtos/605x605/25469_PASTA_G.DURO_GRANORO_500G_PENNE_RIGATE_1.jpg',source:'Rommac'},
+ 'Iogurte Vigor|90 g':{url:'https://static.paodeacucar.com/img/uploads/1/868/23724868.jpg',source:'Pão de Açúcar'},
+ 'Lasanha Congelada Seara Presunto e Queijo ou Bolonhesa|600 g':{url:'https://mercantilatacado.vtexassets.com/arquivos/ids/182656/654a9febc214713490e023f5.jpg?v=638349862228930000',source:'Mercantil Atacado'},
+ 'Tira-Manchas em Pó Vanish Sachê|1 kg':{url:'https://carrefourbrfood.vtexassets.com/arquivos/ids/215689980/5559430_1.jpg?v=639184189306270000',source:'Carrefour'},
+ 'Escova Dental Colgate Luminous White Charcoal|2 unidades':{url:'https://cdn.ultrafarma.com.br/static/produtos/832566/large-639062372078740478-832566_9.jpg',source:'Ultrafarma'},
+ 'Escova Dental Colgate ZigZag Carvão|4 unidades':{url:'https://product-data.raiadrogasil.io/images/19166576.webp',source:'Droga Raia'},
+ 'Iogurte Tirol Garrafa|830 g':{url:'https://carrefourbrfood.vtexassets.com/arquivos/ids/33471486/6085261_1.jpg?v=637789806144300000',source:'Carrefour'},
  'Pão Pullman Artesano Tradicional|500 g':{url:'https://comper.vteximg.com.br/arquivos/ids/207377-500-500/7896002302197_2.jpg?v=637788254540700000',source:'Comper'},
  'Tira-Manchas em Pó Vanish Refil|400 g':{url:'https://eletroangeloni.vtexassets.com/arquivos/ids/4121510/7891035051272_99_1_1200_72_RGB.png?v=639014055680370000',source:'Angeloni'},
  'Tira-Manchas em Pó Vanish 240g|240 g':{url:'https://bistek.vtexassets.com/arquivos/ids/209998/2048787%20Tira-Manchas%20Po%20Vanish%20Oxi%20Action%20240g.png?v=639026369329600000',source:'Bistek'},
