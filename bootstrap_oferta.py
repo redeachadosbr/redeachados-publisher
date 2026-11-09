@@ -112,3 +112,17 @@ import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
 print('Oferta Blumenau: secure app prepared')
+
+# Read-only audit of existing management and sources contracts. Do not expose config values.
+import ast as _smart_ast
+_smart_src=(folder/'server.py').read_text(encoding='utf-8')
+_smart_tree=_smart_ast.parse(_smart_src)
+for _smart_name in ('source_jobs','import_file','import_text','auth','admin','candidates','approve','actual_flyer'):
+    _smart_node=next((n for n in _smart_tree.body if isinstance(n,(_smart_ast.FunctionDef,_smart_ast.AsyncFunctionDef)) and n.name==_smart_name),None)
+    if _smart_node:
+        _smart_code=_smart_ast.get_source_segment(_smart_src,_smart_node) or ''
+        print('SMART_DIAG_'+_smart_name.upper()+': '+_smart_code[:5500].replace('\n',' | '))
+_front_src=(folder/'static/app.js').read_text(encoding='utf-8')
+for _smart_term in ('api/admin/import-file','api/admin/import-text','adminToken','async function importFile','importFile','adminFile'):
+    _smart_i=_front_src.find(_smart_term)
+    if _smart_i>=0:print('SMART_DIAG_FRONT_'+_smart_term+': '+_front_src[max(0,_smart_i-250):_smart_i+1100].replace('\n',' | '))
