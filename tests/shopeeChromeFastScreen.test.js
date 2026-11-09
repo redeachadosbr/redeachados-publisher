@@ -10,7 +10,9 @@ const build=()=>{
   onUpdated:{addListener:listener},onRemoved:{addListener:listener}},
   windows:{onRemoved:{addListener:listener}}};
  const ctx={chrome,console,URL,setTimeout,clearTimeout,globalThis:null};
- ctx.globalThis=ctx;vm.runInNewContext(code,ctx);return ctx;
+ ctx.globalThis=ctx;
+ vm.runInNewContext(code+'\nglobalThis.__fastScreen={costFirstReject,highMonthlyShopCount,MAX_SEARCH_PAGES,PRICE_SCREEN_SAMPLE};',ctx);
+ return ctx.__fastScreen;
 };
 const offer=(shop,item,price,monthly=null,title='Dispenser Lavanderia Sabao Liquido')=>({
  shopId:String(shop),itemId:String(item),productName:title,

@@ -148,7 +148,8 @@ test('preço visível sem vendas continua na média, nunca vira Venda/Mês',()=>
 test('recuperação de Curvas utiliza vitrine pública somente quando a extensão não traz vendas mensais',()=>{
  const source=readFileSync(new URL('../shopeeChromeCurves.js',import.meta.url),'utf8');
  assert.match(source,/searchFeaturedPublic\(search,\{timeoutMs:5000\}\)/);
- assert.match(source,/if\(normalized\.length&&!normalized\.some/);
+ assert.match(source,/if\(pricedOpportunity&&normalized\.length&&/);
+ assert.match(source,/!normalized\.some/);
  assert.match(source,/recoveredMonthly/);
  assert.match(source,/featuredUnavailableUntil/);
 });

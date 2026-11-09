@@ -60,6 +60,8 @@ async function stateFor(shopId,input){
 export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset=0,limit=6}={}){
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw Error('Posição de busca inválida.');
  if(!Number.isInteger(limit)||limit<1||limit>10)throw Error('Escolha entre 1 e 10 buscas por lote.');
+ // Novo início exige custo WeDrop atualizado, não cache de pesquisa anterior.
+ if(offset===0)stateCache.delete(KEY(shopId,category,keyword));
  const state=await stateFor(shopId,{category,keyword});
  if(offset===0){
   // Nova pesquisa deve começar com os dados atuais, nunca misturar
