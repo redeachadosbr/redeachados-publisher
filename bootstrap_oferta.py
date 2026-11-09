@@ -60,27 +60,44 @@ subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 runpy.run_path(str(folder/'oferta-direct-image-fallback.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
 page.write_text(html,encoding='utf-8')
 
-# Temporary read-only build validation of the bundled app contract.
-import re as _ob_re
-_backend=(folder/'server.py').read_text(encoding='utf-8')
-_front=(folder/'static/app.js').read_text(encoding='utf-8')
-for _name in ('offers','candidates','leaflets'):
-    _ddl=_ob_re.search(r'CREATE TABLE(?: IF NOT EXISTS)?\s+'+_name+r'\s*\((.*?)\)\s*;', _backend,_ob_re.I|_ob_re.S)
-    print('OB_DDL_'+_name.upper(), _ddl.group(1)[:2200].replace('\n',' ') if _ddl else 'NOT_FOUND')
-print('OB_BACKEND_OFFER_LINES',[_line.strip()[:180] for _line in _backend.splitlines() if (_ob_re.search(r'(?:@app\.|def\s+|INSERT INTO|UPDATE\s+)',_line) and _ob_re.search(r'offer|candidate|backup|import|approve',_line,_ob_re.I))][:55])
-print('OB_FRONT_GLOBALS',[_line.strip()[:180] for _line in _front.splitlines() if _ob_re.search(r'^(?:let|const|var|async function|function)\s+(?:offers|stores|leaflets|refreshAll|drawOffers|loadOffers|sanitize|buildFilterStore|selectPage|fmtDate|money)',_line.strip())][:25])
-print('OB_FRONT_API_ENDPOINTS',sorted(set(_ob_re.findall(r'/(?:api/[a-zA-Z0-9/_-]+)',_front)))[:45])
 
+# Confirm runtime markup contracts before accepting a new deployment.
+import re
+for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','trackedName','compareTerm'):
+    if not re.search(r'\bid\s*=\s*["\\']'+element_id+r'["\\']',html):
+        raise RuntimeError('Missing critical UI control: '+element_id)
+if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
+    raise RuntimeError('Missing offers navigation page')
+print('OB_UI_MARKUP_CONTRACT_PASS')
 
-import ast as _ob_ast
-_ast=_ob_ast.parse(_backend)
-for _fn in ('OfferPayload','offer_fingerprint','checks_offer','insert_offer','map_offer','add_offer','refresh_state'):
-    _node=next((_n for _n in _ast.body if isinstance(_n,(_ob_ast.FunctionDef,_ob_ast.AsyncFunctionDef,_ob_ast.ClassDef)) and _n.name==_fn),None)
-    if _node:
-        _text=_ob_ast.get_source_segment(_backend,_node) or ''
-        print('OB_FUNC_'+_fn.upper(),_text[:2700].replace('\n',' | '))
-for _target in ('async function refreshAll()', 'function drawOffers()', 'function buildFilterStore()'):
-    _i=_front.find(_target)
-    if _i!=-1:print('OB_JS_'+_target.replace(' ','_'),_front[_i:_i+1400].replace('\n',' | '))
-
+# Authenticated diagnostic endpoint: permits real readback of the live product catalogue
+# from Supabase-backed SQLite without exposing private offers publicly.
+_backend_path=folder/'server.py'
+_backend_source=_backend_path.read_text(encoding='utf-8')
+_auth_anchor="'/api/internal/ingest', '/robots.txt'"
+if _auth_anchor not in _backend_source:
+    raise RuntimeError('Missing auth exclusion anchor for protected catalogue readback')
+_backend_source=_backend_source.replace(_auth_anchor,"'/api/internal/ingest', '/api/internal/catalog-selftest', '/robots.txt'",1)
+_backend_source+='''
+@app.post('/api/internal/catalog-selftest')
+async def internal_catalog_selftest(request:Request):
+    key=os.getenv('OFFER_SCHEDULE_SECRET','').strip()
+    supplied=request.headers.get('x-schedule-secret','')
+    if len(key)<40 or len(supplied)<40 or not hmac.compare_digest(key,supplied):
+        raise HTTPException(401,'Acesso não autorizado')
+    day=today()
+    with session() as c:
+        total=c.execute('SELECT count(*) FROM offers').fetchone()[0]
+        active=c.execute('SELECT count(*) FROM offers WHERE starts_on<=? AND ends_on>=? AND price>0',(day,day)).fetchone()[0]
+        branches=[r[0] for r in c.execute('SELECT DISTINCT store_id FROM offers WHERE starts_on<=? AND ends_on>=?', (day,day)).fetchall()]
+        pending=c.execute("SELECT count(*) FROM candidates WHERE status='pendente'").fetchone()[0]
+        leaflet_count=c.execute('SELECT count(*) FROM leaflets').fetchone()[0]
+    return {'ok':True,'as_of':day,'approved_offers':total,'active_offers':active,
+            'store_ids':branches,'networks_with_offers':sorted({ALL_STORES[x]['rede'] for x in branches if x in ALL_STORES}),
+            'pending_candidates':pending,'leaflets':leaflet_count}
+'''
+_backend_path.write_text(_backend_source,encoding='utf-8')
+import py_compile
+py_compile.compile(str(_backend_path),doraise=True)
+print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
 print('Oferta Blumenau: secure app prepared')
