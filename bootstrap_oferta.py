@@ -46,11 +46,9 @@ runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['pat
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
 # TEMP diagnostic: inspect only public static UI markup/selectors (never user data or secrets).
-from bs4 import BeautifulSoup
 import re as _re
-_ui_soup=BeautifulSoup(html,'html.parser')
-_src_page=_ui_soup.select_one('[data-page="fontes"]')
-print('OB_SOURCES_STATIC_MARKUP',str(_src_page)[:5600] if _src_page else 'missing')
+_src_match=_re.search(r'<section[^>]*data-page=["\']fontes["\'][^>]*>(.*?)</section>',html,_re.I|_re.S)
+print('OB_SOURCES_STATIC_MARKUP',_src_match.group(0)[:5400] if _src_match else 'missing')
 for _fn in ('app.js','style.css','styles.css'):
     _fp=folder/'static'/ _fn
     if not _fp.exists():continue
