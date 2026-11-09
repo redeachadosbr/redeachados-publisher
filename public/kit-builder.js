@@ -363,6 +363,74 @@ async function kitWizardOpenExecutionFlow(){
   if(button)button.disabled=false;
  }
 }
+// O rascunho novo deve usar o publicador Kit Formal. O executor da SKU
+// principal so pode operar depois que existe um Item ID real e confirmado.
+function kitWizardIsNewUnpublished(){
+ const publication=prepared?.publication||{};
+ const state=String(publication.status||'local_draft').toLowerCase();
+ return Boolean(prepared?.kit&&!kitItemId&&!publication.itemId&&
+  !prepared?.optimization?.itemId&&
+  !['publishing','uncertain','published_pending','published','discount_confirmed'].includes(state));
+}
+function kitWizardExecutionFeedback(message,state='info'){
+ const node=$('#kitWizardExecutionDirectStatus');
+ if(!node||kitWizardStage!==10)return;
+ node.hidden=false;node.textContent=String(message||'');
+ node.dataset.state=state;
+ node.style.color=state==='error'?'#a1272f':state==='warning'?'#85520d':'#173e72';
+ node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
+}
+function kitWizardExecutionAudit(){
+ const formal=$('#kitPublishPanel'),home=$('#kitDetail'),mount=$('#kitWizardExecutionMount');
+ const newKit=kitWizardStage===10&&kitWizardIsNewUnpublished();
+ // Reutilizar o MESMO formulario e seus listeners, sem duplicar o publicador.
+ if(formal&&home&&mount){
+  const parent=newKit?mount:home;
+  if(formal.parentElement!==parent)parent.append(formal);
+  formal.hidden=!newKit;
+ }
+ const area=$('#kitWizardExecutionAccess');
+ if(!area)return;
+ let audit=$('#kitWizardExecutionDiagnostics');
+ if(!audit){
+  audit=elt('section','kit-wizard-execution-diagnostics');
+  audit.id='kitWizardExecutionDiagnostics';
+  audit.setAttribute('aria-label','Diagnóstico e pendências do kit');
+  audit.style.cssText='padding:14px 16px;margin:0 0 14px;border:1px solid #cddff6;border-radius:14px;background:#f7faff;color:#16365e';
+  area.prepend(audit);
+ }
+ audit.hidden=kitWizardStage!==10;
+ if(audit.hidden)return;
+ audit.replaceChildren();
+ const checks=new Set(kitWizardChecked());
+ const pending=Array.from({length:9},(_,i)=>i+1).filter(n=>!checks.has(n));
+ audit.append(elt('strong','',newKit?
+  '🛒 NOVO KIT · Ainda sem Item ID publicado':
+  '🔎 ANÚNCIO EXISTENTE · Conferir o Item ID antes de executar'));
+ audit.append(elt('p','',newKit?
+  'O botão inicia a conferência do Kit Formal: vínculos, estoque, logística, 9 fotos e prévia. Somente a confirmação final cria um anúncio.':
+  'O botão consulta o anúncio real e executa somente as pendências autorizadas, sem criar outro anúncio.'));
+ if(pending.length){
+  audit.append(elt('p','','Etapas sem conferência local: '+pending.map(n=>
+   String(n).padStart(2,'0')+' '+KIT_WIZARD_TITLES[n-1]).join(' · ')+
+   '. Clique abaixo para abrir a etapa necessária.'));
+  const actions=elt('div','kit-wizard-pending-actions');
+  actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
+  for(const n of pending){
+   const b=elt('button','kit-secondary','Revisar '+String(n).padStart(2,'0')+' · '+KIT_WIZARD_TITLES[n-1]);
+   b.type='button';b.addEventListener('click',()=>kitWizardSetStage(n,{scroll:true}));
+   actions.append(b);
+  }
+  audit.append(actions);
+ }else{
+  audit.append(elt('p','','Etapas 01–09 marcadas como conferidas neste navegador. A publicação ainda depende de validação real da Shopee.'));
+ }
+ if(newKit){
+  audit.append(elt('p','','A conferência local não equivale a anúncio publicado. O formulário de publicação e os motivos de bloqueio aparecem abaixo.'));
+ }
+ const action=$('#kitWizardOpenExecution');
+ if(action)action.textContent=newKit?'▶ Verificar pendências e preparar publicação':'▶ Executar pendências no anúncio existente';
+}
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
  const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/10 conferidas';
@@ -929,6 +997,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  kitWizardMountTechnical();
  kitWizardMountPricing();
  kitWizardMountFiscalPreset();
+ kitWizardExecutionAudit();
  if(kitWizardStage===9)void kitWizardRequestDiscount();
  if(kitWizardStage===5)kitWizardRequestTechnical();
  else kitWizardTechnicalLoadingFor='';
@@ -967,8 +1036,23 @@ function kitWizardInit(){
   if(kitWizardResumingTarget||kitWizardExecutionOpening)return;
   clearTimeout(kitWizardResumeTimeout);kitWizardResumeTimeout=null;
   kitWizardExecutionIntent=true;
-  if(!prepared?.kit||!kitSaved){
-   status('Salve o rascunho antes de executar na Shopee. Nenhum envio realizado.','warning');
+  if(!prepared?.kit){
+   kitWizardExecutionIntent=false;
+   kitWizardExecutionFeedback('Abra um rascunho salvo antes de executar. Nenhum envio realizado.','warning');
+   return;
+  }
+  // Um kit ainda nao publicado nao tem Item ID. Nunca procurar uma SKU
+  // existente para editar como se fosse este novo Kit Formal.
+  if(kitWizardIsNewUnpublished()){
+   kitWizardExecutionIntent=false;
+   kitWizardExecutionAudit();
+   kitWizardExecutionFeedback('Conferindo as exigências do novo Kit Formal. Nenhum anúncio foi criado.','info');
+   await kitPublishGuideNext();
+   return;
+  }
+  if(!kitSaved){
+   kitWizardExecutionIntent=false;
+   kitWizardExecutionFeedback('Salve o rascunho antes de executar pendências de um anúncio existente.','warning');
    return;
   }
   const selected=globalThis.RAKitWizardExecutionReviews?.();
@@ -1710,6 +1794,7 @@ async function categories(force=false){
 }
 function kitPublishStatus(text,state='info'){
  const node=$('#kitPublishStatus');node.textContent=text;node.dataset.state=state;
+ if(kitWizardStage===10&&kitWizardIsNewUnpublished())kitWizardExecutionFeedback(text,state);
 }
 function clearKitPublishApproval(){
  kitPublishToken=null;kitDiscountToken=null;
@@ -2279,6 +2364,7 @@ async function kitRevalidateAfterImport(){
 }
 function kitPublishGuideNotice(message,state='info'){
  const el=$('#kitPublishGuideInfo');if(el){el.textContent=message;el.dataset.state=state;}
+ if(kitWizardStage===10&&kitWizardIsNewUnpublished())kitWizardExecutionFeedback(message,state);
 }
 function kitPublishGuideFocus(selector){
  const element=$(selector);
