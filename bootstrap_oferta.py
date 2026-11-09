@@ -61,7 +61,7 @@ if '/static/ob-premium-v3.css' not in html:
 if '/static/ob-flyer-gallery-v6.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v12hd"></head>')
 if '/static/ob-premium.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v52" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v13logo" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 # Stable V4 pricing engine and UI for category leaders and existing favorites.
 (folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
@@ -192,10 +192,11 @@ assert "data-ob-list" not in _market_js
 (folder/'static/ob-market-cards-v9.js').write_text(_market_js,encoding='utf-8')
 (folder/'static/ob-market-cards-v9.css').write_text(_market_css,encoding='utf-8')
 if '/static/ob-market-cards-v9.css' not in html:
-    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-market-cards-v9.css?v=20261109v9"></head>')
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-market-cards-v9.css?v=20261109v13logo"></head>')
 if '/static/ob-market-cards-v9.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-market-cards-v9.js?v=20261109v9" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-market-cards-v9.js?v=20261109v13logo" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-market-cards-v9.js')],check=True)
+subprocess.run(['node',str(root/'oferta-market-quality-tests-v13.cjs')],cwd=str(root),check=True)
 assert html.index('/static/ob-market-cards-v9.css') > html.index('/static/ob-promo-depth-v8.css')
 assert html.index('/static/ob-market-cards-v9.js') > html.index('/static/ob-premium.js')
 assert html.count('/static/ob-market-cards-v9.css')==1 and html.count('/static/ob-market-cards-v9.js')==1
@@ -232,9 +233,9 @@ assert "@import" not in _branch_css and "url(http" not in _branch_css
 (folder/'static/ob-branch-offers-v11.js').write_text(_branch_js,encoding='utf-8')
 subprocess.run(['node','--check',str(folder/'static/ob-branch-offers-v11.js')],check=True)
 if '/static/ob-branch-offers-v11.css' not in html:
-    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-branch-offers-v11.css?v=20261109v12hd"></head>')
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-branch-offers-v11.css?v=20261109v13status"></head>')
 if '/static/ob-branch-offers-v11.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-branch-offers-v11.js?v=20261109v12hd" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-branch-offers-v11.js?v=20261109v13status" defer></script></body>')
 assert html.count('/static/ob-branch-offers-v11.js')==1
 assert html.count('/static/ob-branch-offers-v11.css')==1
 assert html.index('/static/ob-branch-offers-v11.js')>html.index('/static/ob-market-cards-v9.js')

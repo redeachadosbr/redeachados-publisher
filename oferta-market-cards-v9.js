@@ -38,6 +38,7 @@
     }
     mark.classList.add('ob-store-logo-v9');
     mark.setAttribute('aria-label','Marca '+brand.name);
+    mark.classList.toggle('ob-store-featured-logo',brand.name==='Cooper'||brand.name==='Unibox Dinardelli');
     const helper=window.OBPremiumPublic&&window.OBPremiumPublic.brandLogo;
     if(typeof helper==='function'){
       try{mark.innerHTML=helper(brand.name,false);}

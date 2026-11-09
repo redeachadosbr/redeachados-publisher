@@ -134,3 +134,32 @@ body.ob-premium [data-page="mercados"] .marketcard a.ctaLink:hover{
   margin-top:11px;box-shadow:0 5px 13px #007c4933;
 }
 .ob-branch-view-flyer:hover{filter:brightness(1.07)}
+
+
+/* V13: resultados reais vs informação insuficiente (sem sinalizar falsa ausência de ofertas). */
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability{
+ display:flex;flex-direction:column;gap:4px;min-height:48px;
+ padding:10px 12px;margin:8px 0 12px;border-radius:11px;
+ border:1px solid #d4e9de;background:#f3faf7;color:#0c6b4c;line-height:1.38;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability strong{
+ display:block;color:inherit;font-size:12px;font-weight:850;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability small{
+ display:block;color:#456d5a;font-size:10px;line-height:1.45;font-weight:550;
+}
+body.ob-premium [data-page="mercados"] .marketcard[data-ob-branch-state="confirmed"] .ob-branch-availability{
+ background:#e8fff1;border-color:#bdebcf;color:#096f49;
+}
+body.ob-premium [data-page="mercados"] .marketcard[data-ob-branch-state="flyer-only"] .ob-branch-availability{
+ background:#ecf7ff;border-color:#bedef0;color:#225b79;
+}
+body.ob-premium [data-page="mercados"] .marketcard[data-ob-branch-state="unverified"] .ob-branch-availability{
+ background:#fff7e8;border-color:#f1ddb2;color:#835c1d;
+}
+body.ob-premium [data-page="mercados"] .marketcard[data-ob-branch-state="unverified"] .ob-branch-availability small{color:#7b6039}
+@media(max-width:650px){
+ body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability{padding:8px 9px;gap:3px}
+ body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability strong{font-size:10px}
+ body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability small{font-size:9px}
+}

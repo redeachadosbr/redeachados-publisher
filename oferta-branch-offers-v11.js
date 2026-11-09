@@ -59,8 +59,14 @@
     return {offers:[...unique.values()].sort((a,b)=>Number(a.price)-Number(b.price)),
       flyers:[...magazines.values()].sort((a,b)=>String(b.ends_on).localeCompare(String(a.ends_on)))};
   }
-  const statusText=(o,f)=>o?o+' produto'+(o===1?'':'s')+' com preço confirmado':
-    f?f+' encarte'+(f===1?'':'s')+' vigente'+(f===1?'':'s'):'Sem ofertas verificadas';
+  // Somente preço aprovado comprova oferta individual; varredura de rede não comprova filial.
+  const statusFor=(o,f)=>{
+    if(o>0)return {key:'confirmed',heading:o+' produto'+(o===1?'':'s')+' com preço confirmado',detail:'Preços aprovados para esta filial.'};
+    if(f>0)return {key:'flyer-only',heading:f+' encarte'+(f===1?'':'s')+' vigente'+(f===1?'':'s')+', sem preços individuais',
+      detail:'Encarte disponível, mas nenhum preço individual foi confirmado nesta unidade.'};
+    return {key:'unverified',heading:'Nenhum preço confirmado nesta filial',
+      detail:'Verificação individual não comprovada; o mercado pode ter promoções.'};
+  };
   function cardFor(card,db){
     const store=findStore(card,db.stores);
     let button=card.querySelector('.ob-branch-offers-btn');
@@ -84,8 +90,15 @@
         summary=document.createElement('p');summary.className='ob-branch-availability';
         button.before(summary);
       }
-      const message=statusText(counts.offers.length,counts.flyers.length);
-      if(summary.textContent!==message)summary.textContent=message;
+      const status=statusFor(counts.offers.length,counts.flyers.length);
+      const signature=status.key+'|'+status.heading+'|'+status.detail;
+      if(summary.dataset.obBranchText!==signature){
+        summary.dataset.obBranchText=signature;
+        const heading=document.createElement('strong');heading.textContent=status.heading;
+        const detail=document.createElement('small');detail.textContent=status.detail;
+        summary.replaceChildren(heading,detail);
+      }
+      if(card.dataset.obBranchState!==status.key)card.dataset.obBranchState=status.key;
       summary.classList.toggle('is-empty',!counts.offers.length);
       card.classList.add('ob-branch-ready');
     }else{
@@ -145,7 +158,7 @@
         '<button type="button" class="ob-branch-open-vitrine" data-ob-branch-vitrine="'+escape(store.id)+'">Ver na vitrine e adicionar à lista de compras</button></section>';
     }else{
       content+='<div class="ob-branch-empty"><strong>Nenhum preço promocional confirmado nesta filial.</strong>'+
-        '<p>A página oficial ou um encarte não confirma, sozinho, o preço individual. O sistema mostra produtos somente após validação de preço, embalagem, filial e vigência.</p></div>';
+        '<p>Isso não comprova ausência de promoções. Não há evidência de verificação individual concluída nesta unidade; consulte a fonte oficial e valide preço, embalagem, filial e vigência antes de publicar.</p></div>';
     }
     if(flyers.length)content+='<section class="ob-branch-section"><h3>Encartes vigentes desta filial</h3>'+flyers.map(renderFlyer).join('')+'</section>';
     if(official)content+='<div class="ob-branch-official"><span>A consulta oficial pode exigir que você selecione a filial novamente.</span>'+
@@ -209,5 +222,5 @@
     window.addEventListener('load',paint,{once:true});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)paint()});
   }
-  return {init,byBranch,findStore,activeOffer,activeFlyer,paint};
+  return {init,byBranch,findStore,activeOffer,activeFlyer,statusFor,paint};
 });

@@ -50,8 +50,8 @@ const BRANDS={
 const brandFor=n=>BRANDS[n]||{key:'other',primary:'#0b8667',secondary:'#d7f59b',word:n,logo:'',site:''};
 function brandLogo(n,compact=false){
  const b=brandFor(n);
- const word='<span class="ob-logo-text" aria-hidden="true">'+esc(b.word)+'</span>';
- const img=b.logo?'<img src="'+esc(b.logo)+'" alt="Logo '+esc(n)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.hidden=true">'+word:word;
+ const word=(hidden=false)=>'<span class="ob-logo-text" aria-hidden="true"'+(hidden?' hidden':'')+'>'+esc(b.word)+'</span>';
+ const img=b.logo?'<img src="'+esc(b.logo)+'" alt="Logo '+esc(n)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+word(true):word();
  return '<span class="ob-logo '+(compact?'compact':'')+'" data-brand="'+esc(b.key)+'">'+img+'</span>';
 }
 const brandAttr=n=>{const b=brandFor(n);return 'data-brand="'+esc(b.key)+'" style="--shop-color:'+b.primary+';--shop-accent:'+b.secondary+'"';};
