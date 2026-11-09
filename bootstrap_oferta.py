@@ -39,6 +39,43 @@ try:
     print('OCR_DEPENDENCY_READY' if npm.returncode==0 else 'OCR_DEPENDENCY_UNAVAILABLE')
 except (OSError,subprocess.TimeoutExpired):
     print('OCR_DEPENDENCY_UNAVAILABLE')
+# TEMP: compare publicly accessible document dimensions; non-fatal read-only diagnostics.
+def _probe_flyer_dimensions():
+    import urllib.request
+    sources = [
+      ('fort_s3_original','https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
+      ('fort_edge_330','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x330/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
+      ('other_copy_481894_candidate','https://na.leafletscdn.com/com.br/data/119/481894/0.jpg'),
+      ('other_copy_479765_known','https://na.leafletscdn.com/com.br/data/119/479765/0.jpg')
+    ]
+    def size(b):
+      if b.startswith(b'\x89PNG') and len(b)>24:
+        return (int.from_bytes(b[16:20],'big'),int.from_bytes(b[20:24],'big'))
+      if not b.startswith(b'\xff\xd8'):return None
+      p=2
+      while p<len(b)-12:
+        if b[p]!=0xff:p+=1;continue
+        while p<len(b) and b[p]==0xff:p+=1
+        if p>=len(b):break
+        k=b[p];p+=1
+        if k==0xd9 or k==0xda:break
+        if k in [0xd8,0x01] or 0xd0<=k<=0xd7:continue
+        if p+2>len(b):break
+        n=int.from_bytes(b[p:p+2],'big')
+        if k in [0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf] and p+7<len(b):
+          return (int.from_bytes(b[p+5:p+7],'big'),int.from_bytes(b[p+3:p+5],'big'))
+        p+=max(2,n)
+      return None
+    for name,url in sources:
+      try:
+        req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 OfertaBlumenau diagnostic','Accept':'image/jpeg,image/png,image/webp'})
+        with urllib.request.urlopen(req,timeout=6) as resp:
+          data=resp.read(500000)
+          print('OB_IMAGE_PROBE',name,'status',resp.status,'content_type',resp.headers.get('Content-Type'),'bytes_seen',len(data),'total_bytes',resp.headers.get('Content-Length'),'dimensions',size(data))
+      except Exception as e:
+        print('OB_IMAGE_PROBE',name,'error',str(e)[:160])
+_probe_flyer_dimensions()
+# END TEMP diagnostic.
 # Enforce consistent login form/server policy and accurate authentication errors.
 (folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
