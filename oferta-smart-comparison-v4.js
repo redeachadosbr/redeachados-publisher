@@ -54,8 +54,8 @@ function pageInit(){
  '<button class="ob-smart-opt" data-ob-smart-refresh>Atualizar preços</button></div>'+
  '<div class="ob-smart-insight" id="obSmartInsight" aria-live="polite">Verificando preços publicados...</div>'+
  '<div id="obBestCompare" class="ob-smart-grid"></div>';
- const trust=$('obTrustStrip')?.closest('.ob-section');
- if(trust)trust.after(section);else page.prepend(section);
+ // Keep the shopping products first. Detailed price rankings belong below the product grid.
+ page.append(section);
  const savedPage=document.querySelector('[data-page="salvos"]');
  if(savedPage){
   const listPanel=document.createElement('section');listPanel.className='ob-section ob-smart-basket';listPanel.id='obSmartBasket';
