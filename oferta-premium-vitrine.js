@@ -65,6 +65,8 @@ const approvedDiscount=o=>{
 };
 const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
 const REFERENCE_PRODUCT_IMAGES={
+ 'Creme Dental Colgate Luminous White|140 g':{url:'https://imgprd.martinsatacado.com.br/catalogoimg/19202/02_19202_03.jpg?v=260420213559%3Bims%3D1000x',source:'Martins Atacado'},
+ 'Creme Dental Colgate Total|180 g':{url:'https://static.paodeacucar.com/img/uploads/1/467/648467.jpg',source:'Pão de Açúcar'},
  'Queijo Polenghi Cream Cheese Tradicional ou Light|150 g':{url:'https://coopsp.vtexassets.com/arquivos/ids/252320-800-auto?aspect=true&height=auto&v=639071238147330000&width=800',source:'Coop SP'},
  'Requeijão Cremoso Lac Lélo Tradicional ou Light|180 g':{url:'https://bistek.vtexassets.com/arquivos/ids/211219/2170108%20Requeijao%20Cremoso%20Tradicional%20Lac%20Lelo%20Copo%20180g.png?v=639050328104870000',source:'Bistek'},
  'Massa Grano Duro Granoro|500 g':{url:'https://www.rommac.com.br/imagens/produtos/605x605/25469_PASTA_G.DURO_GRANORO_500G_PENNE_RIGATE_1.jpg',source:'Rommac'},
