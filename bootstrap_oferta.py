@@ -136,6 +136,8 @@ _backend_path.write_text(_backend_source,encoding='utf-8')
 # Protected source diagnostic endpoint for first-party public URLs only.
 (folder/'oferta_probe_v11.py').write_text((root/'oferta_probe_v11.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'oferta_probe_v11.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(_backend_path))
+(folder/'oferta_prices_probe_v12.py').write_text((root/'oferta_prices_probe_v12.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'oferta_prices_probe_v12.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(_backend_path))
 import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
