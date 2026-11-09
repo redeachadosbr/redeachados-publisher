@@ -64,7 +64,7 @@ page.write_text(html,encoding='utf-8')
 # Confirm runtime markup contracts before accepting a new deployment.
 import re
 for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','trackedName','compareTerm'):
-    if not re.search(r'\bid\s*=\s*["\\']'+element_id+r'["\\']',html):
+    if ('id="'+element_id+'"') not in html and ("id='"+element_id+"'") not in html:
         raise RuntimeError('Missing critical UI control: '+element_id)
 if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
     raise RuntimeError('Missing offers navigation page')
