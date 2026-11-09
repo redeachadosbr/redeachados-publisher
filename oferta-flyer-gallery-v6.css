@@ -388,3 +388,30 @@ body.ob-premium .obf-scene :focus-visible,.obf-dialog :focus-visible{outline:3px
   .obf-dialog .obf-dialog-footer span{display:none}
   .obf-dialog .obf-dialog-footer a{flex:1 1 auto;padding:9px 6px;font-size:10px}
 }
+
+
+/* V16 — pixel-accurate interactive reader; low-resolution source warning. */
+.obf-dialog .obf-dialog-img{
+  box-sizing:border-box;overflow:auto!important;overflow-anchor:none;
+  display:block!important;align-items:initial!important;justify-content:initial!important;
+  overscroll-behavior:contain;touch-action:pan-x pan-y;
+}
+.obf-dialog .obf-dialog-img img{
+  display:block!important;box-sizing:border-box!important;
+  width:auto;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
+  height:auto!important;margin:0!important;object-fit:contain;image-rendering:auto;
+  user-select:none;-webkit-user-drag:none;
+}
+.obf-dialog .obf-dialog-guidance{
+  display:flex;flex:1 1 285px;min-width:0;flex-direction:column;gap:3px;justify-content:center;
+}
+.obf-dialog .obf-dialog-guidance strong{font-size:11px;font-weight:800;color:#245a4c}
+.obf-dialog .obf-dialog-guidance small{font-size:11px;line-height:1.45;color:#648277}
+.obf-dialog .obf-dialog-guidance small.is-low{color:#915b17;font-weight:800}
+.obf-dialog .obf-zoom-controls button{touch-action:manipulation}
+@media(max-width:760px){
+ .obf-dialog .obf-dialog-footer{flex-wrap:wrap;gap:5px}
+ .obf-dialog .obf-dialog-guidance{flex:1 1 100%;order:3;padding:2px 5px}
+ .obf-dialog .obf-dialog-guidance strong{font-size:10px}
+ .obf-dialog .obf-dialog-guidance small{font-size:10px}
+}

@@ -150,18 +150,48 @@
        '<div class="obf-market-bottom">'+official+'</div>'+
      '</div></article>';
  }
- let currentZoom=1;
- function setZoom(action){
+ // Zoom real da visualização: largura em pixels, não uma porcentagem instável.
+ // 100% = imagem encaixada na largura; 200% = duas vezes a largura de encaixe.
+ let currentZoom=1,fitWidth=0,loadId=0,pinchStart=null;
+ const zoomTarget=(from,delta)=>delta===0?1:Math.max(1,Math.min(6,Math.round((from+(delta>0?.5:-.5))*10)/10));
+ const imageQuality=(width,height)=>{
+   if(!Number.isFinite(width)||!Number.isFinite(height)||width<1||height<1)
+     return {low:true,text:'Resolução da imagem indisponível. Confira a fonte oficial.'};
+   const small=width<1100;
+   return {low:small,text:small?
+     'Atenção: o arquivo publicado tem '+width+' × '+height+' pixels. Ampliar não recupera detalhes ausentes. Consulte também o encarte oficial.':
+     'Imagem de origem: '+width+' × '+height+' pixels. Arraste ou role para ler outras partes da página.'};
+ };
+ function updateQuality(img){
+   const dlg=document.getElementById('obfDialog');if(!dlg)return;
+   const p=dlg.querySelector('#obfImageQuality');if(!p)return;
+   const info=imageQuality(img.naturalWidth,img.naturalHeight);
+   if(p.textContent!==info.text)p.textContent=info.text;
+   p.classList.toggle('is-low',info.low);
+ }
+ function zoomTo(next,focusX,focusY){
    const dlg=document.getElementById('obfDialog');if(!dlg)return;
    const viewport=dlg.querySelector('#obfDialogViewport'),img=dlg.querySelector('#obfDialogImage');
-   const previous=currentZoom;
-   currentZoom=action===0?1:Math.max(1,Math.min(3,Math.round((currentZoom+(action>0?.4:-.4))*10)/10));
-   img.style.width=(100*currentZoom)+'%';
-   dlg.querySelector('#obfZoomLabel').textContent=Math.round(currentZoom*100)+'%';
-   if(previous!==currentZoom&&previous>0){
-     viewport.scrollLeft=Math.max(0,viewport.scrollLeft*currentZoom/previous);
-     viewport.scrollTop=Math.max(0,viewport.scrollTop*currentZoom/previous);
-   }
+   const avail=Math.max(260,viewport.clientWidth-18);
+   if(!fitWidth)fitWidth=avail;
+   const previous=currentZoom,oldWidth=Math.max(1,fitWidth*previous);
+   const nextWidth=Math.max(260,Math.round(fitWidth*Math.max(1,Math.min(6,next))));
+   const pointX=Number.isFinite(focusX)?focusX:viewport.clientWidth/2;
+   const pointY=Number.isFinite(focusY)?focusY:viewport.clientHeight/2;
+   const srcX=(viewport.scrollLeft+pointX)/oldWidth;
+   const srcY=(viewport.scrollTop+pointY)/oldWidth;
+   currentZoom=nextWidth/fitWidth;
+   img.style.width=nextWidth+'px';
+   img.style.maxWidth='none';
+   img.style.maxHeight='none';
+   const label=dlg.querySelector('#obfZoomLabel');
+   if(label)label.textContent=Math.round(currentZoom*100)+'%';
+   // A posição em zoom permanece sobre o mesmo produto/preço no centro da tela.
+   viewport.scrollLeft=Math.max(0,Math.round(srcX*nextWidth-pointX));
+   viewport.scrollTop=Math.max(0,Math.round(srcY*nextWidth-pointY));
+ }
+ function setZoom(action){
+   zoomTo(zoomTarget(currentZoom,action));
  }
  function ensureModal(){
    let dlg=document.getElementById('obfDialog');
@@ -169,49 +199,104 @@
    dlg=document.createElement('dialog');dlg.id='obfDialog';dlg.className='obf-dialog';
    dlg.innerHTML='<div class="obf-dialog-head"><strong id="obfDialogTitle">Encarte</strong>'+
      '<div class="obf-zoom-controls"><button type="button" data-obf-zoom="-1" aria-label="Diminuir zoom">−</button>'+
-     '<output id="obfZoomLabel" aria-live="polite">100%</output>'+
+     '<output id="obfZoomLabel" aria-live="polite">200%</output>'+
      '<button type="button" data-obf-zoom="1" aria-label="Aumentar zoom">+</button>'+
      '<button type="button" data-obf-fit>Encaixar</button>'+
      '<button type="button" data-obf-close aria-label="Fechar visualização">'+icon('close')+'</button></div></div>'+
-     '<div class="obf-dialog-img" id="obfDialogViewport" tabindex="0" aria-label="Imagem do encarte, role para ler os produtos">'+
-       '<img id="obfDialogImage" alt="Imagem ampliada do encarte" decoding="async"></div>'+
-     '<div class="obf-dialog-footer"><span>Use + para ampliar os produtos e preços.</span>'+
-       '<a id="obfDialogOriginal" target="_blank" rel="noopener noreferrer">'+icon('external')+' Abrir imagem original</a>'+
-       '<a id="obfDialogMarket" target="_blank" rel="noopener noreferrer">'+icon('shop')+' Ofertas do mercado</a></div>';
+     '<div class="obf-dialog-img" id="obfDialogViewport" tabindex="0" aria-label="Imagem do encarte: role para navegar, use mais ou menos para ampliar">'+
+     '<img id="obfDialogImage" alt="Imagem ampliada do encarte" decoding="async"></div>'+
+     '<div class="obf-dialog-footer"><div class="obf-dialog-guidance">'+
+     '<strong>Zoom funcional: + e −, Ctrl + rolagem, ou dois dedos no celular.</strong>'+
+     '<small id="obfImageQuality" role="status">Carregando resolução do encarte…</small></div>'+
+     '<a id="obfDialogOriginal" target="_blank" rel="noopener noreferrer">'+icon('external')+' Abrir imagem original</a>'+
+     '<a id="obfDialogMarket" target="_blank" rel="noopener noreferrer">'+icon('shop')+' Ofertas do mercado</a></div>';
    document.body.append(dlg);
    dlg.querySelector('[data-obf-close]').addEventListener('click',()=>dlg.close());
    dlg.addEventListener('click',e=>{
      if(e.target===dlg){dlg.close();return}
      const z=e.target.closest('[data-obf-zoom]');
-     if(z){setZoom(Number(z.dataset.obfZoom));return}
-     if(e.target.closest('[data-obf-fit]'))setZoom(0);
+     if(z){e.preventDefault();setZoom(Number(z.dataset.obfZoom));return}
+     if(e.target.closest('[data-obf-fit]')){e.preventDefault();setZoom(0)}
+   });
+   const viewport=dlg.querySelector('#obfDialogViewport');
+   viewport.addEventListener('wheel',e=>{
+     if(!(e.ctrlKey||e.metaKey))return;
+     e.preventDefault();
+     const rect=viewport.getBoundingClientRect();
+     zoomTo(zoomTarget(currentZoom,e.deltaY<0?1:-1),e.clientX-rect.left,e.clientY-rect.top);
+   },{passive:false});
+   viewport.addEventListener('touchstart',e=>{
+     if(e.touches.length!==2){pinchStart=null;return}
+     const x=e.touches[0].clientX-e.touches[1].clientX,y=e.touches[0].clientY-e.touches[1].clientY;
+     pinchStart={distance:Math.hypot(x,y),zoom:currentZoom};
+   },{passive:true});
+   viewport.addEventListener('touchmove',e=>{
+     if(!pinchStart||e.touches.length!==2)return;
+     const x=e.touches[0].clientX-e.touches[1].clientX,y=e.touches[0].clientY-e.touches[1].clientY;
+     const distance=Math.hypot(x,y);
+     if(pinchStart.distance<8)return;
+     e.preventDefault();
+     const rect=viewport.getBoundingClientRect();
+     const midX=(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left;
+     const midY=(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top;
+     zoomTo(pinchStart.zoom*distance/pinchStart.distance,midX,midY);
+   },{passive:false});
+   viewport.addEventListener('touchend',e=>{if(e.touches.length<2)pinchStart=null},{passive:true});
+   dlg.addEventListener('keydown',e=>{
+     if(e.target?.closest('input,textarea,select'))return;
+     if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(1)}
+     else if(e.key==='-'){e.preventDefault();setZoom(-1)}
+     else if(e.key==='0'){e.preventDefault();setZoom(0)}
    });
    return dlg;
  }
  function preview(g,i){
    const dlg=ensureModal(),img=dlg.querySelector('#obfDialogImage');
+   const viewport=dlg.querySelector('#obfDialogViewport');
    dlg.querySelector('#obfDialogTitle').textContent=labelTitle(g.title);
    img.alt='Encarte '+g.network+' ampliado';
-   let retried=false;
    const original=dlg.querySelector('#obfDialogOriginal');
-   original.href=g.cover;
+   const message=dlg.querySelector('#obfImageQuality');
+   if(message)message.textContent='Carregando imagem original…';
+   let retried=false;const ticket=++loadId;
+   img.onload=()=>{
+     if(ticket!==loadId)return;
+     // Guardar a dimensão e posicionar o zoom apenas APÓS o modal ganhar largura.
+     updateQuality(img);
+     fitWidth=Math.max(260,viewport.clientWidth-18);
+     currentZoom=1;
+     img.style.width=Math.round(fitWidth)+'px';
+     viewport.scrollLeft=0;viewport.scrollTop=0;
+     zoomTo(2,0,0);
+     viewport.scrollLeft=0;viewport.scrollTop=0;
+   };
    img.onerror=()=>{
+     if(ticket!==loadId)return;
      if(!retried&&g.fallback&&g.fallback!==g.cover){
        retried=true;img.src=g.fallback;original.href=g.fallback;
-     }else toast('Imagem indisponível. Consulte as ofertas no site oficial.');
+     }else {
+       const msg='Imagem indisponível. Consulte o encarte no site oficial.';
+       if(message)message.textContent=msg;toast(msg);
+     }
    };
-   img.src=g.cover;
-   setZoom(0);
-   const viewport=dlg.querySelector('#obfDialogViewport');
-   viewport.scrollTop=0;viewport.scrollLeft=0;
    const market=dlg.querySelector('#obfDialogMarket');
    const selected=i>=0?document.querySelector('[data-obf-store="'+i+'"]'):null;
    const n=selected?Number(selected.value):0;
    const link=g.links[n]?.url||g.links[0]?.url||g.source_url;
    market.hidden=!link;
    if(link)market.href=link;else market.removeAttribute('href');
-   if(typeof dlg.showModal==='function')dlg.showModal();
-   else root.open(g.cover,'_blank','noopener,noreferrer');
+   original.href=g.cover;
+   // showModal before reading clientWidth: previously the dialog was hidden at 0px.
+   if(typeof dlg.showModal==='function'){
+     if(!dlg.open)dlg.showModal();
+   } else {
+     root.open(g.cover,'_blank','noopener,noreferrer');return;
+   }
+   fitWidth=Math.max(260,viewport.clientWidth-18);
+   currentZoom=1;
+   img.src=g.cover;
+   // Same URL may already be in cache; an onload on a cached resource is not guaranteed on all browsers.
+   if(img.complete&&img.naturalWidth>0)img.onload();
  }
  function openImage(l,title,marketUrl){
    const candidate=bestFlyerImage(typeof l==='string'?{asset_url:l}:l);
@@ -320,5 +405,5 @@
    try{drawLeaflets=render}catch(_e){}
    render();
  }
- return {init,render,group,isValid,imageUrl,fullImageUrl,bestFlyerImage,openImage,prettyDate};
+ return {init,render,group,isValid,imageUrl,fullImageUrl,bestFlyerImage,openImage,zoomTarget,imageQuality,prettyDate};
 });

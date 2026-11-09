@@ -58,7 +58,7 @@ if '/static/ob-premium.css' not in html:
 if '/static/ob-premium-v3.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
 if '/static/ob-flyer-gallery-v6.css' not in html:
-    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v12hd"></head>')
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v16reader"></head>')
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v14noshorcuts" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
@@ -148,7 +148,7 @@ if '/static/ob-v3-center.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v32" defer></script></body>')
 # The leaflet gallery runs after the original app.js and additive UI scripts.
 if '/static/ob-flyer-gallery-v6.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-flyer-gallery-v6.js?v=20261109v12hd" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-flyer-gallery-v6.js?v=20261109v16reader" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-flyer-gallery-v6.js')],check=True)
 subprocess.run(['node',str(root/'oferta-flyer-gallery-tests-v6.cjs')],cwd=str(root),check=True)
 assert 'id="leafletGrid"' in html and 'id="onlyActive"' in html
