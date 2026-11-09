@@ -69,6 +69,12 @@ async def admin_provenance(payload:dict=Body(...),x_admin_token:Optional[str]=He
         raise HTTPException(400,'Ação não permitida')
     if payload.get('action') in {'submit_fiscal','submit_leaflet'} and payload.get('store_id') not in ALL_STORES:
         raise HTTPException(400,'Filial não cadastrada')
+    if payload.get('action')=='submit_leaflet':
+        sid=payload.get('store_id')
+        if payload.get('network') != ALL_STORES[sid]['rede']:
+            raise HTTPException(422,'Rede não corresponde à filial cadastrada')
+        if not host_allowed(payload.get('source_url','')):
+            raise HTTPException(422,'Encarte sem fonte oficial autorizada')
     return await v3_provenance_call(payload)
 '''
 def patch_source(path):
