@@ -101,3 +101,14 @@ import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
 print('Oferta Blumenau: secure app prepared')
+
+
+# OFFER_SOURCE_AUDIT_START
+import ast as _ofa_ast
+_ofa_tree=_ofa_ast.parse(_backend_source)
+for _ofa_name in ('sync_sources','scan_leaflets','read_brochure','extract_leaflets','detect_candidate_lines','insert_candidates','actual_flyer'):
+    _ofa_node=next((n for n in _ofa_tree.body if isinstance(n,(_ofa_ast.FunctionDef,_ofa_ast.AsyncFunctionDef)) and n.name==_ofa_name),None)
+    if _ofa_node:
+        _ofa_code=_ofa_ast.get_source_segment(_backend_source,_ofa_node) or ''
+        print('OFA_AUDIT_'+_ofa_name.upper()+' '+_ofa_code[:8500].replace('\n',' | '),flush=True)
+# OFFER_SOURCE_AUDIT_END
