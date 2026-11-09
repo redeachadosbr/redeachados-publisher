@@ -201,13 +201,14 @@ async function hydrateVerifiedLeaflets(){
 function refreshTrustStrip(){
  const root=document.getElementById('obTrustStrip');if(!root)return;
  const visible=visibleOffers();
- const fiscal=visible.filter(x=>x.source_type==='fiscal').length;
+ const fiscal=Math.max(visible.filter(x=>x.source_type==='fiscal').length,Number(window.obFiscalVerifiedCount||0));
  const promo=visible.filter(x=>x.source_type!=='fiscal').length;
  const dist=visible.filter(x=>approvedDiscount(x)).length;
  root.innerHTML='<div class="ob-trust-stat"><strong>✓ '+promo+' ofertas conferidas</strong><small>Produtos aprovados com fonte original e validade</small></div>'+
  '<div class="ob-trust-stat"><strong>◉ '+fiscal+' preços fiscais</strong><small>Somente observações integradas com origem autorizada</small></div>'+
  '<div class="ob-trust-stat"><strong>−'+dist+' descontos comprovados</strong><small>Percentual visível só com preço anterior verificado</small></div>';
 }
+window.obRefreshTrustStrip=refreshTrustStrip;
 function makeLayout(){
  document.body.classList.add('ob-premium');
  const nav=document.querySelector('.sidebar');
