@@ -2271,8 +2271,10 @@ async function kitReadinessCheck(){
   kitLogisticsKeeper.channel(result.channels);
   kitApplyPendingLogisticName();
   kitPublishStatus(result.blockers?.length?
-   'PUBLICAÇÃO BLOQUEADA: '+result.blockers.join(' | '):
-   'Todos os componentes estão vinculados a anúncios ativos. Confirme peso e dimensões medidos e envie as fotografias.',
+   'Não foi possível publicar: '+result.blockers.join(' | '):
+   (result.autoRecovered?.length?
+    '✓ Identifiquei e vinculei automaticamente '+result.autoRecovered.map(x=>x.product).join(' e ')+'. ': '')+
+    'Produtos da Shopee conferidos. Preparando a publicação do kit.',
    result.blockers?.length?'error':'success');
  }catch(error){kitPublishStatus('Falha na conferência: '+error.message,'error');}
  finally{kitPublishBusy=false;$('#kitPublishCheck').disabled=false;}
