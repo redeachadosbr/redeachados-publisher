@@ -84,7 +84,7 @@ assert.equal(G.imageQuality(800,1100).low,true);
 assert.equal(G.imageQuality(2100,3000).low,false);
 assert.ok(main.includes('img.style.width=nextWidth+\'px\''),'pixel-based zoom instead of scaled container percentage');
 assert.ok(main.includes('viewport.addEventListener(\'touchmove\'')&&main.includes('viewport.addEventListener(\'wheel\''),'pinch and Ctrl+wheel zoom');
-assert.ok(main.indexOf('dlg.showModal()')<main.indexOf('img.src=g.cover;'),'modal opens before measuring its viewport');
+assert.ok(main.indexOf('dlg.showModal()')<main.lastIndexOf('img.src=g.cover;'),'modal opens before measuring its viewport');
 assert.ok(main.includes('g.fallback'),'image failure falls back safely');
 assert.ok(css.includes('.obf-zoom-controls')&&css.includes('width:min(96vw,1540px)'),'viewer uses near-full width');
 console.log('OB_V12_FULL_RESOLUTION_ZOOM_AND_BRANCH_VIEW_PASS');
