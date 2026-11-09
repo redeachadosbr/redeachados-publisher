@@ -124,3 +124,13 @@ body.ob-premium [data-page="mercados"] .marketcard a.ctaLink:hover{
 @media(prefers-reduced-motion:reduce){
  body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn{transition:none}
 }
+
+/* V12: a verified branch leaflet opens in the large in-app image viewer. */
+.ob-branch-view-flyer{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #8ddcb9;border-radius:10px;padding:10px 13px;
+  background:linear-gradient(135deg,#079b68,#03684b);
+  color:white;font-size:12px;font-weight:800;cursor:zoom-in;
+  margin-top:11px;box-shadow:0 5px 13px #007c4933;
+}
+.ob-branch-view-flyer:hover{filter:brightness(1.07)}

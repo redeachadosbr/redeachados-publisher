@@ -123,14 +123,20 @@
         verified+'</div><span class="ob-branch-price">'+escape(money(o.price))+'</span></article>';
     };
     const renderFlyer=l=>{
-      const dest=safeUrl(l.source_url)||safeUrl(l.asset_url);
-      const preview=safeUrl(l.asset_url);
-      const image=preview&&/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(preview)?
-        '<img src="'+escape(preview)+'" alt="Capa do encarte" loading="lazy">':'<span class="ob-branch-leaf-icon">📰</span>';
+      const gallery=root.OBFlyerGalleryV6;
+      const asset=gallery?.bestFlyerImage?.(l);
+      const preview=asset?.src||null;
+      const official=safeUrl(l.source_url)||safeUrl(store.url_ofertas);
+      const image=preview?'<img src="'+escape(preview)+'" alt="Capa do encarte" loading="lazy" decoding="async">':
+        '<span class="ob-branch-leaf-icon">📰</span>';
+      const id=String(l.id??'');
+      const link=preview&&id?
+        '<button class="ob-branch-view-flyer" type="button" data-ob-branch-flyer="'+escape(id)+'">Ampliar encarte e ler produtos</button>':
+        official?'<a href="'+escape(official)+'" target="_blank" rel="noopener noreferrer">Consultar encarte oficial ↗</a>':'';
       return '<article class="ob-branch-flyer">'+image+'<div><strong>'+escape(l.title||'Encarte oficial')+'</strong>'+
         '<small>Encarte associado a esta filial · até '+escape(l.ends_on)+'</small>'+
         '<small>Os preços das páginas não foram convertidos automaticamente em ofertas de produtos.</small>'+
-        (dest?'<a href="'+escape(dest)+'" target="_blank" rel="noopener noreferrer">Abrir encarte ↗</a>':'')+'</div></article>';
+        link+'</div></article>';
     };
     const official=safeUrl(store.url_ofertas);
     let content='<div class="ob-branch-summary"><strong>'+products.length+'</strong> produtos com preço e validade confirmados <span>·</span> <strong>'+flyers.length+'</strong> encartes vigentes vinculados à filial</div>';
@@ -185,6 +191,17 @@
       if(store){e.preventDefault();e.stopPropagation();show(store)}
     });
     document.addEventListener('click',e=>{
+      const flyer=e.target.closest('[data-ob-branch-flyer]');
+      if(flyer){
+        const db=data(),l=db.leaflets.find(x=>String(x.id)===flyer.dataset.obBranchFlyer);
+        if(l&&root.OBFlyerGalleryV6?.openImage){
+          e.preventDefault();
+          const store=db.stores.find(x=>String(x.id)===String(l.store_id));
+          dialog().close();
+          root.OBFlyerGalleryV6.openImage(l,l.title||'Encarte oficial',safeUrl(l.source_url)||safeUrl(store?.url_ofertas));
+        }
+        return;
+      }
       const target=e.target.closest('[data-ob-branch-vitrine]');
       if(target)openInVitrine(target.dataset.obBranchVitrine);
     });
