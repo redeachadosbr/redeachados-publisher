@@ -154,7 +154,7 @@ subprocess.run(['node',str(root/'oferta-flyer-gallery-tests-v6.cjs')],cwd=str(ro
 assert 'id="leafletGrid"' in html and 'id="onlyActive"' in html
 assert 'data-page="encartes"' in html and 'data-page="gestao"' in html
 assert html.index('/static/ob-flyer-gallery-v6.js')>html.index('/static/ob-premium.js')
-assert 'OB_V6_LEAFLET_INSPECT' not in (root/'bootstrap_oferta.py').read_text(encoding='utf-8')
+assert not any(line.lstrip().startswith('print(') and 'LEAFLET_INSPECT' in line for line in (root/'bootstrap_oferta.py').read_text(encoding='utf-8').splitlines())
 print('OB_V6_FLYERS_GALLERY_INTEGRATION_PASS')
 page.write_text(html,encoding='utf-8')
 
