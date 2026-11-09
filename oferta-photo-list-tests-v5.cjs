@@ -1,0 +1,38 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const app=fs.readFileSync('oferta-blumenau/static/app.js','utf8');
+const premium=fs.readFileSync('oferta-blumenau/static/ob-premium.js','utf8');
+const css=fs.readFileSync('oferta-blumenau/static/ob-photo-cards-v5.css','utf8');
+const first=app.indexOf('function addTracked(){'),last=app.indexOf('function drawTracked(){',first);
+assert.ok(first>0 && last>first,'existing shopping list function must be available');
+const fn=app.slice(first,last);
+const box={value:'  Café   Melitta Tradicional   '};
+let stored=[],page='',draws=0;
+const state={tracked:[],byId:id=>id==='trackedName'?box:null,
+ storeTracked:()=>{stored=[...state.tracked]},drawTracked:()=>draws++,
+ selectPage:x=>{page=x},alert:()=>{throw Error('unexpected alert')}};
+vm.createContext(state);
+vm.runInContext(fn+';addTracked();',state,{timeout:1000});
+assert.equal(state.tracked.length,1);
+assert.equal(state.tracked[0],'Café Melitta Tradicional');
+assert.equal(stored[0],'Café Melitta Tradicional');
+assert.equal(page,'salvos');
+assert.equal(draws,1);
+box.value='  café melitta tradicional ';
+vm.runInContext(fn+';addTracked();',state,{timeout:1000});
+assert.equal(state.tracked.length,1,'duplicate favorites must not create double list items');
+box.value='Pão Artesano';
+vm.runInContext(fn+';addTracked();',state,{timeout:1000});
+assert.equal(stored.length,2,'adding a second product persists list');
+assert.match(premium,/data-ob-list/);
+assert.match(premium,/data-ob-brand/);
+assert.match(premium,/data-ob-package/);
+assert.match(premium,/ob-mini-photo-box/);
+assert.match(premium,/const li=e\.target\.closest\('\[data-ob-list\]'\)/);
+assert.match(premium,/addTracked\(\)/);
+assert.match(css,/\.ob-mini-add/);
+assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(css,/\.ob-mini-photo/);
+console.log('OB_V5_REAL_LIST_SAVE_DUPLICATE_AND_MOBILE_CARDS_PASS');
