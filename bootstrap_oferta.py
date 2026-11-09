@@ -94,9 +94,13 @@ _new="msg(`${d.inserted} sugestões novas por ${d.method}. Revise preços e praz
 if _jscode.count(_old)!=1:raise RuntimeError('Original private OCR import interface changed; abort')
 _js_path.write_text(_jscode.replace(_old,_new,1),encoding='utf-8')
 (folder/'static/ob-intel.js').write_text((root/'oferta-smart-ui.js').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-v3-center.js').write_text((root/'oferta-v3-center.js').read_text(encoding='utf-8'),encoding='utf-8')
+subprocess.run(['node','--check',str(folder/'static/ob-v3-center.js')],check=True)
 subprocess.run(['node','--check',str(folder/'static/ob-intel.js')],check=True)
 if '/static/ob-intel.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-intel.js?v=20261109smart10" defer></script></body>')
+if '/static/ob-v3-center.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v3" defer></script></body>')
 page.write_text(html,encoding='utf-8')
 
 
