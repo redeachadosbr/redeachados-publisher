@@ -137,6 +137,8 @@ async function fiscal(){
  if(!r.ok)throw Error(String(d.detail||'HTTP '+r.status));
  if(!Array.isArray(d.data))throw Error('Formato inválido');
  count.textContent=d.data.length+' preços fiscais verificados';
+ window.obFiscalVerifiedCount=d.data.length;
+ if(typeof window.obRefreshTrustStrip==='function')window.obRefreshTrustStrip();
  list.innerHTML=d.data.length?d.data.map(x=>'<article class="ob-v3-fiscal-card">'+
   '<div><span class="ob-v3-fiscal-proof">◉ Fiscal observado · não é promoção</span><h4>'+html(x.product_name)+'</h4>'+
   '<small>'+html(x.brand||'')+' '+html(x.package||'')+'</small><p>Loja '+html(x.store_id)+' · '+html(date(x.observed_at))+'</p></div>'+
