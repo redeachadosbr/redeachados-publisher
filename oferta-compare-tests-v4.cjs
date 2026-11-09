@@ -1,0 +1,65 @@
+'use strict';
+const assert=require('node:assert/strict');
+const E=require('./oferta-compare-engine-v4.js');
+const now='2026-11-09';
+const row=(name,brand,pack,price,network,sid,extras={})=>({
+ name,brand,package:pack,price,network,store_id:sid,category:'Mercearia',
+ source_url:'https://example.org/official/'+sid,
+ starts_on:'2026-11-01',ends_on:'2026-11-15',...extras});
+const a=row('Café Especial Forte','Melitta','500 g',24,'Cooper','BLU-011',{category:'Café'});
+const ab=row('Café Especial Forte','Melitta','500 g',24,'Cooper','BLU-012',{category:'Café'});
+const b=row('Café Especial Forte','Melitta','500 g',30,'Bistek','BLU-023',{category:'Café'});
+const c=row('Café Especial Forte','Melitta','250 g',14,'Bistek','BLU-024',{category:'Café'});
+const d=row('Café Especial Forte','Pilão','500 g',20,'Fort','BLU-022',{category:'Café'});
+const expired=row('Café Especial Forte','Melitta','500 g',11,'Giassi','BLU-028',{ends_on:'2026-11-08'});
+const fiscal=row('Café Especial Forte','Melitta','500 g',10,'Rede TOP','BLU-030',{source_type:'fiscal'});
+const valid=[a,ab,b,c,d,expired,fiscal];
+const g=E.groups(valid,{day:now});
+const exact=g.find(x=>x.identity.exact===E.productIdentity(a).exact);
+assert.equal(exact.networkCount,2,'8 filiais Cooper cannot be 8 competitors');
+assert.equal(exact.ranks.length,2);
+assert.equal(exact.first.offer.network,'Cooper');
+assert.equal(exact.first.offer.price,24);
+assert.equal(exact.second.offer.network,'Bistek');
+assert.equal(exact.marketSavingPercent,20);
+assert.equal(exact.marketSavingAmount,6);
+assert.equal(g.filter(x=>x.first.offer.network==='Giassi').length,0);
+assert.equal(g.filter(x=>x.first.offer.network==='Rede TOP').length,0);
+assert.ok(!g.some(x=>x.identity.base===E.productIdentity(d).base&&x.networkCount>1),
+  'Different brands never grouped');
+const single=E.groups([a,ab],{day:now})[0];
+assert.equal(single.networkCount,1);
+assert.equal(single.marketSavingPercent,null,'no fake discount from two branches same chain');
+assert.equal(E.productPack(a).qty,.5);
+assert.equal(E.productPack(c).qty,.25);
+const unit=E.groups([a,c],{day:now,mode:'unit'});
+assert.equal(unit.length,1);
+assert.equal(unit[0].first.offer.store_id,'BLU-011','R$48/kg beats R$56/kg');
+assert.equal(E.groups([a,c],{day:now}).length,2,'different package sizes never direct-price compared');
+const coffee=E.matchSaved('Café Especial Forte',valid,now);
+assert.equal(coffee.ambiguous,true,'multiple brands/pack sizes must be flagged as alternatives');
+assert.equal(coffee.competition,null,'do not imply discount between unequal products');
+const withBrand=E.matchSaved('Café Especial Forte 500g',valid,now,{brand:'Melitta',package:'500 g'});
+assert.equal(withBrand.best.price,24);
+assert.equal(withBrand.networkCount,2);
+assert.equal(withBrand.ambiguous,false);
+assert.equal(withBrand.competition.savingAmount,6);
+const clean=E.matchSaved('açúcar',valid,now);
+assert.equal(clean.best,null);
+const list=E.optimizeBasket(['Café Especial Forte 500g'],valid,now,{
+ [E.norm('Café Especial Forte 500g')]:{brand:'Melitta',package:'500 g'}});
+assert.equal(list.comparable,true);
+assert.equal(list.bestSingleNetwork.total,24);
+assert.equal(list.bestSingleNetwork.network,'Cooper');
+const missing=E.optimizeBasket(['Café Especial Forte 500g','Leite Condensado'],valid,now,{
+ [E.norm('Café Especial Forte 500g')]:{brand:'Melitta',package:'500 g'}});
+assert.equal(missing.comparable,false);
+assert.equal(missing.splitTotal,null,'never claim full-basket cost with missing items');
+assert.equal(E.matchSaved('Café Especial Forte 500g',[a,c,b],now,{brand:'Melitta',package:'500 g'}).valid.length,2);
+assert.equal(E.groups([a,{...b,price:24}],{day:now})[0].marketSavingPercent,null,'tie is not saving');
+assert.equal(E.productPack({package:'2 x 500 ml'}).qty,1,'multipack normalized to liters');
+assert.equal(E.productPack({package:'2,3 L'}).qty,2.3);
+assert.equal(E.productPack({package:'400 g'}).qty,.4);
+assert.equal(E.gtinValid('7896006716112'),true);
+assert.equal(E.gtinValid('7896006716113'),false);
+console.log('OB_V4_COMPARE_17_SAFETY_SCENARIOS_PASS');
