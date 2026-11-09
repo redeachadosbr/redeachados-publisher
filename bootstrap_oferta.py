@@ -217,6 +217,29 @@ assert html.count('/static/ob-mobile-fullwidth-v10.css')==1
 assert html.index('/static/ob-mobile-fullwidth-v10.css') > html.index('/static/ob-market-cards-v9.css')
 assert 'id="offersGrid"' in html
 print('OB_V10_MOBILE_VIEWPORT_PASS')
+# V11 — browse only confirmed promotions assigned to each individual branch.
+# The original supplier CTA and all saved state remain unchanged.
+_branch_css=(root/'oferta-branch-offers-v11.css').read_text(encoding='utf-8')
+_branch_js=(root/'oferta-branch-offers-v11.js').read_text(encoding='utf-8')
+assert '.ob-branch-offers-btn' in _branch_css
+assert 'byBranch' in _branch_js and 'store_id' in _branch_js
+assert 'Nenhum preço promocional confirmado nesta filial' in _branch_js
+assert "String(o.store_id||'')===id" in _branch_js
+assert "String(l.store_id||'')===id" in _branch_js
+assert 'prefers-reduced-motion' in _branch_css
+assert "@import" not in _branch_css and "url(http" not in _branch_css
+(folder/'static/ob-branch-offers-v11.css').write_text(_branch_css,encoding='utf-8')
+(folder/'static/ob-branch-offers-v11.js').write_text(_branch_js,encoding='utf-8')
+subprocess.run(['node','--check',str(folder/'static/ob-branch-offers-v11.js')],check=True)
+if '/static/ob-branch-offers-v11.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-branch-offers-v11.css?v=20261109v11"></head>')
+if '/static/ob-branch-offers-v11.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-branch-offers-v11.js?v=20261109v11" defer></script></body>')
+assert html.count('/static/ob-branch-offers-v11.js')==1
+assert html.count('/static/ob-branch-offers-v11.css')==1
+assert html.index('/static/ob-branch-offers-v11.js')>html.index('/static/ob-market-cards-v9.js')
+assert html.index('/static/ob-branch-offers-v11.css')>html.index('/static/ob-mobile-fullwidth-v10.css')
+print('OB_V11_BRANCH_OFFERS_UI_PASS')
 page.write_text(html,encoding='utf-8')
 
 
