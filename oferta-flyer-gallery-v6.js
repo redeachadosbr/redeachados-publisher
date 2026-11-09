@@ -14,7 +14,7 @@
  }
 })(typeof globalThis==='object'?globalThis:window,function(){
  const FAV_KEY='oferta-blumenau-flyers-fav-v6';
- const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;',"'":'&#39;'}[c]));
+ const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const validHttps=value=>{try{const x=new URL(String(value||''));return x.protocol==='https:'&&!x.username&&!x.password?x.href:null}catch{return null}};
  const today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
  const isValid=(d,day=today())=>!!(d&&/^\d{4}-\d{2}-\d{2}$/.test(String(d.starts_on||''))&&
