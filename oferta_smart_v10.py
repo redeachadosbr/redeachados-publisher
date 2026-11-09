@@ -87,7 +87,6 @@ async def parse_top_store_pages(client,html,source_url,all_stores,extract,stamp,
         else:
             continue
         if not verified_official(target,"redetop.com.br") or not allowed(target):continue
-        sid=lookup[label][0]
         if sid in seen:continue
         seen.add(sid)
         try:
