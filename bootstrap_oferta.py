@@ -45,6 +45,21 @@ runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['pat
 # Update the old SQLite-only warning: state is now stored in Supabase.
 page=folder/'static/index.html'
 html=page.read_text(encoding='utf-8')
+
+# Temporary, read-only inspection of leaflet gallery markup and original handlers.
+_ob_orig_js=(folder/'static/app.js').read_text(encoding='utf-8')
+_ob_orig_html=html
+for _tag in ('function drawLeaflets(', 'function renderLeaflets(', 'function loadLeaflets(', 'function openLeaflet(', 'leafletsGrid', 'leafletGrid', 'leafletCard', 'data-page="encartes"', 'let leaflets=', 'function refreshAll(', 'function safeUrl('):
+  _target=_ob_orig_js if 'data-page' not in _tag else _ob_orig_html
+  _p=_target.find(_tag)
+  print('OB_V6_LEAFLET_INSPECT',_tag,_p,repr(_target[max(0,_p-200):_p+5000] if _p>=0 else 'NOT_FOUND'))
+_ob_orig_css=(folder/'static/styles.css')
+if _ob_orig_css.exists():
+  _cc=_ob_orig_css.read_text(encoding='utf-8')
+  for _tag in ('.sidebar', '.sidebtn', '.leaflet', '.leaflets', '.flyer', '.encarte'):
+    _p=_cc.find(_tag)
+    print('OB_V6_STYLE_INSPECT',_tag,_p,repr(_cc[_p:_p+650] if _p>=0 else 'NOT_FOUND'))
+
 html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
                   'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
 # Premium 3D interface: additive CSS/JS; never change authenticated API or price records.
