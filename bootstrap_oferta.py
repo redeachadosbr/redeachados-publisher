@@ -78,6 +78,7 @@ assert smart['verified_official']('https://www.redetop.com.br/institucional/ofer
 assert not smart['verified_official']('https://redetop.com.br.evil.example/ofertas','redetop.com.br')
 assert smart['match_top_blumenau']('Blumenau / Escola Agrícola',{'BLU-X':{'rede':'Rede TOP','filial':'Escola Agrícola'}})=='BLU-X'
 assert smart['match_top_blumenau']('Gaspar / Escola Agrícola',{'BLU-X':{'rede':'Rede TOP','filial':'Escola Agrícola'}}) is None
+assert 'lookup[' not in (folder/'oferta_smart_v10.py').read_text(encoding='utf-8')
 print('OB_SMART_SOURCE_GUARDS_PASS')
 # Private coverage by source and current approved prices.
 (folder/'oferta_coverage_v10.py').write_text((root/'oferta_coverage_v10.py').read_text(encoding='utf-8'),encoding='utf-8')
