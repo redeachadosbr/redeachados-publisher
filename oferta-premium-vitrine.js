@@ -17,11 +17,17 @@ milk:'<path d="M7 21V8l3-5h4l3 5v13H7ZM7 8h10"/>',
 leaf:'<path d="M20 4C10 4 4 9 4 16a5 5 0 0 0 5 5c7 0 12-5 11-17ZM4 21c3-5 8-9 13-12"/>',
 meat:'<path d="M8 21c-6-3-6-10-2-13 2-2 3-5 7-5 6-1 10 5 8 10-2 6-8 5-11 8H8Z"/><circle cx="15" cy="10" r="2"/>',
 bag:'<rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
-clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+clean:'<rect x="6" y="9" width="12" height="12" rx="2"/><path d="M10 9V4h5v5M8 4h9M7 13h10M9 17h6"/>',
+drink:'<path d="M8 3h8l-1 5H9L8 3ZM9 8v13h6V8M8 21h8"/><path d="M11 2h2"/>',
+hygiene:'<path d="M7 4h10M10 4v3M14 4v3M8 7h8l2 14H6L8 7ZM9 13h6"/>',
+cart:'<path d="M3 3h2l3 12h12l2-9H6"/><circle cx="10" cy="20" r="1"/><circle cx="19" cy="20" r="1"/>',
+pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2"/>'
+
 };
 const icons={ofertas:'fire',mercados:'market',encartes:'flyer',comparar:'compare',salvos:'heart',fontes:'offer',gestao:'lock'};
 const icon=(name,kind)=>'<span aria-hidden="true" class="ob-icon '+(kind||name)+'"><svg viewBox="0 0 24 24">'+(shapes[name]||shapes.offer)+'</svg></span>';
-const catDefs=[['Todas','offer'],['Mercearia','bag'],['Hortifruti','leaf'],['Carnes','meat'],['Laticínios','milk'],['Café','coffee'],['Limpeza','bag'],['Bebidas','bag'],['Higiene','heart']];
+const catDefs=[['Todas','offer'],['Mercearia','bag'],['Hortifruti','leaf'],['Carnes','meat'],['Laticínios','milk'],['Café','coffee'],['Limpeza','clean'],['Bebidas','drink'],['Higiene','hygiene']];
 const short={'Fort Atacadista':'Fort','Brasil Atacadista':'Brasil','Unibox Dinardelli':'Unibox'};
 let activeCat='Todas',ready=false;
 const esc=x=>sanitize(x);
@@ -58,9 +64,18 @@ const approvedDiscount=o=>{
  return pct>=1&&pct<=95?{pct,old}:null;
 };
 const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
+const REFERENCE_PRODUCT_IMAGES={
+ 'Pão Pullman Artesano Tradicional|500 g':{url:'https://zaffari.vtexassets.com/arquivos/ids/314566/1016846-00.jpg.jpg?v=639141887646030000',source:'Zaffari'},
+ 'Suco Bistek 100% Laranja|900 ml':{url:'https://bistek.vtexassets.com/arquivos/ids/207889-600-600?aspect=true&height=600&v=638945034546430000&width=600',source:'Bistek'},
+ 'Tomate Pelado Noel|400 g':{url:'https://santaluzia.vtexassets.com/arquivos/ids/991269/3167526.jpg?v=638315081245030000',source:'Casa Santa Luzia'},
+ 'Lava-Roupas em Pó Omo Todo Ciclo|2 kg':{url:'https://multicanalatacado.agilecdn.com.br/492982.png',source:'Multicanal Atacado'},
+ 'Iogurte Nestlé Ninho Bandeja|540 g':{url:'https://static.paodeacucar.com/img/uploads/1/827/24599827.jpg',source:'Pão de Açúcar'}
+};
 function sourceImage(o){
  const img=safeUrl(o.image_url||'');
  if(img!=='#')return {src:img,kind:'product',alt:'Foto verificada de '+o.name};
+ const item=REFERENCE_PRODUCT_IMAGES[String(o.name||'')+'|'+String(o.package||'')];
+ if(item&&safeUrl(item.url)!=='#')return {src:item.url,kind:'reference',alt:'Imagem ilustrativa da embalagem de '+o.name+' — origem: '+item.source,credit:item.source};
  const proof=safeUrl(o.source_url||'');
  if(proof!=='#'&&/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(proof))return {src:proof,kind:'flyer',alt:'Imagem original do encarte — não é foto individual do produto'};
  return null;
@@ -122,7 +137,7 @@ function drawPremiumOffers(){
    const pict=media?'<img class="ob-real-photo" loading="lazy" decoding="async" src="'+esc(media.src)+'" alt="'+esc(media.alt)+'" onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
      '<div class="ob-product-placeholder" hidden><span>'+productGlyph(o)+'</span><small>Imagem não disponível</small></div>':
      '<div class="ob-product-placeholder"><span>'+productGlyph(o)+'</span><small>Foto individual ainda não disponível</small></div>';
-   const imageInfo=media&&media.kind==='flyer'?'<span class="ob-photo-caption">Imagem do encarte</span>':media&&media.kind==='product'?'<span class="ob-photo-caption">Foto do produto</span>':'';
+   const imageInfo=media&&media.kind==='flyer'?'<span class="ob-photo-caption">Imagem do encarte</span>':media&&media.kind==='reference'?'<span class="ob-photo-caption">Foto ilustrativa · '+esc(media.credit)+'</span>':media&&media.kind==='product'?'<span class="ob-photo-caption">Foto vinculada ao produto</span>':'';
    const badge=disc?'<span class="ob-discount">−'+disc.pct+'%</span>':'<span class="ob-scope">Oferta com preço conferido</span>';
    const old=disc?'<span class="ob-old">De '+brl(disc.old)+'</span>':'';
    const label=proofStatus(o);
