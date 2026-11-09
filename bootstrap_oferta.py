@@ -20,4 +20,10 @@ patch=next(node for node in source.body if isinstance(node,ast.FunctionDef) and 
 namespace={}
 exec(compile(ast.Module(body=[patch],type_ignores=[]),'<remote-bridge-patch>','exec'),namespace)
 namespace['patch_source'](str(folder/'server.py'))
+# Update the old SQLite-only warning: state is now stored in Supabase.
+page=folder/'static/index.html'
+html=page.read_text(encoding='utf-8')
+html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Exporte uma cópia depois de cada atualização importante.',
+                  'as ofertas cadastradas ficam salvas no Supabase mesmo após reiniciar. Exporte backups periodicamente como proteção extra.')
+page.write_text(html,encoding='utf-8')
 print('Oferta Blumenau: secure app prepared')
