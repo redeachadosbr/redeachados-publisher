@@ -1,0 +1,126 @@
+/* V11: ações reais por filial, mantendo logos, endereços, links e layout da V10. */
+body.ob-premium [data-page="mercados"] .marketcard.ob-branch-ready{
+  display:flex;flex-direction:column;position:relative;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability{
+  font-size:12px;line-height:1.4;font-weight:650;color:#076e50;
+  margin:8px 0 11px;min-height:18px;letter-spacing:0;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability.is-empty{color:#65837e}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  position:relative;z-index:3;min-height:49px;width:100%;
+  margin-top:auto;margin-bottom:9px;padding:10px 15px;
+  border-radius:15px;border:1px solid rgba(219,255,235,.85);
+  background:linear-gradient(160deg,#18d58d 0%,#059c6b 56%,#066849 100%);
+  box-shadow:0 5px 0 #06553e,0 15px 24px rgba(0,93,66,.22),inset 0 2px 2px #ffffff80;
+  color:white;font-size:15px;font-weight:850;letter-spacing:.1px;
+  text-shadow:0 1px 2px #06482e;cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn:hover{
+  transform:translateY(-2px);filter:saturate(1.1);
+  box-shadow:0 7px 0 #06553e,0 19px 25px #005d423b,inset 0 2px 2px #ffffff80;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn:focus-visible{
+  outline:3px solid #17a9ec;outline-offset:4px;
+}
+body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn:disabled{
+  cursor:not-allowed;opacity:.55;filter:grayscale(.3);
+}
+body.ob-premium [data-page="mercados"] .ob-branch-offers-count{
+  min-width:24px;height:24px;display:inline-grid;place-items:center;
+  padding:0 5px;border-radius:999px;background:#fff3;
+  border:1px solid #fff5;font-size:12px;font-weight:800;
+}
+body.ob-premium [data-page="mercados"] .marketcard a.ctaLink{
+  position:relative;z-index:3;min-height:39px;margin-top:0;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #0caa7d;background:#eefbf6;color:#067557;
+  box-shadow:0 4px 10px #0a75531c, inset 0 1px 0 #fff;font-weight:750;
+  text-shadow:none;font-size:12px;
+}
+body.ob-premium [data-page="mercados"] .marketcard a.ctaLink:hover{
+  color:#044a38;background:#dbf8ec;box-shadow:0 6px 14px #0a755327;
+}
+.ob-branch-dialog{
+  box-sizing:border-box;position:fixed;inset:0;
+  max-width:min(870px,calc(100vw - 24px));
+  width:min(870px,calc(100vw - 24px));
+  max-height:min(88dvh,930px);margin:auto;padding:0;
+  border:1px solid #c4efe0;border-radius:24px;
+  background:#f6fbfa;
+  color:#092f29;
+  box-shadow:0 35px 90px rgba(0,43,34,.34),0 0 0 1px #ffffffbd;
+  overflow:auto;
+}
+.ob-branch-dialog::backdrop{background:rgba(1,27,23,.70);backdrop-filter:blur(6px)}
+.ob-branch-modal{min-width:0;background:linear-gradient(165deg,#fff,#eef9f5);padding-bottom:18px}
+.ob-branch-modal-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding:24px 27px 22px;background:linear-gradient(125deg,#00583e,#07815c 65%,#21a680);
+  color:#fff;border-radius:23px 23px 0 0;
+}
+.ob-branch-kicker{font-size:11px;font-weight:850;letter-spacing:2px;color:#a5ffe1}
+.ob-branch-modal-head h2{font-size:clamp(21px,3vw,29px);line-height:1.2;margin:8px 0 7px;color:#fff}
+.ob-branch-modal-head p{margin:0;color:#d4fbec;font-size:13px;line-height:1.45}
+.ob-branch-close{
+  flex:0 0 38px;width:38px;height:38px;border:1px solid #ffffff78;border-radius:12px;
+  background:#ffffff26;color:#fff;font-size:19px;cursor:pointer;
+}
+.ob-branch-close:focus-visible,.ob-branch-dialog a:focus-visible,
+.ob-branch-dialog button:focus-visible{outline:3px solid #f9c940;outline-offset:2px}
+.ob-branch-modal-content{padding:18px 24px 9px}
+.ob-branch-summary{padding:12px 16px;background:#e6f9f0;border:1px solid #c4ebda;
+  border-radius:13px;color:#20584a;font-size:13px;line-height:1.5}
+.ob-branch-summary strong{font-size:18px;color:#007f55}
+.ob-branch-summary span{padding:0 7px;color:#92b5a6}
+.ob-branch-section{margin-top:23px}
+.ob-branch-section h3{font-size:18px;line-height:1.3;margin:0 0 13px;color:#103e30}
+.ob-branch-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ob-branch-product{
+  min-width:0;display:flex;align-items:flex-start;justify-content:space-between;gap:13px;
+  padding:14px;border-radius:15px;background:white;border:1px solid #e1f0eb;
+  box-shadow:0 7px 20px #065d4014;
+}
+.ob-branch-product strong{display:block;font-size:14px;line-height:1.35}
+.ob-branch-product small,.ob-branch-product .ob-branch-terms{display:block;color:#627d72;margin-top:4px;font-size:11px;line-height:1.5}
+.ob-branch-product a,.ob-branch-flyer a{display:inline-block;font-size:12px;font-weight:800;color:#007b57;margin-top:9px}
+.ob-branch-price{white-space:nowrap;font-size:17px;font-weight:900;color:#006e4c}
+.ob-branch-open-vitrine{
+  margin-top:13px;width:100%;min-height:44px;padding:10px 14px;border:0;border-radius:12px;
+  background:linear-gradient(120deg,#078e63,#006848);box-shadow:0 5px 14px #087e5433;
+  font-size:13px;font-weight:800;color:white;cursor:pointer;
+}
+.ob-branch-empty{margin-top:16px;padding:17px 18px;border-radius:14px;background:#fff;border:1px dashed #b5d8c9}
+.ob-branch-empty strong{font-size:15px;color:#28534b}
+.ob-branch-empty p{font-size:13px;color:#5b7269;line-height:1.55;margin:8px 0 0}
+.ob-branch-flyer{
+  display:flex;align-items:center;gap:15px;margin:10px 0;padding:12px;
+  border:1px solid #e3f0ec;border-radius:14px;background:#fff;
+}
+.ob-branch-flyer img{width:90px;height:113px;object-fit:contain;border-radius:9px;background:#eff5f3;flex-shrink:0}
+.ob-branch-leaf-icon{display:grid;place-items:center;width:70px;height:90px;background:#e4f8ee;border-radius:12px;font-size:33px}
+.ob-branch-flyer strong,.ob-branch-flyer small{display:block}
+.ob-branch-flyer strong{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.ob-branch-flyer small{font-size:11px;line-height:1.45;margin-top:6px;color:#627d72}
+.ob-branch-official{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin-top:20px;padding:14px 16px;border:1px solid #d4e9dd;background:#f4fcf7;border-radius:13px}
+.ob-branch-official span{font-size:12px;line-height:1.4;color:#557166}
+.ob-branch-official a{white-space:nowrap;font-size:13px;color:#007758;font-weight:800}
+@media(max-width:700px){
+  body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn{
+    min-height:43px;font-size:12px;padding:8px 7px;margin-bottom:7px;
+  }
+  body.ob-premium [data-page="mercados"] .marketcard .ob-branch-availability{font-size:10px}
+  .ob-branch-dialog{width:calc(100vw - 14px);max-width:calc(100vw - 14px);max-height:calc(100dvh - 22px);border-radius:17px}
+  .ob-branch-modal-head{padding:19px 16px;border-radius:16px 16px 0 0}
+  .ob-branch-modal-content{padding:14px 12px}
+  .ob-branch-products{grid-template-columns:minmax(0,1fr)}
+  .ob-branch-official{flex-direction:column;align-items:flex-start}
+  .ob-branch-product{padding:12px}
+  .ob-branch-flyer img{width:72px;height:92px}
+}
+@media(prefers-reduced-motion:reduce){
+ body.ob-premium [data-page="mercados"] .marketcard .ob-branch-offers-btn{transition:none}
+}
