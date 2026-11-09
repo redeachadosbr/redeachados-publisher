@@ -58,6 +58,20 @@ if '/static/ob-premium-v3.css' not in html:
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
+# Stable V4 pricing engine and UI for category leaders and existing favorites.
+(folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-smart-compare-v4.js').write_text((root/'oferta-smart-comparison-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-smart-compare-v4.css').write_text((root/'oferta-smart-comparison-v4.css').read_text(encoding='utf-8'),encoding='utf-8')
+subprocess.run(['node','--check',str(folder/'static/ob-compare-engine-v4.js')],check=True)
+subprocess.run(['node','--check',str(folder/'static/ob-smart-compare-v4.js')],check=True)
+subprocess.run(['node',str(root/'oferta-compare-tests-v4.cjs')],cwd=str(root),check=True)
+if '/static/ob-smart-compare-v4.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-smart-compare-v4.css?v=20261109v4"></head>')
+if '/static/ob-compare-engine-v4.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-compare-engine-v4.js?v=20261109v4" defer></script></body>')
+if '/static/ob-smart-compare-v4.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-smart-compare-v4.js?v=20261109v4" defer></script></body>')
+print('OB_V4_CATEGORY_COMPARE_AND_FAVORITES_READY')
 # Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
 (folder/'oferta-direct-image-fallback.py').write_text((root/'oferta-direct-image-fallback.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'oferta-direct-image-fallback.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
@@ -112,18 +126,6 @@ for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','tra
 if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
     raise RuntimeError('Missing offers navigation page')
 print('OB_UI_MARKUP_CONTRACT_PASS')
-# Temporary bounded read-only audit of existing favorites and comparison data structures.
-_ob_app=(folder/'static/app.js').read_text(encoding='utf-8')
-for _ob_token in ('function addTracked(', 'function loadTracked(', 'function drawTracked(', 'function refreshAll(', 'function compare(', 'trackedName', 'trackedItems', 'localStorage', 'salvos', 'favorite'):
-    _ob_indices=[]
-    _ob_from=0
-    while len(_ob_indices)<3:
-        _ob_at=_ob_app.find(_ob_token,_ob_from)
-        if _ob_at<0:break
-        _ob_indices.append(_ob_at)
-        _ob_from=_ob_at+len(_ob_token)
-    print('OB_FAVORITES_AUDIT',_ob_token, [_ob_app[max(0,p-150):p+1500].replace(chr(10),' | ') for p in _ob_indices])
-
 # Authenticated diagnostic endpoint: permits real readback of the live product catalogue
 # from Supabase-backed SQLite without exposing private offers publicly.
 _backend_path=folder/'server.py'
