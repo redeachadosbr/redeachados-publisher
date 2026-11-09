@@ -1,6 +1,11 @@
 'use strict';
 const assert=require('node:assert/strict');
-const E=require('./oferta-compare-engine-v4.js');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const sandbox={};
+vm.runInNewContext(fs.readFileSync(__dirname+'/oferta-compare-engine-v4.js','utf8'),sandbox,{timeout:2500});
+const E=sandbox.OBCompareEngine;
+assert.ok(E&&typeof E.groups==='function','Comparison engine accessible in browser-compatible module');
 const now='2026-11-09';
 const row=(name,brand,pack,price,network,sid,extras={})=>({
  name,brand,package:pack,price,network,store_id:sid,category:'Mercearia',
