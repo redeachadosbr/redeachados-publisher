@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
-test('uma única janela minimizada é reutilizada entre lotes e fechada somente por nonce/Manager autorizados',async()=>{
+test('uma única janela auxiliar sem foco é reutilizada entre lotes e fechada somente por nonce/Manager autorizados',async()=>{
  const key='raCurveResearchWindow';
  const state={},calls=[];
  const listener=()=>{};
@@ -22,8 +22,8 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
   windows:{
    onRemoved:{addListener:listener},
    create:async opts=>{calls.push(['create',opts]);return {id:8,
-    state:'minimized',tabs:[{id:71,windowId:8}]};},
-   get:async()=>({id:8,state:'minimized'}),
+    state:'normal',tabs:[{id:71,windowId:8}]};},
+   get:async()=>({id:8,state:'normal'}),
    update:async(id,info)=>{calls.push(['restore',id,info]);return {id,state:info.state};},
    remove:async id=>{calls.push(['close',id]);}
   },
@@ -44,13 +44,12 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
  assert.equal(second.id,71);assert.equal(second.newWindow,false);
  assert.equal(calls.filter(x=>x[0]==='create').length,1);
  assert.equal(calls[0][1].focused,false);
- assert.equal(calls[0][1].state,'minimized');
+ assert.equal(calls[0][1].state,'normal');
  assert.equal(await ctx.closeSession(nonce,999),false);
  const restored=await ctx.restoreResearchWindow(45,nonce);
  assert.equal(restored,71);
  assert.equal(calls.filter(x=>x[0]==='create').length,1);
- assert.deepEqual(JSON.parse(JSON.stringify(calls.find(x=>x[0]==='restore')[2])),
-  {state:'normal',focused:false});
+ assert.equal(calls.filter(x=>x[0]==='restore').length,0);
  assert.ok(state[key]);
  await assert.rejects(ctx.researchTab(72,nonce,'https://shopee.com.br/search'),/Já existe uma pesquisa/);
  assert.equal(await ctx.closeSession(nonce,45),true);
