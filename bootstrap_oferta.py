@@ -99,6 +99,43 @@ for _label,_url in _qs:
    print('OB_IMAGE_COMPARE',_label,'status',_reply.status,'ctype',_ct,'bytes',len(_response),'possible_assets',str(_found[:4])[:650],'meta',str(_og[:2])[:350])
  except Exception as _e:
   print('OB_IMAGE_COMPARE',_label,'error',str(_e)[:160])
+# Actual image candidates extracted from the HTML above: check size, not just URL existence.
+def _image_size_from_bytes(b):
+    if b.startswith(b'\xff\xd8'):
+        i=2
+        while i+9<len(b):
+            if b[i]!=0xff:i+=1;continue
+            i+=1
+            while i<len(b) and b[i]==0xff:i+=1
+            if i>=len(b):break
+            marker=b[i];i+=1
+            if marker in (0xda,0xd9):break
+            if marker in (0x01,0xd8) or 0xd0<=marker<=0xd7:continue
+            n=int.from_bytes(b[i:i+2],'big')
+            if marker in (0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf) and i+7<len(b):
+                return int.from_bytes(b[i+5:i+7],'big'),int.from_bytes(b[i+3:i+5],'big')
+            i+=max(2,n)
+    if b[:4]==b'RIFF' and b[8:12]==b'WEBP':
+        typ=b[12:16]
+        if typ==b'VP8X' and len(b)>30:
+            return 1+int.from_bytes(b[24:27],'little'),1+int.from_bytes(b[27:30],'little')
+        if typ==b'VP8L' and len(b)>25:
+            v=int.from_bytes(b[21:25],'little');return (v&0x3fff)+1,((v>>14)&0x3fff)+1
+        if typ==b'VP8 ' and len(b)>30 and b[23:26]==b'\x9d\x01\x2a':
+            return int.from_bytes(b[26:28],'little')&0x3fff,int.from_bytes(b[28:30],'little')&0x3fff
+    return None
+_accurate=[
+ ('food09_kimbino','https://na.kimbicdn.com/thumbor/eNxItp9pR-pRyUCiagPWp0wtDtY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481894/0.jpg'),
+ ('food09_portafolhetos','https://na.leafletscdn.com/thumbor/eNxItp9pR-pRyUCiagPWp0wtDtY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481894/0.jpg'),
+ ('fort_2026_food_old','https://na.leafletscdn.com/thumbor/uKBkWQZ7D8JHmDzz0ks2-C92X9Y=/0x0/filters:format(webp):quality(65)/com.br/data/119/479765/0.jpg'),
+]
+for _label,_url in _accurate:
+ try:
+  _req=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0','Accept':'image/webp,image/jpeg,*/*'})
+  with _ur.urlopen(_req,timeout=9) as _rp:
+   _data=_rp.read(600000)
+   print('OB_IMAGE_SIZE',_label,'status',_rp.status,'type',_rp.headers.get('Content-Type'),'size',_image_size_from_bytes(_data),'content_length',_rp.headers.get('Content-Length'),'bytes_sampled',len(_data))
+ except Exception as _ex:print('OB_IMAGE_SIZE',_label,'error',str(_ex)[:120])
 # END TEMP diagnostic.
 # Enforce consistent login form/server policy and accurate authentication errors.
 (folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
