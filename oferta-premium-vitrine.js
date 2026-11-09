@@ -65,7 +65,6 @@ const approvedDiscount=o=>{
 };
 const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
 const REFERENCE_PRODUCT_IMAGES={
- 'Pão Pullman Artesano Tradicional|500 g':{url:'https://zaffari.vtexassets.com/arquivos/ids/314566/1016846-00.jpg.jpg?v=639141887646030000',source:'Zaffari'},
  'Suco Bistek 100% Laranja|900 ml':{url:'https://bistek.vtexassets.com/arquivos/ids/207889-600-600?aspect=true&height=600&v=638945034546430000&width=600',source:'Bistek'},
  'Tomate Pelado Noel|400 g':{url:'https://santaluzia.vtexassets.com/arquivos/ids/991269/3167526.jpg?v=638315081245030000',source:'Casa Santa Luzia'},
  'Lava-Roupas em Pó Omo Todo Ciclo|2 kg':{url:'https://multicanalatacado.agilecdn.com.br/492982.png',source:'Multicanal Atacado'},
