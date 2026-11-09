@@ -65,6 +65,13 @@ const approvedDiscount=o=>{
 };
 const proofStatus=o=>o.source_type==='fiscal'?'Preço observado em documento fiscal':'Preço conferido no encarte';
 const REFERENCE_PRODUCT_IMAGES={
+ 'Pão Pullman Artesano Tradicional|500 g':{url:'https://comper.vteximg.com.br/arquivos/ids/207377-500-500/7896002302197_2.jpg?v=637788254540700000',source:'Comper'},
+ 'Tira-Manchas em Pó Vanish Refil|400 g':{url:'https://eletroangeloni.vtexassets.com/arquivos/ids/4121510/7891035051272_99_1_1200_72_RGB.png?v=639014055680370000',source:'Angeloni'},
+ 'Tira-Manchas em Pó Vanish 240g|240 g':{url:'https://bistek.vtexassets.com/arquivos/ids/209998/2048787%20Tira-Manchas%20Po%20Vanish%20Oxi%20Action%20240g.png?v=639026369329600000',source:'Bistek'},
+ 'Creme Dental Colgate Sensitive Original|110 g':{url:'https://drogariaspacheco.vteximg.com.br/arquivos/ids/1401137-1000-1000/387428---Pasta-de-Dente-Colgate-Sensitive-Pro-Alivio-Original-110g-3.jpg.jpg?v=638793859282200000',source:'Drogarias Pacheco'},
+ 'Creme Dental Colgate Tripla Ação Menta|180 g':{url:'https://drogal.vtexassets.com/arquivos/ids/245388/126303.jpg?v=638731476050500000',source:'Drogal'},
+ 'Creme Dental Colgate Tripla Ação X-White|120 g':{url:'https://prezunic.vtexassets.com/arquivos/ids/228822/69ce54bac6bf1e5a4eeead58.jpg?v=639107265931600000',source:'Prezunic'},
+ 'Café Melitta Tradicional ou Extraforte|500 g':{url:'https://www.redesuperbom.com.br/uploads/produtos/1392_barcelos_cafe-moido_cafe-melitta-500g-tradicional.jpg',source:'Rede Superbom'},
  'Suco Bistek 100% Laranja|900 ml':{url:'https://bistek.vtexassets.com/arquivos/ids/207889-600-600?aspect=true&height=600&v=638945034546430000&width=600',source:'Bistek'},
  'Tomate Pelado Noel|400 g':{url:'https://santaluzia.vtexassets.com/arquivos/ids/991269/3167526.jpg?v=638315081245030000',source:'Casa Santa Luzia'},
  'Lava-Roupas em Pó Omo Todo Ciclo|2 kg':{url:'https://multicanalatacado.agilecdn.com.br/492982.png',source:'Multicanal Atacado'},
