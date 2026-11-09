@@ -28,26 +28,8 @@ const esc=x=>sanitize(x);
 const brl=v=>money(v);
 const netList=()=>[...new Set(stores.map(s=>s.rede))];
 
-// Edição manual de 08/11/2026: valores copiados de lâminas oficiais Bistek SC.
-// Não são preços simulados nem registros aprovados pela API; expiram automaticamente.
-const bist202611=Object.freeze([{"name":"Lava-Roupas em Pó Omo Todo Ciclo","brand":"Omo","package":"2 kg","price":22.97,"category":"Limpeza","unit_kind":"kg","unit_price":11.49,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8xOTQzX3BhZ2VfMjA5OTIuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Suco Bistek 100% Laranja","brand":"Bistek","package":"900 ml","price":13.97,"category":"Bebidas","unit_kind":"L","unit_price":15.52,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8xOTQzX3BhZ2VfMjA5OTIuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Azeite de Oliva Viaflor Extra Virgem","brand":"Viaflor","package":"500 ml","price":21.97,"category":"Mercearia","unit_kind":"L","unit_price":43.94,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8xOTQzX3BhZ2VfMjA5OTIuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Enxaguante Bucal Colgate Plax","brand":"Colgate","package":"500 ml","price":17.99,"category":"Higiene","unit_kind":"L","unit_price":35.98,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8yMTM0X3BhZ2VfMjA5NjAuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Creme Dental Colgate Total","brand":"Colgate","package":"180 g","price":21.99,"category":"Higiene","unit_kind":"kg","unit_price":122.17,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8yMTM0X3BhZ2VfMjA5NjAuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Escova Dental Colgate ZigZag Carvão","brand":"Colgate","package":"4 unidades","price":27.99,"category":"Higiene","unit_kind":"un","unit_price":7,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8yMTM0X3BhZ2VfMjA5NjAuanBnJnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Tira-Manchas em Pó Vanish Refil","brand":"Vanish","package":"400 g","price":18.97,"category":"Limpeza","unit_kind":"kg","unit_price":47.43,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8yMTMzX3BhZ2VfMjA5NTguanBnNlY3VyZT17YnVybn0%3D.jpg"},{"name":"Tira-Manchas em Pó Vanish Sachê","brand":"Vanish","package":"1 kg","price":42.97,"category":"Limpeza","unit_kind":"kg","unit_price":42.97,"source_url":"https://institucional.bistek.com.br/image/c3JjPWltZy9vZmVydGFzL29mZXJ0YV8yMTMzX3BhZ2VfMjA5NTguanBnNlY3VyZT17YnVybn0%3D.jpg"}]);
-const bistBranches202611=[
- {store_id:'BLU-023',store:'Bistek Garcia',district:'Garcia'},
- {store_id:'BLU-024',store:'Bistek Park Europeu',district:'Fortaleza'}
-];
-function localDateBnu(){return new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
-function verifiedFlyerOffers(){
- const d=localDateBnu();
- if(d<'2026-11-04'||d>'2026-11-17')return [];
- const existing=new Set(offers.map(o=>String(o.store_id)+'|'+String(o.name).toLocaleLowerCase('pt-BR')+'|'+String(o.price)));
- return bist202611.flatMap(x=>bistBranches202611.map(b=>({
-  ...x,...b,network:'Bistek',starts_on:'2026-11-04',ends_on:'2026-11-17',
-  source_kind:'official_flyer_curated',image_url:'',
-  condition:'Encarte oficial SC · lojas físicas · sujeito a estoque'
- }))).filter(o=>!existing.has(o.store_id+'|'+o.name.toLocaleLowerCase('pt-BR')+'|'+o.price));
-}
-function visibleOffers(){return [...offers,...verifiedFlyerOffers()];}
-
+// O catálogo tem fonte única: somente ofertas aprovadas e vigentes da API/Supabase.
+const visibleOffers=()=>offers.filter(o=>!o.ends_on||o.ends_on>=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'}));
 function marketSelect(net){
  const input=document.getElementById('filterNetwork');
  if(input){input.value=net;buildFilterStore();drawMarkets();drawOffers();selectPage('ofertas')}
@@ -85,7 +67,7 @@ function drawPremiumOffers(){
  const url=safeUrl(o.image_url||''),photo=url!=='#'?'<img loading="lazy" src="'+esc(url)+'" alt="'+esc(o.name)+'" onerror="this.remove()">':icon('bag');
  const old=Number(o.original_price)>Number(o.price)?'<span class="ob-old">'+brl(o.original_price)+'</span>':'';
  const cond=o.condition||'Preço geral';
- return '<article class="ob-product"><div class="ob-photo"><span class="ob-verified">'+(o.source_kind==='official_flyer_curated'?'✓ Encarte oficial':'✓ Preço conferido')+'</span>'+photo+'</div><div class="ob-body"><span class="ob-store">'+esc(o.network)+' · '+esc(o.store)+'</span><h3>'+esc(o.name)+'</h3><div class="ob-detail">'+esc(o.brand||'Marca não informada')+' · '+esc(o.package)+'</div><div class="ob-price">'+brl(o.price)+old+'</div><div class="ob-unit">'+(o.unit_price?brl(o.unit_price)+' / '+esc(o.unit_kind):'Preço por unidade não disponível')+'</div><div class="ob-terms">'+esc(cond)+'</div></div><div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Até '+fmtDate(o.ends_on)+'</span><a href="'+esc(safeUrl(o.source_url))+'" target="_blank" rel="noopener noreferrer">Conferir fonte original ↗</a></div><div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'">+ Lista</button><button class="second" type="button" data-ob-compare="'+esc(o.name)+'">⚖ Comparar</button></div></article>'
+ return '<article class="ob-product"><div class="ob-photo"><span class="ob-verified">✓ Preço conferido</span>'+photo+'</div><div class="ob-body"><span class="ob-store">'+esc(o.network)+' · '+esc(o.store)+'</span><h3>'+esc(o.name)+'</h3><div class="ob-detail">'+esc(o.brand||'Marca não informada')+' · '+esc(o.package)+'</div><div class="ob-price">'+brl(o.price)+old+'</div><div class="ob-unit">'+(o.unit_price?brl(o.unit_price)+' / '+esc(o.unit_kind):'Preço por unidade não disponível')+'</div><div class="ob-terms">'+esc(cond)+'</div></div><div class="ob-meta"><span>📍 '+esc(o.district||'Blumenau')+'</span><span>📅 Até '+fmtDate(o.ends_on)+'</span><a href="'+esc(safeUrl(o.source_url))+'" target="_blank" rel="noopener noreferrer">Conferir fonte original ↗</a></div><div class="ob-actions"><button class="primary" type="button" data-ob-list="'+esc(o.name)+'">+ Lista</button><button class="second" type="button" data-ob-compare="'+esc(o.name)+'">⚖ Comparar</button></div></article>'
  }).join('');
 }
 function makeLayout(){
@@ -99,9 +81,9 @@ function makeLayout(){
  search.querySelector('input').addEventListener('input',e=>{document.getElementById('searchOffer').value=e.target.value;selectPage('ofertas');drawOffers()});
  const offersPage=document.querySelector('[data-page="ofertas"]');
  const categories=document.createElement('section');categories.className='ob-section';categories.innerHTML='<div class="ob-label"><h3>Explore por categoria</h3><small>Escolha o que precisa</small></div><div class="ob-categories" id="obCategories"></div>';
- offersPage.parentNode.insertBefore(categories,offersPage);
+ offersPage.prepend(categories);
  const markets=document.createElement('section');markets.className='ob-section';markets.innerHTML='<div class="ob-label"><h3>Ofertas por supermercado</h3><small>Filtre sua rede favorita</small></div><div id="obMarkets" class="ob-markets"></div>';
- offersPage.parentNode.insertBefore(markets,offersPage);
+ categories.after(markets);
  const tiles=document.createElement('section');tiles.className='ob-foottiles';tiles.innerHTML='<button data-ob-page="comparar">'+icon('compare')+'<span>Comparar preços<small>Veja opções válidas para cada produto</small></span></button><button data-ob-page="encartes">'+icon('flyer')+'<span>Encartes da semana<small>Confira campanhas e folhetos oficiais</small></span></button><button data-ob-page="salvos">'+icon('list')+'<span>Minha lista<small>Salve os produtos que deseja comprar</small></span></button>';
  offersPage.after(tiles);
  drawCategories();
