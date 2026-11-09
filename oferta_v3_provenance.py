@@ -39,6 +39,21 @@ async def fiscal_prices(limit:int=80,store_id:Optional[str]=None):
         raise HTTPException(422,'Filial inválida')
     return await v3_provenance_call({'action':'list_fiscal','limit':limit,'store_id':store_id})
 
+
+@app.post('/api/internal/v3-selftest')
+async def v3_selftest(request:Request):
+    # Read-only, scoped to the already configured schedule token. No secret in the response.
+    key=os.getenv('OFFER_SCHEDULE_SECRET','').strip()
+    supplied=request.headers.get('x-schedule-secret','').strip()
+    if len(key)<40 or len(supplied)<40 or not hmac.compare_digest(key,supplied):
+        raise HTTPException(401,'Acesso não autorizado')
+    evidence=await v3_provenance_call({'action':'summary'})
+    return {'ok':True,'backend':'oferta-v3','fiscal_verified':evidence.get('fiscal_verified',0),
+        'fiscal_pending':evidence.get('fiscal_pending',0),
+        'leaflets_verified':evidence.get('leaflets_verified',0),
+        'leaflets_pending':evidence.get('leaflets_pending',0),
+        'reviews_pending':evidence.get('reviews_pending',0)}
+
 @app.post('/api/admin/provenance')
 async def admin_provenance(payload:dict=Body(...),x_admin_token:Optional[str]=Header(None)):
     auth(x_admin_token)
@@ -57,5 +72,9 @@ def patch_source(path):
     anchor="import oferta_smart_v10\n"
     if anchor not in src:
         raise RuntimeError("V3 provenance requires existing official-source scanner")
+    bypass="'/api/internal/source-probe', '/robots.txt'"
+    if bypass not in src:
+        raise RuntimeError('Existing protected routes changed; no new diagnostic bypass allowed')
+    src=src.replace(bypass,"'/api/internal/source-probe', '/api/internal/v3-selftest', '/robots.txt'",1)
     src+="\n"+ROUTES
     f.write_text(src,encoding="utf-8")
