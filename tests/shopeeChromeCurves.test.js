@@ -215,6 +215,10 @@ test('triagem da Ponte só aprofunda a média após confirmar duas lojas de alta
  assert.equal(pending.adsCompetitiveness.status,'awaiting_curve');
  assert.equal(pending.avgCompetitorPrice,null);
  const withDemand=offers.map((offer,i)=>({...offer,monthlySold:i<2?950-i*100:null}));
+ const costlyWithDemand=matchCurveOffers({catalog,offers:withDemand,
+  costs:[{supplier_sku:'BAL-TESTE',unit_cost:35}],deferMarketUntilDemand:true})[0];
+ assert.equal(costlyWithDemand.adsCompetitiveness.status,'cost_above_market');
+ assert.equal(costlyWithDemand.avgCompetitorPrice,null);
  const qualifying=matchCurveOffers({catalog,offers:withDemand,
   costs:[{supplier_sku:'BAL-TESTE',unit_cost:10}],deferMarketUntilDemand:true})[0];
  assert.equal(qualifying.monthlyCompetitorCount,2);

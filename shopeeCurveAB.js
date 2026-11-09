@@ -384,7 +384,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   const earlyCostReject=prices.length>=5&&Number(row.cost)>0&&
    Math.max(...prices)<=Number(row.cost)&&
    Math.max(...prices)/Math.min(...prices)<=1.3;
-  const market=deferMarketUntilDemand&&!demandReady?{
+  const market=deferMarketUntilDemand&&(earlyCostReject||!demandReady)?{
    ...row,avgCompetitorPrice:null,competitorOfferCount:0,
    competitorOffers:[],keywords:[],seoTitle:row.name,
    seoMethod:'Análise de palavras-chave aguarda demanda mensal validada',
