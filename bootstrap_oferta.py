@@ -39,125 +39,6 @@ try:
     print('OCR_DEPENDENCY_READY' if npm.returncode==0 else 'OCR_DEPENDENCY_UNAVAILABLE')
 except (OSError,subprocess.TimeoutExpired):
     print('OCR_DEPENDENCY_UNAVAILABLE')
-# TEMP: compare publicly accessible document dimensions; non-fatal read-only diagnostics.
-def _probe_flyer_dimensions():
-    import urllib.request
-    sources = [
-      ('fort_s3_original','https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
-      ('fort_edge_330','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x330/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
-      ('other_copy_481894_candidate','https://na.leafletscdn.com/com.br/data/119/481894/0.jpg'),
-      ('other_copy_479765_known','https://na.leafletscdn.com/com.br/data/119/479765/0.jpg')
-    ]
-    def size(b):
-      if b.startswith(b'\x89PNG') and len(b)>24:
-        return (int.from_bytes(b[16:20],'big'),int.from_bytes(b[20:24],'big'))
-      if not b.startswith(b'\xff\xd8'):return None
-      p=2
-      while p<len(b)-12:
-        if b[p]!=0xff:p+=1;continue
-        while p<len(b) and b[p]==0xff:p+=1
-        if p>=len(b):break
-        k=b[p];p+=1
-        if k==0xd9 or k==0xda:break
-        if k in [0xd8,0x01] or 0xd0<=k<=0xd7:continue
-        if p+2>len(b):break
-        n=int.from_bytes(b[p:p+2],'big')
-        if k in [0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf] and p+7<len(b):
-          return (int.from_bytes(b[p+5:p+7],'big'),int.from_bytes(b[p+3:p+5],'big'))
-        p+=max(2,n)
-      return None
-    for name,url in sources:
-      try:
-        req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 OfertaBlumenau diagnostic','Accept':'image/jpeg,image/png,image/webp'})
-        with urllib.request.urlopen(req,timeout=6) as resp:
-          data=resp.read(500000)
-          print('OB_IMAGE_PROBE',name,'status',resp.status,'content_type',resp.headers.get('Content-Type'),'bytes_seen',len(data),'total_bytes',resp.headers.get('Content-Length'),'dimensions',size(data))
-      except Exception as e:
-        print('OB_IMAGE_PROBE',name,'error',str(e)[:160])
-_probe_flyer_dimensions()
-# Further non-fatal candidate check: official resized transform and current alternate HTML.
-import re as _qr
-from urllib.error import HTTPError as _Http
-from urllib.parse import urlparse as _parse
-import urllib.request as _ur
-_qs=[
- ('fort_resize_1100','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x1100/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
- ('fort_resize_0','https://edge.osuper.com.br/gMFkOVCCFUvqq5-8xILDj1fP_wo=/0x0/smart/https://osuper-ecommerce-fortatacadista.s3.sa-east-1.amazonaws.com/7e0f74bb-scfortseara30-a-15outnov26regionalpage0001.jpg'),
- ('portafolhetos_food_09nov','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-481894/'),
- ('kimbino_food_09nov','https://www.kimbino.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-6481894/'),
- ('brcatalogos_fort','https://brcatalogos.com.br/fort/ofertas-a-maior-black-blumenau-indaial-e-jaragua-do-sul'),
-]
-for _label,_url in _qs:
- try:
-  _request=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36','Accept':'text/html,image/avif,image/webp,image/apng,image/*,*/*'})
-  with _ur.urlopen(_request,timeout=6) as _reply:
-   _response=_reply.read(400000)
-   _ct=_reply.headers.get('Content-Type','')
-   _txt=_response.decode('utf-8','ignore') if 'html' in _ct else ''
-   _found=_qr.findall(r'https?[^"\s<>]{0,230}(?:leafletscdn|kimbicdn|pdf|\.jpg|\.webp)[^"\s<>]{0,200}',_txt,_qr.I)
-   _og=_qr.findall(r'<meta[^>]+(?:og:image|twitter:image)[^>]+>',_txt,_qr.I)
-   print('OB_IMAGE_COMPARE',_label,'status',_reply.status,'ctype',_ct,'bytes',len(_response),'possible_assets',str(_found[:4])[:650],'meta',str(_og[:2])[:350])
- except Exception as _e:
-  print('OB_IMAGE_COMPARE',_label,'error',str(_e)[:160])
-# Actual image candidates extracted from the HTML above: check size, not just URL existence.
-def _image_size_from_bytes(b):
-    if b.startswith(b'\xff\xd8'):
-        i=2
-        while i+9<len(b):
-            if b[i]!=0xff:i+=1;continue
-            i+=1
-            while i<len(b) and b[i]==0xff:i+=1
-            if i>=len(b):break
-            marker=b[i];i+=1
-            if marker in (0xda,0xd9):break
-            if marker in (0x01,0xd8) or 0xd0<=marker<=0xd7:continue
-            n=int.from_bytes(b[i:i+2],'big')
-            if marker in (0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf) and i+7<len(b):
-                return int.from_bytes(b[i+5:i+7],'big'),int.from_bytes(b[i+3:i+5],'big')
-            i+=max(2,n)
-    if b[:4]==b'RIFF' and b[8:12]==b'WEBP':
-        typ=b[12:16]
-        if typ==b'VP8X' and len(b)>30:
-            return 1+int.from_bytes(b[24:27],'little'),1+int.from_bytes(b[27:30],'little')
-        if typ==b'VP8L' and len(b)>25:
-            v=int.from_bytes(b[21:25],'little');return (v&0x3fff)+1,((v>>14)&0x3fff)+1
-        if typ==b'VP8 ' and len(b)>30 and b[23:26]==b'\x9d\x01\x2a':
-            return int.from_bytes(b[26:28],'little')&0x3fff,int.from_bytes(b[28:30],'little')&0x3fff
-    return None
-_accurate=[
- ('food09_kimbino','https://na.kimbicdn.com/thumbor/eNxItp9pR-pRyUCiagPWp0wtDtY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481894/0.jpg'),
- ('food09_portafolhetos','https://na.leafletscdn.com/thumbor/eNxItp9pR-pRyUCiagPWp0wtDtY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481894/0.jpg'),
- ('fort_2026_food_old','https://na.leafletscdn.com/thumbor/uKBkWQZ7D8JHmDzz0ks2-C92X9Y=/0x0/filters:format(webp):quality(65)/com.br/data/119/479765/0.jpg'),
-]
-for _label,_url in _accurate:
- try:
-  _req=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0','Accept':'image/webp,image/jpeg,*/*'})
-  with _ur.urlopen(_req,timeout=9) as _rp:
-   _data=_rp.read(600000)
-   print('OB_IMAGE_SIZE',_label,'status',_rp.status,'type',_rp.headers.get('Content-Type'),'size',_image_size_from_bytes(_data),'content_length',_rp.headers.get('Content-Length'),'bytes_sampled',len(_data))
- except Exception as _ex:print('OB_IMAGE_SIZE',_label,'error',str(_ex)[:120])
-# Compare other campaigns from the same publisher without assuming the regional edition matches.
-import html as _html_entities
-for _tag,_url in [
- ('food09','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-481894/'),
- ('brf09','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-brf-de-segunda-feira-09-11-2026-481895/'),
- ('seara30','https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-seara-de-sexta-feira-30-10-2026-479115/')
-]:
- try:
-  _rq=_ur.Request(_url,headers={'User-Agent':'Mozilla/5.0','Accept':'text/html'})
-  with _ur.urlopen(_rq,timeout=8) as _rp:_source=_rp.read(350000).decode('utf-8','replace')
-  _meta=_qr.search(r'<meta[^>]*property="og:image"[^>]*>',_source,_qr.I)
-  _full=_html_entities.unescape(_meta.group(0)) if _meta else ''
-  _uri=_qr.search(r'content="(https://[^"]+)"',_full)
-  _candidate=_uri.group(1) if _uri else None
-  _p1=_qr.findall(r'[^"<> ]{0,150}'+('481894' if _tag=='food09' else '481895' if _tag=='brf09' else '479115')+r'/1\.jpg[^"<> ]{0,40}',_source,_qr.I)
-  if not _candidate:print('OB_ALT_CATALOG',_tag,'html_found','image_unknown');continue
-  _irq=_ur.Request(_candidate,headers={'User-Agent':'Mozilla/5.0','Accept':'image/webp,image/jpeg'})
-  with _ur.urlopen(_irq,timeout=8) as _img:_ib=_img.read(650000)
-  print('OB_ALT_CATALOG',_tag,'size',_image_size_from_bytes(_ib),'bytes',len(_ib),'url',_candidate,'page2_urls',str(_p1[:2])[:250])
- except Exception as _exc:
-  print('OB_ALT_CATALOG',_tag,'error',str(_exc)[:170])
-# END TEMP diagnostic.
 # Enforce consistent login form/server policy and accurate authentication errors.
 (folder/'fix_login.py').write_text((root/'fix_login.py').read_text(encoding='utf-8'),encoding='utf-8')
 runpy.run_path(str(folder/'fix_login.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
@@ -177,7 +58,7 @@ if '/static/ob-premium.css' not in html:
 if '/static/ob-premium-v3.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
 if '/static/ob-flyer-gallery-v6.css' not in html:
-    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v16reader"></head>')
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-flyer-gallery-v6.css?v=20261109v17hdsource"></head>')
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109v14noshorcuts" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
@@ -267,7 +148,7 @@ if '/static/ob-v3-center.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-v3-center.js?v=20261109v32" defer></script></body>')
 # The leaflet gallery runs after the original app.js and additive UI scripts.
 if '/static/ob-flyer-gallery-v6.js' not in html:
-    html=html.replace('</body>','<script src="/static/ob-flyer-gallery-v6.js?v=20261109v16reader" defer></script></body>')
+    html=html.replace('</body>','<script src="/static/ob-flyer-gallery-v6.js?v=20261109v17hdsource" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-flyer-gallery-v6.js')],check=True)
 subprocess.run(['node',str(root/'oferta-flyer-gallery-tests-v6.cjs')],cwd=str(root),check=True)
 assert 'id="leafletGrid"' in html and 'id="onlyActive"' in html

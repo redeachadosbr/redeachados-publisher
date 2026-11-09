@@ -91,3 +91,14 @@ console.log('OB_V12_FULL_RESOLUTION_ZOOM_AND_BRANCH_VIEW_PASS');
 
 assert.ok(css.includes('obf-dialog-guidance')&&css.includes('overflow:auto!important'),'viewer allows navigating large source page');
 console.log('OB_V16_PIXEL_ZOOM_SOURCE_QUALITY_GUARD_PASS');
+
+const altFood=G.verifiedAlternativeFor({network:'Fort Atacadista',title:'SC Fort Food 09 a 15 NOV 26 Regional',starts_on:'2026-11-09',ends_on:'2026-11-15'});
+assert.equal(altFood.width,1550);assert.equal(altFood.height,2353);
+assert.equal(G.verifiedAlternativeFor({network:'Fort Atacadista',title:'SC Fort BRF 09 a 22 NOV 26',starts_on:'2026-11-09',ends_on:'2026-11-22'}).height,2194);
+assert.equal(G.verifiedAlternativeFor({network:'Fort Atacadista',title:'SC_Fort_Seara_30 a 15_OUT_NOV_26_Regional',starts_on:'2026-10-30',ends_on:'2026-11-15'}).height,2184);
+assert.equal(G.verifiedAlternativeFor({network:'Cooper',title:'Food 09',starts_on:'2026-11-09',ends_on:'2026-11-15'}),null);
+assert.equal(G.verifiedAlternativeFor({network:'Fort Atacadista',title:'Food 09',starts_on:'2026-11-09',ends_on:'2026-11-16'}),null);
+assert.ok(main.includes('id="obfUseAlternate"')&&main.includes('showingAlternate?alternate.image:g.cover'));
+assert.ok(css.includes('.obf-alt-tools[hidden]'));
+assert.ok(!root.includes('OB_IMAGE_PROBE')&&!root.includes('OB_ALT_CATALOG'),'one-time diagnostics removed from production');
+console.log('OB_V17_OPTIONAL_VERIFIED_HIGH_RESOLUTION_SOURCES_PASS');

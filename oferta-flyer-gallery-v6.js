@@ -48,6 +48,24 @@
    return null;
  };
  const imageUrl=l=>bestFlyerImage(l)?.src||null;
+ // These higher-resolution copies have been checked to return HTTP 200 and measured.
+ // They are third-party publications: never replace official local prices or claim filial equivalence.
+ const ALTERNATE_EDITIONS=[
+   {type:'food',start:'2026-11-09',end:'2026-11-15',width:1550,height:2353,
+     image:'https://na.leafletscdn.com/thumbor/eNxItp9pR-pRyUCiagPWp0wtDtY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481894/0.jpg',
+     page:'https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-food-service-de-segunda-feira-09-11-2026-481894/'},
+   {type:'brf',start:'2026-11-09',end:'2026-11-22',width:1550,height:2194,
+     image:'https://na.leafletscdn.com/thumbor/5WNtEG-TcSH5lHqQyEePj7i-2DY=/0x0/filters:format(webp):quality(65)/com.br/data/119/481895/0.jpg',
+     page:'https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-brf-de-segunda-feira-09-11-2026-481895/'},
+   {type:'seara',start:'2026-10-30',end:'2026-11-15',width:1550,height:2184,
+     image:'https://na.leafletscdn.com/thumbor/jub3A-i5Jth-MZJEWbh0juI3wio=/0x0/filters:format(webp):quality(65)/com.br/data/119/479115/0.jpg',
+     page:'https://www.portafolhetos.com.br/fort-atacadista/fort-atacadista-ofertas-seara-de-sexta-feira-30-10-2026-479115/'}
+ ];
+ const verifiedAlternativeFor=g=>{
+   if(!/fort atacadista/i.test(String(g?.network||'')))return null;
+   const name=String(g?.title||'').toLowerCase();
+   return ALTERNATE_EDITIONS.find(x=>name.includes(x.type)&&g.starts_on===x.start&&g.ends_on===x.end)||null;
+ };
  const prettyDate=v=>{
    const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
    if(!m)return 'Não informada';
@@ -208,6 +226,10 @@
      '<div class="obf-dialog-footer"><div class="obf-dialog-guidance">'+
      '<strong>Zoom funcional: + e −, Ctrl + rolagem, ou dois dedos no celular.</strong>'+
      '<small id="obfImageQuality" role="status">Carregando resolução do encarte…</small></div>'+
+     '<div class="obf-alt-tools" id="obfAltTools" hidden>'+
+       '<button type="button" id="obfUseAlternate">Ver cópia em alta resolução</button>'+
+       '<small id="obfAltNote">Cópia de terceiro: confira se preços e condições valem na sua filial.</small>'+
+       '<a id="obfAltPage" target="_blank" rel="noopener noreferrer">Consultar catálogo alternativo</a></div>'+
      '<a id="obfDialogOriginal" target="_blank" rel="noopener noreferrer">'+icon('external')+' Abrir imagem original</a>'+
      '<a id="obfDialogMarket" target="_blank" rel="noopener noreferrer">'+icon('shop')+' Ofertas do mercado</a></div>';
    document.body.append(dlg);
@@ -259,6 +281,26 @@
    const message=dlg.querySelector('#obfImageQuality');
    if(message)message.textContent='Carregando imagem original…';
    let retried=false;const ticket=++loadId;
+   const alternate=verifiedAlternativeFor(g),tools=dlg.querySelector('#obfAltTools');
+   const altButton=dlg.querySelector('#obfUseAlternate'),altPage=dlg.querySelector('#obfAltPage');
+   const altNote=dlg.querySelector('#obfAltNote');
+   let showingAlternate=false;
+   tools.hidden=!alternate;
+   altButton.onclick=null;
+   if(alternate){
+     altPage.href=alternate.page;
+     altNote.textContent='Outra edição ('+alternate.width+' × '+alternate.height+' px); confira se as ofertas e condições correspondem à sua filial.';
+     altButton.textContent='Ver cópia em alta resolução';
+     altButton.onclick=()=>{
+       showingAlternate=!showingAlternate;
+       retried=false;
+       altButton.textContent=showingAlternate?'Voltar à imagem oficial':'Ver cópia em alta resolução';
+       original.href=showingAlternate?alternate.image:g.cover;
+       if(message)message.textContent=showingAlternate?'Carregando cópia de maior resolução…':'Carregando imagem oficial…';
+       img.src=showingAlternate?alternate.image:g.cover;
+       if(img.complete&&img.naturalWidth>0)img.onload();
+     };
+   }
    img.onload=()=>{
      if(ticket!==loadId)return;
      // Guardar a dimensão e posicionar o zoom apenas APÓS o modal ganhar largura.
@@ -272,6 +314,11 @@
    };
    img.onerror=()=>{
      if(ticket!==loadId)return;
+     if(showingAlternate){
+       showingAlternate=false;altButton.textContent='Ver cópia em alta resolução';
+       if(message)message.textContent='A cópia em alta resolução não carregou; retornando à imagem oficial.';
+       original.href=g.cover;img.src=g.cover;return;
+     }
      if(!retried&&g.fallback&&g.fallback!==g.cover){
        retried=true;img.src=g.fallback;original.href=g.fallback;
      }else {
@@ -304,6 +351,7 @@
    const official=validHttps(marketUrl)||(typeof l==='object'?validHttps(l?.source_url):null);
    preview({cover:candidate.src,fallback:candidate.fallback,
       title:title||l?.title||'Encarte oficial',network:l?.network||'Supermercado',
+      starts_on:l?.starts_on||null,ends_on:l?.ends_on||null,
       links:official?[{url:official}]:[],source_url:official},-1);
    return true;
  }
@@ -405,5 +453,5 @@
    try{drawLeaflets=render}catch(_e){}
    render();
  }
- return {init,render,group,isValid,imageUrl,fullImageUrl,bestFlyerImage,openImage,zoomTarget,imageQuality,prettyDate};
+ return {init,render,group,isValid,imageUrl,fullImageUrl,bestFlyerImage,verifiedAlternativeFor,openImage,zoomTarget,imageQuality,prettyDate};
 });

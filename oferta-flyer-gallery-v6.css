@@ -415,3 +415,27 @@ body.ob-premium .obf-scene :focus-visible,.obf-dialog :focus-visible{outline:3px
  .obf-dialog .obf-dialog-guidance strong{font-size:10px}
  .obf-dialog .obf-dialog-guidance small{font-size:10px}
 }
+
+
+/* V17: optional independently published high-resolution reader without losing official source. */
+.obf-dialog .obf-alt-tools{
+  display:flex;flex:0 1 305px;min-width:210px;flex-direction:column;align-items:stretch;
+  gap:5px;padding:9px 11px;border:1px solid #b8e4d0;border-radius:12px;
+  background:linear-gradient(140deg,#e6fff1,#e9f7ff);
+}
+.obf-dialog .obf-alt-tools[hidden]{display:none!important}
+.obf-dialog .obf-alt-tools button{
+  min-height:41px;padding:8px 12px;border:0;border-radius:10px;cursor:pointer;
+  color:white;font-weight:900;font-size:11px;
+  background:linear-gradient(130deg,#11ad78,#066b52);
+  box-shadow:0 3px 0 rgba(6,92,64,.20);
+}
+.obf-dialog .obf-alt-tools small{font-size:10px;color:#587564;line-height:1.4}
+.obf-dialog .obf-alt-tools a{
+  min-height:0;margin:0;border:0;box-shadow:none;padding:4px;
+  color:#07604c;background:transparent;text-decoration:underline;font-size:10px;
+}
+@media(max-width:760px){
+ .obf-dialog .obf-alt-tools{flex:1 1 100%;min-width:0;order:2;padding:7px}
+ .obf-dialog .obf-alt-tools button{min-height:38px}
+}
