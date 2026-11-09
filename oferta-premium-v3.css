@@ -81,3 +81,51 @@ body.ob-premium .ob-evidence-legend span:nth-child(3){background:#fff7e8;color:#
 @media(max-width:760px){body.ob-premium .productgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ob-premium .ob-trust-strip{grid-template-columns:repeat(2,minmax(0,1fr))}body.ob-premium .ob-market{min-width:180px}body.ob-premium .ob-product-v3 .ob-photo{height:175px}}
 @media(max-width:480px){body.ob-premium .productgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}body.ob-premium .ob-product-v3 .ob-photo{height:146px}body.ob-premium .ob-product-v3 h3{font-size:11px;min-height:48px}body.ob-premium .ob-product-v3 .ob-body{padding:9px}body.ob-premium .ob-product-market .ob-logo{width:33px;height:33px;flex-basis:33px}body.ob-premium .ob-price-plaque{padding:8px;margin:8px 0 5px}body.ob-premium .ob-product-v3 .ob-price{font-size:24px}body.ob-premium .ob-offer-badge{font-size:8px;left:6px;top:6px;padding:4px 6px}body.ob-premium .ob-scope{display:none}body.ob-premium .ob-product-placeholder>span{font-size:46px}body.ob-premium .ob-product-placeholder{height:113px}body.ob-premium .ob-trust-strip{grid-template-columns:1fr 1fr;gap:7px}body.ob-premium .ob-trust-stat{padding:10px}body.ob-premium .ob-trust-stat strong{font-size:13px}body.ob-premium .ob-product-v3 .ob-actions{gap:5px;padding:8px}body.ob-premium .ob-product-v3 .ob-actions .ob-icon{display:none}body.ob-premium .ob-product-v3 .ob-actions button{font-size:9px;min-height:37px}}
 @media(prefers-reduced-motion:reduce){body.ob-premium .ob-market,body.ob-premium .ob-product-v3,body.ob-premium .ob-icon{transition:none!important;transform:none!important}body.ob-premium .ob-market:hover,body.ob-premium .ob-product-v3:hover{transform:none!important}}
+
+
+/* Trust center and review components */
+.ob-v3-admin{margin-top:18px}
+.ob-v3-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 15px}
+.ob-v3-toolbar button,.ob-v3-primary{border:1px solid #b8d4cc;background:linear-gradient(145deg,#fff,#f3faf7);color:#145d52;padding:11px 15px;border-radius:12px;min-height:43px;font-weight:900;box-shadow:0 4px 9px #133e3015;cursor:pointer}
+.ob-v3-toolbar button.primary,.ob-v3-primary{background:linear-gradient(140deg,#1abe8e,#057b6a);border-color:#058567;color:#fff;box-shadow:0 4px 0 #086c58,0 9px 13px #06594732}
+.ob-v3-toolbar button:active,.ob-v3-primary:active{transform:translateY(2px)}
+.ob-v3-toolbar button:disabled,.ob-v3-primary:disabled{opacity:.55;cursor:wait}
+.ob-v3-toolbar span{font-size:11px;color:#66837a}
+.ob-v3-status{font-size:12px;line-height:1.5;padding:10px 12px;margin:10px 0;background:#eaf8f1;border-radius:11px;color:#236c57;border:1px solid #cce8d9}
+.ob-v3-status.error{color:#9a2834;border-color:#ffbfc9;background:#fff1f2}
+.ob-v3-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px}
+.ob-v3-metric{background:#fff;padding:15px 11px;border-radius:12px;box-shadow:0 5px 14px #06482e14;border:1px solid #dceae5;display:flex;flex-direction:column;gap:4px}
+.ob-v3-metric b{font-size:25px;color:#0b6b53}
+.ob-v3-metric small{color:#59786d;font-size:11px;line-height:1.35}
+.ob-v3-details{margin:13px 0;border:1px solid #d7e7e3;background:#fff;border-radius:13px;overflow:hidden}
+.ob-v3-details summary{padding:14px 15px;cursor:pointer;font-weight:900;font-size:13px;color:#145748}
+.ob-v3-details[open] summary{border-bottom:1px solid #deeee8;background:#f3fbf7}
+.ob-v3-form{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ob-v3-form>p{grid-column:1/-1;font-size:11px;line-height:1.5;color:#638076;margin:0 0 2px}
+.ob-v3-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:11px;font-weight:800;color:#365f51}
+.ob-v3-field input,.ob-v3-field select{padding:10px 9px;min-height:41px;border:1px solid #cee2db;border-radius:9px;background:#fafdfe;color:#153c32;box-sizing:border-box;font:inherit;font-weight:500;width:100%}
+.ob-v3-form .ob-v3-primary{grid-column:1/-1;justify-self:start}
+.ob-v3-pending-list{margin-top:18px}
+.ob-v3-pending-list h3{font-size:15px;font-weight:900}
+.ob-v3-review{display:grid;gap:8px;padding:14px;background:#fff;border-radius:14px;border:1px solid #dbe9e7;margin:9px 0;box-shadow:0 6px 13px #163d3212}
+.ob-v3-review header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ob-v3-review header strong{font-size:13px}
+.ob-v3-review header span{font-size:11px;color:#246f72;background:#e9f9fa;padding:4px 9px;border-radius:99px}
+.ob-v3-review p{margin:0;font-size:11px;color:#58746c}
+.ob-v3-review a{font-size:11px;color:#126a9f;text-decoration:underline}
+.ob-v3-review textarea{width:100%;min-height:65px;border-radius:10px;padding:10px;background:#f9fcfb;border:1px solid #d3e6df}
+.ob-v3-review>div{display:flex;gap:8px;flex-wrap:wrap}
+.ob-v3-review button{border:1px solid #a7d9c0;background:#e3f9ec;color:#146444;border-radius:10px;cursor:pointer;padding:9px 11px;font-weight:850;font-size:11px}
+.ob-v3-review button:last-child{border-color:#ecc8c8;background:#fff1f1;color:#983f3f}
+.ob-v3-fiscal-section{padding:14px;border-radius:20px;background:#f9fdfc;border:1px solid #deebe6;box-shadow:0 8px 17px #084b3910}
+.ob-v3-fiscal-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:11px}
+.ob-v3-fiscal-card{display:flex;gap:12px;align-items:start;justify-content:space-between;background:#fff;border:1px solid #d7e7ed;padding:13px;border-radius:15px;box-shadow:0 4px 15px #103c4c13}
+.ob-v3-fiscal-card h4{font-weight:900;color:#15423f;font-size:12px;margin:9px 0 4px}
+.ob-v3-fiscal-card small,.ob-v3-fiscal-card p{font-size:10px;color:#6b8585}
+.ob-v3-fiscal-card p{margin:8px 0 0}
+.ob-v3-fiscal-proof{font-size:10px;font-weight:850;color:#256b9f;background:#eaf4ff;padding:5px 7px;border-radius:7px}
+.ob-v3-fiscal-side{display:flex;flex-direction:column;align-items:flex-end;gap:7px;min-width:95px}
+.ob-v3-fiscal-side strong{font-size:23px;letter-spacing:-1px;color:#137799}
+.ob-v3-fiscal-side a{font-size:11px;color:#19709d;text-decoration:underline}
+.ob-v3-empty{border:1px dashed #aecac3;color:#718d86;padding:15px;background:#fff;font-size:11px;line-height:1.55;border-radius:13px}
+@media(max-width:560px){.ob-v3-form{grid-template-columns:1fr}.ob-v3-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ob-v3-fiscal-card{padding:10px}.ob-v3-fiscal-side strong{font-size:20px}}
