@@ -50,8 +50,11 @@ html=html.replace('o servidor pode reiniciar e perder ofertas cadastradas. Expor
 # Premium 3D interface: additive CSS/JS; never change authenticated API or price records.
 (folder/'static/ob-premium.css').write_text((root/'oferta-premium-visual.css').read_text(encoding='utf-8'),encoding='utf-8')
 (folder/'static/ob-premium.js').write_text((root/'oferta-premium-vitrine.js').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-premium-v3.css').write_text((root/'oferta-premium-v3.css').read_text(encoding='utf-8'),encoding='utf-8')
 if '/static/ob-premium.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium.css?v=20261109"></head>')
+if '/static/ob-premium-v3.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-premium-v3.css?v=20261109v3"></head>')
 if '/static/ob-premium.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-premium.js?v=20261109" defer></script></body>')
 subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
@@ -105,6 +108,11 @@ for element_id in ('offersGrid','searchOffer','filterNetwork','filterStore','tra
 if 'data-page="ofertas"' not in html and "data-page='ofertas'" not in html:
     raise RuntimeError('Missing offers navigation page')
 print('OB_UI_MARKUP_CONTRACT_PASS')
+# Diagnostic prints only environment VARIABLE NAMES, never key values.
+import re as _ob_re
+_contract=(folder/'remote_state.py').read_text(encoding='utf-8')
+print('OB_REMOTE_ENV_VAR_NAMES', sorted(set(_ob_re.findall(r"(?:getenv|environ.get)\\s*\\(\\s*['\"]([A-Z][A-Z0-9_]*)", _contract))))
+
 
 # Authenticated diagnostic endpoint: permits real readback of the live product catalogue
 # from Supabase-backed SQLite without exposing private offers publicly.
