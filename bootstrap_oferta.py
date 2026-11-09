@@ -62,15 +62,26 @@ subprocess.run(['node','--check',str(folder/'static/ob-premium.js')],check=True)
 (folder/'static/ob-compare-engine-v4.js').write_text((root/'oferta-compare-engine-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
 (folder/'static/ob-smart-compare-v4.js').write_text((root/'oferta-smart-comparison-v4.js').read_text(encoding='utf-8'),encoding='utf-8')
 (folder/'static/ob-smart-compare-v4.css').write_text((root/'oferta-smart-comparison-v4.css').read_text(encoding='utf-8'),encoding='utf-8')
+(folder/'static/ob-photo-cards-v5.css').write_text((root/'oferta-photo-cards-v5.css').read_text(encoding='utf-8'),encoding='utf-8')
 subprocess.run(['node','--check',str(folder/'static/ob-compare-engine-v4.js')],check=True)
 subprocess.run(['node','--check',str(folder/'static/ob-smart-compare-v4.js')],check=True)
 subprocess.run(['node',str(root/'oferta-compare-tests-v4.cjs')],cwd=str(root),check=True)
 if '/static/ob-smart-compare-v4.css' not in html:
     html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-smart-compare-v4.css?v=20261109v4"></head>')
+if '/static/ob-photo-cards-v5.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-photo-cards-v5.css?v=20261109v5"></head>')
 if '/static/ob-compare-engine-v4.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-compare-engine-v4.js?v=20261109v4" defer></script></body>')
 if '/static/ob-smart-compare-v4.js' not in html:
     html=html.replace('</body>','<script src="/static/ob-smart-compare-v4.js?v=20261109v4" defer></script></body>')
+if '/static/ob-photo-cards-v5.css' not in html: 
+    raise RuntimeError('Foto-first card styles must be included')
+photo_code=(folder/'static/ob-premium.js').read_text(encoding='utf-8')
+assert 'ob-mini-offer' in photo_code and 'data-ob-list' in photo_code
+assert 'data-ob-brand' in photo_code and 'data-ob-package' in photo_code
+assert 'addTracked()' in photo_code and 'drawOffers()' in photo_code
+assert 'ob-mini-add' in (folder/'static/ob-photo-cards-v5.css').read_text(encoding='utf-8')
+print('OB_V5_PHOTO_LIST_UI_CONTRACT_PASS')
 print('OB_V4_CATEGORY_COMPARE_AND_FAVORITES_READY')
 # Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
 (folder/'oferta-direct-image-fallback.py').write_text((root/'oferta-direct-image-fallback.py').read_text(encoding='utf-8'),encoding='utf-8')
