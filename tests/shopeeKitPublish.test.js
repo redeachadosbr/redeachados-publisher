@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {kitPublishFields,kitPublishPayload,kitApprovalFingerprint,validatePublishedKitResponse} from '../shopeeKitPublish.js';
+import {chooseUniqueLiveKitSku,plausibleKitComponentTitle} from '../shopeeKitPlatform.js';
 const kit={
  kitSku:'KIT-CO400-GA500',
  components:[{sku:'CO400',name:'Copo'},{sku:'GA500',name:'Garrafa'}],
@@ -89,4 +90,39 @@ test('desconto não pode ser solicitado na criação; só após publicação Sho
  assert.match(discount,/update_discount_item/);
  assert.match(html,/id="kitDiscountExecute"/);
  assert.match(html,/id="kitSingleParcelConfirmed"/);
+});
+
+test('Kit Formal recupera somente um Item ID oficial e SKU exata',()=>{
+ const result=chooseUniqueLiveKitSku('TX24508E',[
+  {itemId:'23295176595',sku:'TX24508E',status:'NORMAL',modelId:'0'},
+  {itemId:'23666666666',sku:'OUTRA-SKU',status:'NORMAL',modelId:'0'}
+ ]);
+ assert.equal(result.candidate.itemId,'23295176595');
+ assert.equal(result.activeCount,1);
+ assert.equal(chooseUniqueLiveKitSku('TX24508E',[
+  {itemId:'23295176595',sku:'TX24508E',status:'UNLIST'}
+ ]).candidate,null);
+ assert.equal(chooseUniqueLiveKitSku('TX24508E',[
+  {itemId:'23295176595',sku:'TX24508E',status:'NORMAL'},
+  {itemId:'23666666666',sku:'TX24508E',status:'NORMAL'}
+ ]).candidate,null,'SKU duplicada não permite vínculo automático');
+});
+test('Kit impede vínculo de estojo com anúncio de mochila pelo mesmo código',()=>{
+ assert.equal(plausibleKitComponentTitle('Estojo Escolar T-Rex Attack','Estojo Escolar Infantil Dinossauro'),true);
+ assert.equal(plausibleKitComponentTitle('Estojo Escolar T-Rex Attack','Mochila Dinossauro de Rodinhas'),false);
+ assert.equal(plausibleKitComponentTitle('Mochila Dinossauro de Rodinhas','Mochila Escolar Carrinho'),true);
+ const platform=fs.readFileSync(new URL('../shopeeKitPlatform.js',import.meta.url),'utf8');
+ assert.match(platform,/findLiveShopeeSku/);
+ assert.match(platform,/upsertWeDropSkuLink/);
+ assert.match(platform,/plausibleKitComponentTitle/);
+ assert.doesNotMatch(platform,/similarityScore|fuzzyMatch/);
+});
+test('Etapa 10 exige somente um botão e reporta ligação recuperada ou bloqueio real',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const builder=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const service=fs.readFileSync(new URL('../shopeeKitPublicationService.js',import.meta.url),'utf8');
+ assert.match(html,/id="kitWizardOpenExecution"[^>]*>▶ Executar na Shopee/);
+ assert.match(builder,/kitWizardExecuteNewKit/);
+ assert.match(builder,/autoRecovered/);
+ assert.match(service,/autoRecovered/);
 });
