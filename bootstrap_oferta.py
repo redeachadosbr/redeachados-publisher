@@ -81,6 +81,7 @@ assert 'ob-mini-offer' in photo_code and 'data-ob-list' in photo_code
 assert 'data-ob-brand' in photo_code and 'data-ob-package' in photo_code
 assert 'addTracked()' in photo_code and 'drawOffers()' in photo_code
 assert 'ob-mini-add' in (folder/'static/ob-photo-cards-v5.css').read_text(encoding='utf-8')
+subprocess.run(['node',str(root/'oferta-photo-list-tests-v5.cjs')],cwd=str(root),check=True)
 print('OB_V5_PHOTO_LIST_UI_CONTRACT_PASS')
 print('OB_V4_CATEGORY_COMPARE_AND_FAVORITES_READY')
 # Optional public full-resolution image fallback, restricted to Fort's published S3 bucket.
