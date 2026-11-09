@@ -69,6 +69,28 @@ assert not check('Arroz Tipo 1 5 kg de R$ 29,99 por R$ 21,99','BLU-001','https:/
 assert not check('Arroz Tipo 1 5 kg 21,99','BLU-001','https://www.redetop.com.br/', None,'2026-11-10','2026-11-08')
 assert not check('Arroz Tipo 1 5 kg 21,99','BLU-001','https://www.redetop.com.br/', '2026-10-01','2026-11-01','2026-11-08')
 print('OB_STRICT_PRICE_GUARD_TESTS_PASS')
+# Official network-specific adapters. These do NOT publish OCR prices automatically.
+(folder/'oferta_smart_v10.py').write_text((root/'oferta_smart_v10.py').read_text(encoding='utf-8'),encoding='utf-8')
+smart=runpy.run_path(str(folder/'oferta_smart_v10.py'),run_name='__bootstrap_no_exec__')
+smart['patch_source'](str(folder/'server.py'))
+assert smart['norm']('Itoupava Central')=='itoupava central'
+assert smart['verified_official']('https://www.redetop.com.br/institucional/ofertas.php','redetop.com.br')
+assert not smart['verified_official']('https://redetop.com.br.evil.example/ofertas','redetop.com.br')
+print('OB_SMART_SOURCE_GUARDS_PASS')
+# Private coverage by source and current approved prices.
+(folder/'oferta_coverage_v10.py').write_text((root/'oferta_coverage_v10.py').read_text(encoding='utf-8'),encoding='utf-8')
+runpy.run_path(str(folder/'oferta_coverage_v10.py'),run_name='__bootstrap_no_exec__')['patch_source'](str(folder/'server.py'))
+# Reveal the original OCR text to the owner in Gestão after importing an image/PDF.
+_js_path=folder/'static/app.js'
+_jscode=_js_path.read_text(encoding='utf-8')
+_old="msg(`${d.inserted} sugestões novas por ${d.method}. Revise preços e prazo antes de aprovar.`);await loadCandidates()"
+_new="msg(`${d.inserted} sugestões novas por ${d.method}. Revise preços e prazo antes de aprovar.`);const obText=document.getElementById('obOCRPreview');if(obText)obText.textContent=String(d.preview||'Texto não reconhecido').slice(0,1600);await loadCandidates()"
+if _jscode.count(_old)!=1:raise RuntimeError('Original private OCR import interface changed; abort')
+_js_path.write_text(_jscode.replace(_old,_new,1),encoding='utf-8')
+(folder/'static/ob-intel.js').write_text((root/'oferta-smart-ui.js').read_text(encoding='utf-8'),encoding='utf-8')
+subprocess.run(['node','--check',str(folder/'static/ob-intel.js')],check=True)
+if '/static/ob-intel.js' not in html:
+    html=html.replace('</body>','<script src="/static/ob-intel.js?v=20261109smart10" defer></script></body>')
 page.write_text(html,encoding='utf-8')
 
 
@@ -112,17 +134,3 @@ import py_compile
 py_compile.compile(str(_backend_path),doraise=True)
 print('OB_SERVER_SYNTAX_AND_PROTECTED_READBACK_PASS')
 print('Oferta Blumenau: secure app prepared')
-
-# Read-only audit of existing management and sources contracts. Do not expose config values.
-import ast as _smart_ast
-_smart_src=(folder/'server.py').read_text(encoding='utf-8')
-_smart_tree=_smart_ast.parse(_smart_src)
-for _smart_name in ('source_jobs','import_file','import_text','auth','admin','candidates','approve','actual_flyer'):
-    _smart_node=next((n for n in _smart_tree.body if isinstance(n,(_smart_ast.FunctionDef,_smart_ast.AsyncFunctionDef)) and n.name==_smart_name),None)
-    if _smart_node:
-        _smart_code=_smart_ast.get_source_segment(_smart_src,_smart_node) or ''
-        print('SMART_DIAG_'+_smart_name.upper()+': '+_smart_code[:5500].replace('\n',' | '))
-_front_src=(folder/'static/app.js').read_text(encoding='utf-8')
-for _smart_term in ('api/admin/import-file','api/admin/import-text','adminToken','async function importFile','importFile','adminFile'):
-    _smart_i=_front_src.find(_smart_term)
-    if _smart_i>=0:print('SMART_DIAG_FRONT_'+_smart_term+': '+_front_src[max(0,_smart_i-250):_smart_i+1100].replace('\n',' | '))
