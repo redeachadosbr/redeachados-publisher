@@ -67,3 +67,29 @@ def extract_structured_candidates(html,store_id,source_url,current_date):
                             'category':'Outros','condition':'Verificar condições da loja'})
                 if len(out)>=80:return out
     return out
+
+
+MONTHS={'JAN':1,'FEV':2,'MAR':3,'ABR':4,'MAI':5,'JUN':6,'JUL':7,'AGO':8,'SET':9,'OUT':10,'NOV':11,'DEZ':12}
+def parse_date_span(text):
+    """Return dates only when the promotion explicitly names month and year."""
+    import datetime as dt
+    # Existing common notation, e.g. 28/10 a 10/11/2026.
+    m=re.search(r'(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\s*(?:a|até|-|–)\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})',text,re.I)
+    if m:
+        a,b,y1,c,d,y2=m.groups()
+        y2=int(y2);y2=2000+y2 if y2<100 else y2
+        y1=int(y1) if y1 else y2;y1=2000+y1 if y1<100 else y1
+        try:return dt.date(y1,int(b),int(a)).isoformat(),dt.date(y2,int(d),int(c)).isoformat()
+        except ValueError:pass
+    # "30 a 15_OUT_NOV_26" crosses the month boundary.
+    m=re.search(r'(?<!\d)(\d{1,2})\s*(?:a|e|[-_])\s*(\d{1,2})[_\s-]*(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[_\s-]+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[_\s-]*(\d{2,4})',text,re.I)
+    if m:
+        a,c,m1,m2,yy=m.groups();yy=int(yy);yy=2000+yy if yy<100 else yy
+        try:return dt.date(yy,MONTHS[m1.upper()],int(a)).isoformat(),dt.date(yy,MONTHS[m2.upper()],int(c)).isoformat()
+        except ValueError:pass
+    m=re.search(r'(?<!\d)(\d{1,2})\s*(?:a|e|[-_])\s*(\d{1,2})[_\s-]*(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[_\s-]*(\d{2,4})',text,re.I)
+    if m:
+        a,c,mon,yy=m.groups();yy=int(yy);yy=2000+yy if yy<100 else yy
+        try:return dt.date(yy,MONTHS[mon.upper()],int(a)).isoformat(),dt.date(yy,MONTHS[mon.upper()],int(c)).isoformat()
+        except ValueError:pass
+    return None,None
