@@ -167,6 +167,20 @@ if '/static/ob-sidebar-neon-v7.css' not in html:
 assert '/static/ob-sidebar-neon-v7.css?v=20261109v7' in html
 assert html.index('/static/ob-sidebar-neon-v7.css') > html.index('/static/ob-flyer-gallery-v6.css')
 print('OB_V7_NEON_MENU_INTEGRATION_PASS')
+# V8: true promotion-card selectors, photo depth, glass highlights, safe mobile layout.
+_depth_css=(root/'oferta-promo-cards-depth-v8.css').read_text(encoding='utf-8')
+assert '#offersGrid.ob-photo-grid .ob-mini-offer' in _depth_css
+assert '#offersGrid.ob-photo-grid .ob-mini-add.is-saved' in _depth_css
+assert 'prefers-reduced-motion' in _depth_css
+assert '@import' not in _depth_css and 'url(' not in _depth_css
+(folder/'static/ob-promo-depth-v8.css').write_text(_depth_css,encoding='utf-8')
+if '/static/ob-promo-depth-v8.css' not in html:
+    html=html.replace('</head>','<link rel="stylesheet" href="/static/ob-promo-depth-v8.css?v=20261109v8"></head>')
+assert html.count('/static/ob-promo-depth-v8.css')==1
+assert html.index('/static/ob-promo-depth-v8.css') > html.index('/static/ob-photo-cards-v5.css')
+assert all(marker in (folder/'static/ob-premium.js').read_text(encoding='utf-8') for marker in
+           ('ob-mini-offer','ob-mini-photo-box','ob-mini-add','data-ob-list'))
+print('OB_V8_PROMO_DEPTH_INTEGRATION_PASS')
 page.write_text(html,encoding='utf-8')
 
 
