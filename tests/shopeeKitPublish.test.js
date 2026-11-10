@@ -117,12 +117,21 @@ test('Kit impede vínculo de estojo com anúncio de mochila pelo mesmo código',
  assert.match(platform,/plausibleKitComponentTitle/);
  assert.doesNotMatch(platform,/similarityScore|fuzzyMatch/);
 });
-test('Etapa 10 exige somente um botão e reporta ligação recuperada ou bloqueio real',()=>{
+test('Etapa 10 utiliza somente a SKU principal Shopee, sem exigir anuncio dos complementos WeDrop',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const builder=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
- const service=fs.readFileSync(new URL('../shopeeKitPublicationService.js',import.meta.url),'utf8');
+ const optimization=fs.readFileSync(new URL('../shopeeKitOptimization.js',import.meta.url),'utf8');
  assert.match(html,/id="kitWizardOpenExecution"[^>]*>▶ Executar na Shopee/);
- assert.match(builder,/kitWizardExecuteNewKit/);
- assert.match(builder,/autoRecovered/);
- assert.match(service,/autoRecovered/);
+ const click=builder.slice(builder.indexOf("$('#kitWizardOpenExecution')?.addEventListener('click'"),
+  builder.indexOf("$('#kitWizardOpenTechnical')?.addEventListener('click'"));
+ assert.match(click,/kitWizardResumeTargetForExecution/);
+ assert.match(click,/await saveDraft\(\)/);
+ assert.doesNotMatch(click,/kitWizardExecuteNewKit|kitPublishGuideNext|kitPublicationReadiness|Kit Formal/);
+ const flow=builder.slice(builder.indexOf('async function kitWizardResumeTargetForExecution()'),
+  builder.indexOf('let kitWizardExecutionOpening='));
+ assert.match(flow,/const principal=String\(prepared\.kit\.components\?\.\[0\]\?\.sku\|\|''\)/);
+ assert.match(flow,/kitWizardEnsureExecutionLink/);
+ assert.match(flow,/kitExistingOptimizer\.resumeLiveVerifiedTarget/);
+ assert.ok(flow.indexOf('kitWizardEnsureExecutionLink')<flow.indexOf('kitExistingOptimizer.resumeLiveVerifiedTarget'));
+ assert.match(optimization,/SKUs complementares são vinculadas na WeDrop/);
 });
