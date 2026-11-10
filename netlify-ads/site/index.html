@@ -1988,17 +1988,19 @@ async function apiLoadRange(syncMany=false){
    setApiStatus('Consultando '+a+' a '+b+' · '+(count+1)+'/'+chunks.length+'...');
    const result=await apiOverview(a,b);
    // Evitar que uma resposta atrasada preencha um SKU diferente após troca no seletor.
-   if($('productSelect').value!==sku)return;
+   if($('productSelect').value!==sku||(!syncMany&&($('dateStart').value!==start||$('dateEnd').value!==end)))return;
+   const actualStart=result.dateAdjustment?.shiftedDays&&result.dates?.start?String(result.dates.start).split('-').reverse().join('-'):a;
+   const actualEnd=result.dateAdjustment?.shiftedDays&&result.dates?.end?String(result.dates.end).split('-').reverse().join('-'):b;
    const matching=apiReportMatches(result.campaigns,sku,product.name,product.linkedCampaignIds);
    for(const c of result.campaigns)if(/^\d+$/.test(String(c.campaignId||''))){
      candidates.set(String(c.campaignId),c);
-     if(!latestWindow.has(String(c.campaignId))||a>=latestWindow.get(String(c.campaignId))[0])latestWindow.set(String(c.campaignId),[a,b]);
+     if(!latestWindow.has(String(c.campaignId))||a>=latestWindow.get(String(c.campaignId))[0])latestWindow.set(String(c.campaignId),[actualStart,actualEnd]);
    }
    for(const c of matching)if(/^\d+$/.test(String(c.campaignId||''))){
-     seen.set(String(c.campaignId),c);latestWindow.set(String(c.campaignId),[a,b]);
+     seen.set(String(c.campaignId),c);latestWindow.set(String(c.campaignId),[actualStart,actualEnd]);
      if(syncMany){if(apiStoreOne(c,sku,a,b))records++}else if(matching.length===1){
-       apiFillCampaign(c,a,b);rememberApiCampaign(sku,String(c.campaignId));
-       if(apiStoreOne(c,sku,a,b))records++;
+       apiFillCampaign(c,actualStart,actualEnd);rememberApiCampaign(sku,String(c.campaignId));
+       if(apiStoreOne(c,sku,actualStart,actualEnd))records++;
      }
    }
    count++;
