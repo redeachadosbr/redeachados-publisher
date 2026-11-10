@@ -35,9 +35,10 @@ test('retomada consulta sempre banco e informa slots confirmados para a Ponte',(
  assert(start>0&&end>start,'handler de retomada ausente');
  const resume=app.slice(start,end);
  assert.match(resume,/api\/shopee\/optimizer\/images\/manual\?/);
- assert.match(resume,/const missing=Array\.from\(\{length:9\}/);
- assert.match(resume,/completed:stored,imageUrl:referenceUrl,prompts:brief\.prompts/);
- assert.match(resume,/imageUrl:referenceUrl,prompts:brief\.prompts,completed:stored/);
+ assert.match(resume,/const allMissing=Array\.from\(\{length:9\}/);
+ assert.match(resume,/const missing=deferredThird\?allMissing\.filter/);
+ assert.match(resume,/completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief\.prompts/);
+ assert.match(resume,/imageUrl:referenceUrl,prompts:brief\.prompts,completed:bridgeCompleted/);
  assert.match(resume,/optimizerBridgeRecoverFromExtension/);
  assert.doesNotMatch(resume,/method:'DELETE'|restart:true/);
  assert(resume.indexOf('optimizerBridgeRecoverFromExtension')<resume.indexOf("if(recovered.ok)"));
@@ -62,6 +63,6 @@ test('chat não limpo não reativa prompt antigo; sessão nova começa pelo pró
  assert.match(source,/resumeDirty&&!optimizerChatgptCleanChatAuthorized/);
  assert.match(source,/await optimizerChatBridgeRelease\('Chat novo confirmado/);
  assert.match(source,/recovered=\{reason:'NO_RECOVERABLE_JOB'\}/);
- assert.match(source,/completed:stored/);
+ assert.match(source,/completed:bridgeCompleted/);
  assert.doesNotMatch(source,/method:'DELETE'|restart:true/);
 });
