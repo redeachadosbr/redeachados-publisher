@@ -1,6 +1,6 @@
 import {PREMIUM_NINE_IMAGE_TITLES,premiumNineImageRule} from './premiumNineImagePolicy.js';
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261104-bulleted-saved-dimensions';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
 import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-premium-nine-images';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
