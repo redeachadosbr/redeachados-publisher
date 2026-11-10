@@ -64,8 +64,8 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
   ].filter(Boolean).join('\n\n');
  });
  const dims=dimensions;
- // A imagem ChatGPT é a fotografia-base: dimensões e selos factuais são
- // incorporados UMA única vez no Manager no estilo visual aprovado.
+ // A imagem 03 é uma arte FINAL gerada no próprio ChatGPT com cotas da WeDrop.
+ // O Manager apenas importa a imagem recebida, sem sobrepor textos ou setas.
  const isPoolLounger=/colch[aã]o.*(?:infl[aá]vel|piscina)|(?:boia|infl[aá]vel).*colch[aã]o/i.test(title);
  const hasLengthWidth=Boolean(dims?.measurements?.some(x=>x.axis==='comprimento')&&
   dims.measurements.some(x=>x.axis==='largura'));
@@ -82,11 +82,11 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
   imageScenePrompt({slot:3,title}),
   'FOTOGRAFIA NOVA OBRIGATÓRIA: baseie-se na FOTO ANEXADA do produto exato, preserve corpo, cores, componentes e detalhes físicos. Crie nova cena comercial moderna COERENTE COM A CATEGORIA E USO REAL DO PRODUTO informado na ficha WeDrop; jamais impor cozinha a brinquedos, ferramentas, banho, roupas ou outros produtos. Perspectiva lateral/três-quartos diferente da imagem 02 de uso real, enquadramento técnico de catálogo. Se o produto puder ficar apoiado, deixe-o sobre superfície apropriada. Evite mãos, pessoas e ações de uso; mostre o produto inteiro, sem cortes.',
   poolDisplay?
-   'VARIAÇÕES DE COR CONFIRMADAS PELA WEDROP: apresentar as três OPÇÕES de cor do colchão inflável na mesma cena, da esquerda para a direita ROSA, AMARELO e AZUL. O envio contém UMA unidade de cor sortida, NÃO é kit nem três unidades. O Manager colocará a cota apenas sobre a peça AZUL e o selo “Envio em cores sortidas”.':
+   'VARIAÇÕES DE COR CONFIRMADAS PELA WEDROP: apresentar as três OPÇÕES de cor do colchão inflável na mesma cena, da esquerda para a direita ROSA, AMARELO e AZUL. O envio contém UMA unidade de cor sortida, NÃO é kit nem três unidades. As cotas confirmadas devem ser desenhadas pelo próprio ChatGPT somente sobre a peça AZUL. O aviso discreto “Envio em cores sortidas” deve fazer parte da arte do ChatGPT.':
    '',
   'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e medidas verificadas ('+(verifiedAxes||'ALTURA, LARGURA, COMPRIMENTO ou DIÂMETRO quando comprovados')+'). Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
-  'PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER: a fotografia que você gera é a BASE de uma arte de DIMENSÕES, não o resultado publicado. O Manager acrescentará uma única camada vetorial verificável com as cotas '+(verifiedAxes||'confirmadas')+' EXATAS da WeDrop à imagem recebida e só então salvará a imagem 03. Para impedir duplicação ou erros de números na arte final, NÃO escreva texto, números, etiquetas ou setas na foto-base. As cotas serão aplicadas automaticamente sobre ESTA FOTO NOVA, não sobre a imagem 02.',
-  axes.length===3?'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.':'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
+  'ARTE FINAL CRIADA NO CHATGPT: desenhe NA PRÓPRIA IMAGEM as cotas EXATAS '+(finalMeasurements.join(' e ')||'confirmadas')+' de forma elegante, proporcional ao produto real, com linhas finas e discretas. Posicione a cota de altura verticalmente ao lado do produto; diâmetro horizontalmente na base, quando houver diâmetro confirmado. Use tipografia pequena, muito legível, azul-marinho ou branca de alto contraste. Sem caixas chamativas, etiquetas coloridas, tarjas, cartões, medidas da embalagem ou informações inventadas. A composição final gerada precisa conter os valores legíveis, não apenas mencioná-los no texto da resposta. O Shopee Manager NÃO acrescentará números nem setas depois; esta é a arte final.',
+  axes.length===3?'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA com as cotas visíveis integradas à arte 03, sem elementos extras e sem inventar medidas.':'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
  ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
