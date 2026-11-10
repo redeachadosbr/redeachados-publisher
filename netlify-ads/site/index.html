@@ -205,7 +205,7 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16.9 · Histórico + Pedidos XLSX</span>
+    <span class="pill">V17.0 · Decisão por histórico + Pedidos XLSX</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
   <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Decisão atual</button><button class="tab" data-tab="evolucao">▥ Evolução</button><button class="tab" data-tab="historico">◷ Alterações</button><button class="tab" data-tab="regras">▤ Regras Ads</button></nav>
@@ -506,7 +506,7 @@
       <p class="tiny">Histórico local preservado no backup JSON e sincronizado com o Google Drive quando a conexão estiver disponível.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.9</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 17.0</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
 <script>
@@ -545,10 +545,10 @@ function getData(){
  const cost=product?totalProductCost(product):null;
  const validFinancial=!!(product&&product.price>0&&cost!==null&&Number.isFinite(cost)&&Number.isFinite(fees?.percent)&&Number.isFinite(fees?.fixed));
  return {
- campaign:$('campaign').value.trim()||'Campanha sem nome',dateStart:$('dateStart').value,dateEnd:$('dateEnd').value,
+ campaign:$('campaign').value.trim()||'Campanha sem nome',dateStart:window.RedeAdsHistory?.analysisDates?.()?.start||$('dateStart').value,dateEnd:window.RedeAdsHistory?.analysisDates?.()?.end||$('dateEnd').value,
  budgetMode:$('budgetMode').value,budget:val('budget'),minDesiredRoas:val('minDesiredRoas'),rapidBoost:$('rapidBoost').value,spent:val('spent'),
  target:val('target'),revenue:val('revenue'),actual:val('actual'),impressions:parseQuantity($('impressions').value),
- clicks:val('clicks'),ctrReported:val('ctrReported'),orders:val('orders'),itemsSold:val('itemsSold'),addToCart:val('addToCart'),
+ clicks:val('clicks'),ctrReported:val('ctrReported'),orders:val('orders'),itemsSold:val('itemsSold'),itemsSoldSource:window.RedeAdsHistory?.salesSource?.()||'manual_or_unknown',addToCart:val('addToCart'),
  periodClosed:$('periodClosed').checked&&$('dateEnd').value<brazilTodayISO(),budgetStable:$('budgetStable').checked,
  price:validFinancial?product.price:null,cost:validFinancial?cost:null,
  feePercent:validFinancial?fees.percent+(product.extraPct||0):null,
@@ -1574,6 +1574,7 @@ async function receiveOrdersFile(file){
   renderSupplierOrdersHint();
   if(lastReport)renderOrdersAdsComparison(lastReport);
   window.RedeEvolution?.ordersUpdated?.();
+  window.RedeAdsHistory?.ordersUpdated?.();
  }catch(e){$('ordersImportStatus').textContent='Erro nos pedidos: '+String(e.message||e).slice(0,220)}
  finally{btn.disabled=false;$('importOrdersXlsxFile').value=''}
 }
@@ -1600,6 +1601,7 @@ $('pSku').addEventListener('change',lookupSupplierSKU);
    renderSupplierOrdersHint();
    if(lastReport)renderOrdersAdsComparison(lastReport);
    window.RedeEvolution?.ordersUpdated?.();
+   window.RedeAdsHistory?.ordersUpdated?.();
   }
  }catch{/* IndexedDB opcional. Importação manual ainda funciona na sessão atual. */}
 })();
@@ -1835,7 +1837,7 @@ function renderChangeHistory(){
  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><div class="hist-action-buttons"><button class="btn-secondary mini" data-analyze-change="'+safe(x.id)+'" type="button">Analisar fases</button><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></div></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
  for(const btn of body.querySelectorAll('[data-analyze-change]'))btn.addEventListener('click',()=>{
   const record=getChanges().find(x=>x.id===btn.dataset.analyzeChange);
-  if(!window.RedeEvolution?.selectSku?.(record.sku))historyRunFromChange(record);
+  if(!window.RedeAdsHistory?.openFor?.(record.sku,record.id))historyRunFromChange(record);
  });
  for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
   if(!confirm('Excluir este registro manual?'))return;
@@ -2090,6 +2092,7 @@ refreshChangeSelects();renderChangeHistory();
 <script src="/order-phase-metrics.js?v=20261110-2"></script>
 <script src="/evolution.js?v=20261110-3"></script>
 <script src="/decision-quick.js?v=20261110-2"></script>
+<script src="/decision-history.js?v=20261110-1"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
