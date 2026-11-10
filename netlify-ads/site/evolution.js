@@ -208,7 +208,7 @@ function render(model,results,chosenId,loaded=false){
   const row=withMetrics.find(x=>x.phase===phase),m=row?.metrics||{missing:true},beforeRow=withMetrics[withMetrics.indexOf(row)-1],before=beforeRow?.metrics;
   const orderData=row?.orders||ordersFor(p.sku,phase.from,phase.to);
   const ordersCompared=window.RedeOrderPhase?.compareDaily(orderData,beforeRow?.orders)||null;
-  const orderComparison=ordersCompared?.delta!==null&&ordersCompared?
+  const orderComparison=ordersCompared&&ordersCompared.delta!==null?
    ' · unidades/dia '+(ordersCompared.delta>=0?'+':'')+ordersCompared.delta.toLocaleString('pt-BR',{maximumFractionDigits:1})+'% vs. fase anterior':'';
   const orderHtml=orderBadge(orderData)+
    (orderComparison?'<div class="evo-small">'+safeText(orderComparison.slice(3))+'</div>':'');
@@ -375,6 +375,12 @@ e('evoSku').addEventListener('change',()=>{
 e('evoStart').addEventListener('change',()=>{cached=null});
 e('evoEnd').addEventListener('change',()=>{cached=null});
 e('evoRefresh').addEventListener('click',()=>fetchAll(true));
+e('evoOpenOrders').addEventListener('click',()=>{
+ switchTab('produtos');
+ const btn=e('importOrdersXlsxBtn');
+ btn?.scrollIntoView({behavior:'smooth',block:'center'});
+ btn?.focus();
+});
 e('evoCampaign').addEventListener('change',()=>useCampaign(e('evoCampaign').value));
 e('evoHistoryLink').addEventListener('click',()=>{
  const sku=e('evoSku').value;
