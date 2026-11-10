@@ -28,19 +28,14 @@ test('variantes visuais continuam distintas e sem repetição',()=>{
  assert.equal(new Set(refs).size,refs.length);
  assert(refs.some(x=>x==='https://down-br.img.susercontent.com/file/'+id));
 });
-test('fallback da imagem 03 usa medidas WeDrop e só altera slot 03',()=>{
+test('fallback de imagem 03 sem ChatGPT está desativado',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const start=app.indexOf('async function optimizerThirdFromPreparedPhoto(');
  const end=app.indexOf('// Aplica apenas as cotas verificadas à foto 03 JÁ SALVA.',start);
  assert(start>0&&end>start);
  const body=app.slice(start,end);
- assert.match(body,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(body,/stored\.has\(2\)\?2:stored\.has\(1\)\?1:0/);
- assert.match(body,/X-Expect-Empty-Slot/);
- assert.match(body,/key\.set\('slot','3'\)/);
- assert.match(body,/original\.sha256!==stored\.get\(fromSlot\)\?\.sha256/);
- assert.match(body,/addConfirmedSpecificationCard/);
- assert.doesNotMatch(body,/method:'DELETE'|RA_SITE_ABORT|images\/reorder/);
+ assert.match(body,/deve ser gerada com medidas diretamente no ChatGPT/);
+ assert.doesNotMatch(app.slice(app.indexOf('let importThirdButton=null'),app.indexOf('const adjust=optimizerMake')),/Criar com foto|Importar foto-base|Aplicar medidas/);
 });
 
 test('motor raiz: botão Gerar 03 usa a Ponte ChatGPT e não copia a imagem 02',()=>{
@@ -57,33 +52,28 @@ test('motor raiz: botão Gerar 03 usa a Ponte ChatGPT e não copia a imagem 02',
  assert.doesNotMatch(cont,/localRendered:true/);
  assert.doesNotMatch(cont,/await optimizerThirdFromPreparedPhoto/);
 });
-test('motor raiz: ao receber imagem 03 via extensão, aplica cotas na cena NOVA antes do upload',()=>{
+test('motor raiz: importa imagem 03 gerada no ChatGPT sem overlay de cotas',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const start=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
  const end=app.indexOf('const existing=await json(',start);
  const received=app.slice(start,end);
  assert.match(received,/await optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.doesNotMatch(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
  assert.match(received,/sceneSha256/);
- assert.match(received,/chatgpt-auto-03-cotas-wedrop.png/);
- assert.match(received,/medidas verificadas|cotas confirmadas|cotas WeDrop/i);
+ assert.match(received,/chatgpt-auto-03-arte-final.png/);
+ assert.match(received,/Medidas solicitadas/);
  const click=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
   app.indexOf('async function optimizerChatgptCopyAll('));
  assert.match(click,/referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl/);
  assert.match(click,/imageUrl:refs\[i\],prompts,referenceDataUrl/);
 });
-test('imagem 03 usa hash condicional e não substitui fotos de outras posições',()=>{
+test('modo alternativo com overlay é proibido e não apaga imagens',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const begin=app.indexOf('async function optimizerThirdFromPreparedPhoto(');
  const end=app.indexOf('// Aplica apenas as cotas verificadas à foto 03 JÁ SALVA.',begin);
  const body=app.slice(begin,end);
- assert.match(body,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(body,/measurements\?\.length\|\|0\)<2/);
- assert.match(body,/key\.set\('slot','3'\)/);
- assert.match(body,/X-Expected-Sha256/);
- assert.match(body,/X-Expect-Empty-Slot/);
- assert.match(body,/addConfirmedSpecificationCard/);
- assert.doesNotMatch(body,/method:'DELETE'|RA_SITE_START|restart:true/);
+ assert.match(body,/deve ser gerada com medidas diretamente no ChatGPT/);
+ assert.doesNotMatch(body,/method:'DELETE'|RA_SITE_ABORT|images\/reorder/);
 });
 test('renderer insere 10 cm, 10 cm e comprimento 14 cm confirmados da SKU 1736',async()=>{
  const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('../public/specificationCard.js');

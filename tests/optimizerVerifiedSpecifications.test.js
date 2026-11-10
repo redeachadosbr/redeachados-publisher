@@ -58,7 +58,7 @@ test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem num
  assert.deepEqual(x.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.doesNotMatch(x.prompts[2],/48 cm|58 cm|68 cm|72 cm|35 cm/);
 });
-test('imagem 03 aplica medidas WeDrop na foto NOVA do ChatGPT antes de importar',()=>{
+test('imagem 03 importa arte com cotas produzidas no ChatGPT sem sobrepor medidas',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
  const img=app.indexOf("if(Number(m.slot)===3)");
@@ -66,8 +66,9 @@ test('imagem 03 aplica medidas WeDrop na foto NOVA do ChatGPT antes de importar'
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(block,/chatgpt-auto-03-cotas-wedrop.png/);
+ assert.doesNotMatch(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(block,/chatgpt-auto-03-arte-final.png/);
+ assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(fresh,/sourceEvidenceSku:source\.sku/);

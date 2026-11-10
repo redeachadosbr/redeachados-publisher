@@ -67,6 +67,6 @@ test('editor de kit não envia medidas WeDrop digitadas antes de gravar e recons
  assert.match(app,/ETAPA 01 WEDROP PENDENTE/);
  assert.match(app,/source\?\x27\+new URLSearchParams/);
  assert.match(app,/typed!==saved/);
- assert.match(app,/chatgptPrompts\.js\?v=20261110-product-package-scope/);
+ assert.match(app,/chatgptPrompts\.js\?v=20261110-chatgpt-final-cotas/);
  assert.match(kit,/Aplicar medidas WeDrop/);
 });
