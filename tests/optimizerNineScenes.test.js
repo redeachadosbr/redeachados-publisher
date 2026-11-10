@@ -40,7 +40,8 @@ test('Motor Matriz aplica as regras novas e mantém dimensões reais da WeDrop',
  assert.match(p03,/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(p03,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  for(const forbidden of ['66 cm','100 cm','27 cm'])assert(!p03.includes(forbidden));
- assert.match(p03,/PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER/);
+ assert.match(p03,/ARTE FINAL CRIADA NO CHATGPT/);
+ assert.doesNotMatch(p03,/PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
  assert.doesNotMatch(result.prompts[2],/INJETAR_NOTA/);
 });
