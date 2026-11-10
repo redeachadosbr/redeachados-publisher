@@ -62,7 +62,10 @@ function makePhases(sku,from,until,today,changes){
     from:group.date,to:group.date,events:group.records,type:'transition'});
  }
  phases.sort((a,b)=>a.from.localeCompare(b.from)||(a.type==='transition'?-1:1));
- const current=until>=today?{sku,label:'Hoje · dados parciais',from:today,to:today,type:'partial',events:[]}:null;
+ // Uma alteração feita hoje já aparece como transição. Não repetir o
+ // mesmo dia como "Hoje" e duplicar visualmente unidades dos pedidos.
+ const current=until>=today&&!groups.some(g=>g.date===today)?
+  {sku,label:'Hoje · dados parciais',from:today,to:today,type:'partial',events:[]}:null;
  return {phases,current,lastFull,changes:groups,from,until};
 }
 function requestsFor(model){
