@@ -647,10 +647,10 @@ if(d.revenue!==null&&d.actual!==null&&actual!==null&&Math.abs(actual-d.actual)>.
 if(d.impressions>0&&d.clicks!==null&&d.ctrReported!==null&&Math.abs(100*d.clicks/d.impressions-d.ctrReported)>0.5)alerts.push({level:'warn',text:'O CTR informado difere do cálculo cliques ÷ impressões. Verifique a leitura do print e o período.'});
 if(d.orders===0&&d.clicks!==null&&d.clicks>=30)alerts.push({level:'danger',text:d.clicks+' cliques e nenhum pedido informado: investigue conversão e oferta antes de ampliar a entrega.'});
 if(actual!==null&&actual===0&&d.spent>0)alerts.push({level:'danger',text:'Investimento sem receita atribuída no período: não há lucro proveniente dessas vendas Ads para compensar o gasto.'});
-if(fin){if(d.minDesiredRoas!==null&&d.minDesiredRoas<fin.minRoas)alerts.push({level:'warn',text:'Seu ROAS mínimo '+roas(d.minDesiredRoas)+' está abaixo do mínimo financeiro para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'inviável')+'). Não usar o menor para autorizar escala.'});if(fin.unfilled.length)alerts.push({level:'warn',text:'Embalagem, frete ou cupons ficaram em branco e foram tratados como R$ 0,00: a margem calculada pode estar superestimada.'});if(fin.margin!==null&&fin.margin<0)alerts.push({level:'danger',text:'Margem estimada negativa com o ROAS real. Priorize limitar a perda e corrigir a oferta antes de escalar.'});else if(fin.margin!==null&&fin.margin<fin.desired)alerts.push({level:'warn',text:'A margem líquida aproximada no ROAS real ficou abaixo da meta de '+pct(fin.desired)+'.'});if(suggestedROAS!==null&&suggestedROAS<fin.minRoas)alerts.push({level:'danger',text:'A mudança do caderno levaria o ROAS alvo para '+roas(suggestedROAS)+', abaixo do ROAS necessário para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'meta não atingível')+'). Não aplicar essa redução sem corrigir a margem.'});}else{alerts.push({level:'warn',text:'Lucratividade não validada: selecione um SKU com preço, custo, taxas e margem cadastrados na aba Produtos. Não foram presumidos valores financeiros.'});}
+if(fin){if(d.minDesiredRoas!==null&&d.minDesiredRoas<fin.minRoas)alerts.push({level:'warn',text:'Seu ROAS mínimo '+roas(d.minDesiredRoas)+' está abaixo do mínimo financeiro para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'inviável')+'). Não usar o menor para autorizar escala.'});if(fin.unfilled.length)alerts.push({level:'warn',text:'Embalagem, frete ou cupons ficaram em branco e foram tratados como R$ 0,00: a margem calculada pode estar superestimada.'});if(fin.margin!==null&&fin.margin<0)alerts.push({level:'danger',text:'Margem estimada negativa com o ROAS real. Priorize limitar a perda e corrigir a oferta antes de escalar.'});else if(fin.margin!==null&&fin.margin<fin.desired)alerts.push({level:'warn',text:'A margem líquida aproximada no ROAS real ficou abaixo da meta de '+pct(fin.desired)+'.'});if(suggestedROAS!==null&&suggestedROAS<fin.minRoas)alerts.push({level:'danger',text:'Alerta financeiro: a regra recomenda ROAS alvo '+roas(suggestedROAS)+', abaixo do mínimo para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'meta não atingível')+'). A recomendação de −20% continua visível; a decisão é sua.'});}else{alerts.push({level:'warn',text:'Lucratividade não validada: selecione um SKU com preço, custo, taxas e margem cadastrados na aba Produtos. Não foram presumidos valores financeiros.'});}
 let safeAction='',rule='';const belowGoal=fin&&fin.margin!==null&&fin.margin<fin.desired;
-if(scenario===1){rule='Consumo parcial e ROAS real ≥ alvo: reduzir orçamento e ROAS alvo 20%.';safeAction=(fin&&suggestedROAS<fin.minRoas)?'Não aplicar a redução do ROAS: ela ficaria abaixo do mínimo de margem. Revisar custos e preço, manter o controle de verba e só testar alterações após corrigir a rentabilidade.':'A regra sugere -20% nos dois campos. Teste com cautela, valide o preço e margem e acompanhe a entrega; ROAS alvo menor não garante lucro.';}
-else if(scenario===2){rule='Consumo parcial e ROAS real < alvo: primeiro conferir concorrência, preço e fotos; depois reduzir ambos 20%.';safeAction='Primeiro revisar competitividade, capa, frete e conversão. '+(fin&&suggestedROAS<fin.minRoas?'Não reduzir o alvo para '+roas(suggestedROAS)+': ficaria abaixo do ROAS para a margem desejada.':'A redução de 20% é apenas um teste após validar margem; não autorize escala sem essa conferência.');}
+if(scenario===1){rule='Consumo parcial e ROAS real ≥ alvo: reduzir orçamento e ROAS alvo 20%.';safeAction='Aplicar a recomendação do Cenário 1: orçamento diário e ROAS-alvo −20% (conforme as regras). Confira os alertas financeiros antes de executar; a decisão permanece disponível mesmo com risco de prejuízo.';}
+else if(scenario===2){rule='Consumo parcial e ROAS real < alvo: primeiro conferir concorrência, preço e fotos; depois reduzir ambos 20%.';safeAction='Primeiro revisar competitividade, capa, preço, frete e conversão; depois a regra recomenda reduzir ROAS-alvo e orçamento em 20%. O alerta financeiro é informativo e não bloqueia a recomendação.';}
 else if(scenario===3){rule='Consumo total (≥95%) e ROAS real < alvo: revisar oferta, aumentar alvo 20% e manter orçamento.';safeAction='Corrigir preço, fotos e conversão; subir o alvo 20% conforme o caderno pode conter entrega, mas não garante melhora. '+(belowGoal?'A margem estimada está abaixo da desejada: contenha risco antes de manter gastos altos.':'Não aumentar a verba até validar rentabilidade.');}
 else if(scenario===4){rule='Consumo total (≥95%) e ROAS real ≥ alvo: escolher A, B ou C segundo a verba mensal disponível.';safeAction='Sem confirmação de verba extra, não escalar automaticamente. Compare A, B e C e selecione conforme seu orçamento mensal, validando a margem por venda.';}
 else{rule='Não foi possível aplicar com segurança um dos quatro cenários: falta limite comparável ou ROAS válido.';safeAction='Não aplicar porcentagens de forma automática. '+(d.budgetMode==='unlimited'?'Defina um teto diário (exemplo de teste conservador: R$ 5,00, se permitido) e acompanhe o gasto.':'Corrija período, orçamento ou dados de ROAS antes de decidir.')+' Revise margem e conversão.';}
@@ -668,8 +668,7 @@ if(previewScenario!==null){
  alerts.push({level:'warn',text:'PRÉVIA, não decisão final: o dia atual ainda está em andamento. A classificação '+String(previewScenario).padStart(2,'0')+' pode mudar após fechar o período. Nenhuma recomendação de −20% ou +20% será aplicada com base apenas nesta prévia.'});
 }
 if(d.budgetMode==='daily'&&d.minDesiredRoas!==null&&suggestedROAS!==null&&suggestedROAS<d.minDesiredRoas){
- alerts.push({level:'danger',text:'A regra original sugeriria ROAS '+roas(suggestedROAS)+', abaixo do mínimo que você escolheu ('+roas(d.minDesiredRoas)+'). Não aplicar essa redução.'});
- safeAction='Não reduzir a meta abaixo de '+roas(d.minDesiredRoas)+'. '+safeAction;
+ alerts.push({level:'danger',text:'Alerta: a regra recomenda ROAS '+roas(suggestedROAS)+', abaixo do mínimo que você escolheu ('+roas(d.minDesiredRoas)+'). A decisão não será bloqueada.'});
 }
 let unlimitedRule=null;
 if(d.budgetMode==='unlimited'){
@@ -708,12 +707,12 @@ function criticalCampaignDiagnosis(r,p,history=[]){
  if(losing){
   push(1,'Proteger o lucro antes de aumentar o tráfego',
    'O ROAS real '+(actual===null?'não está disponível':roas(actual))+' fica abaixo do equilíbrio financeiro do produto ('+(Number.isFinite(r.fin.breakeven)?roas(r.fin.breakeven):'inviável')+').',
-   'Não baixar o ROAS alvo nem o preço para gerar cliques. Confira custos, comissão, frete e receita atribuída; caso o risco continue, avalie teto diário REAL ou pausa manual.','', 'risk',
+   'A recomendação das regras Ads permanece apresentada. Atenção ao risco financeiro: confira custos, comissão, frete e receita atribuída; avalie o impacto de uma redução do ROAS antes de executá-la.','', 'risk',
    'ROAS real '+(actual===null?'—':roas(actual))+' · equilíbrio '+(Number.isFinite(r.fin.breakeven)?roas(r.fin.breakeven):'inviável'));
  }else if(actual!==null&&floor!==null&&actual<floor){
   push(5,'Priorizar a margem e o ROAS mínimo',
    'O ROAS real '+roas(actual)+' está abaixo da proteção de '+(Number.isFinite(floor)?roas(floor):'meta inviável')+'.',
-   'Não escale a campanha nem reduza a meta só para obter tráfego. Revise oferta e custos antes de testar qualquer ajuste de ROAS.','', 'risk');
+   'Confira o alerta financeiro e reveja a oferta e custos. As regras Ads e suas alterações percentuais continuam disponíveis para sua decisão.','', 'risk');
  }
  const needsPrice=(p?.market>0&&p?.price>p.market*1.08);
  const convertingBad=clicks!==null&&clicks>=40&&(
@@ -837,6 +836,27 @@ function makeSimpleDecision(r){
   title='Conferir números da campanha';
   message='O ROAS informado não corresponde a vendas ÷ investimento. Confira se os dados são da mesma campanha e período antes de alterar preço ou anúncios.';
   tone='risk';
+ }else if(r.scenario===1){
+  title='Cenário 01 · reduzir ambos em 20%';
+  message='Consumo parcial e ROAS atingido. Orçamento '+money(d.budget)+' → '+money(r.suggestedBudget)+'; ROAS-alvo '+roas(d.target)+' → '+roas(r.suggestedROAS)+'. A margem deve ser conferida no alerta separado.';
+  tone='healthy';
+ }else if(r.scenario===2){
+  title='Cenário 02 · revisar oferta e reduzir 20%';
+  message='Consumo parcial e ROAS abaixo do alvo. Revise preço, capa, frete e conversão; depois a regra recomenda orçamento '+money(d.budget)+' → '+money(r.suggestedBudget)+' e ROAS-alvo '+roas(d.target)+' → '+roas(r.suggestedROAS)+'.';
+ }else if(r.scenario===3){
+  title='Cenário 03 · aumentar ROAS em 20%';
+  message='Consumo total e ROAS abaixo da meta. Revise a oferta; mantenha orçamento em '+money(d.budget)+' e aumente ROAS-alvo de '+roas(d.target)+' para '+roas(r.suggestedROAS)+'.';
+ }else if(r.scenario===4){
+  title='Cenário 04 · escolher A, B ou C';
+  message='Consumo total e ROAS atingido. A: orçamento +20% mantendo ROAS; B: manter orçamento e ROAS +20%; C: ambos +20%. Escolha conforme a verba disponível.';
+  tone='healthy';
+ }else if(r.previewScenario){
+  title='Prévia Cenário '+String(r.previewScenario).padStart(2,'0');
+  message='O período ainda está aberto. A regra indicada é provisória; confirme os dados após o fechamento. A situação financeira não substituirá a regra.';
+ }else if(r.unlimitedRule){
+  title='Regra 05 · '+r.unlimitedRule.stage;
+  message=r.unlimitedRule.action;
+  tone=r.unlimitedRule.risk?'neutral':'healthy';
  }else if(outOfStock){
   title='Verificar estoque no fornecedor';
   message='O catálogo WeDrop importado informa que este SKU está indisponível. Confirme o estoque atual no fornecedor antes de investir. Avalie pausar manualmente o Ads se não houver reposição; nenhuma ação será executada automaticamente.';
