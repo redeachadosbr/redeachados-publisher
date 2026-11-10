@@ -12335,8 +12335,14 @@ async function optimizerChatgptContinueFromServer(){
    try{
     if(brief.dimensionWarning||(brief.confirmedDimensions?.measurements?.length||0)<2)
      throw Error('Os eixos da imagem 03 ainda não estão confirmados para esta SKU.');
-    const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
-    notify('Dimensões da imagem 03 confirmadas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
+    // As medidas já foram lidas da fonte autenticada na montagem do roteiro.
+    // Revalidar a imagem 03 só quando ela for a primeira pendente; nunca
+    // bloquear a imagem 01 por uma SEGUNDA consulta exclusiva da imagem 03.
+    // O upload da imagem 03 sempre faz uma conferência final independente.
+    const confirmed=allMissing[0]===3
+     ?await optimizerRequireThirdChatgptDimensions(w,brief)
+     :brief.confirmedDimensions.measurements;
+    notify('Dimensões da imagem 03 conferidas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
    }catch(error){
     const reason=String(error?.message||error);
     const dimensionPending=/^(?:Os eixos da imagem 03|Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas|IMAGEM 03 NÃO INICIADA|PROMPT ANTIGO DETECTADO)/i.test(reason);
