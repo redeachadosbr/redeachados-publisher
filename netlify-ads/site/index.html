@@ -1317,11 +1317,12 @@ function summarizeOrderRows(rows){
   }
  }
  for(const rec of records.values())for(const day of Object.values(rec.byDate))delete day._lastOrder;
- return {orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
+ return {formatVersion:2,orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
   firstDate,lastDate,withoutDate,importedAt:new Date().toISOString()};
 }
 function compareOrdersToAds(d){
  if(!supplierOrderMeta)return null;
+ if(supplierOrderMeta.formatVersion!==2)return {needsReimport:true};
  const rec=supplierOrderBySku.get(d.sku);
  const from=d.dateStart,to=d.dateEnd;
  const byDate=rec?.byDate||{};
@@ -1351,6 +1352,11 @@ function renderOrdersAdsComparison(r){
  if(!small||!details)return;
  small.hidden=!result;details.hidden=!result;
  if(!result)return;
+ if(result.needsReimport){
+  small.textContent='Importe novamente a planilha .xlsx em Produtos para comparar os pedidos por período.';
+  details.textContent='O resumo de pedidos salvo nesta versão antiga não possui as datas por SKU. Importe o .xlsx novamente para habilitar a conferência.';
+  return;
+ }
  const ads=result.adsItems===null?'não informado':String(result.adsItems);
  const rangeLabel=result.rangeCovered?'Arquivo cobre as datas selecionadas':
   'Arquivo não cobre todo o período analisado';
@@ -1664,7 +1670,7 @@ function historyRunFromChange(change){
  $('apiStatus').textContent='Após '+(change.changes||[]).join(' + ')+' de '+fmtStamp(change.timestamp)+
   ': '+apiDate(start)+' até '+apiDate(end)+
   (next?' · antes da próxima alteração.':'.')+
-  '\nClique em Consultar período selecionado. Indicadores de outro período foram limpos.';
+  '\nConfira a meta de ROAS que estava vigente NESTE período (pode ser diferente da atual). Consulte a API para obter os indicadores desta fase.';
  switchTab('simulador');
  $('apiReadBtn').scrollIntoView({behavior:'smooth',block:'center'});
  return true;
@@ -1689,13 +1695,11 @@ function refreshChangeSelects(){
  if([...registration.options].some(x=>x.value===currentRegistration))registration.value=currentRegistration;
  const filter=$('changeFilter'),currentFilter=filter.value;
  const source=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
- const {from,to}=historyDateRange();
  const rows=source==='ads'?getAdsSnapshots():getChanges();
  const bySku=new Map();
  for(const entry of rows){
   const sku=String(entry.sku||'').trim();
-  if(!sku||!historyStatusMatches(historyAdsStatus(sku,productsBySku),statusFilter)||
-  !historyDateAllowed(source==='ads'?entry.syncedAt:entry.timestamp,from,to))continue;
+  if(!sku||!historyStatusMatches(historyAdsStatus(sku,productsBySku),statusFilter))continue;
   if(!bySku.has(sku))bySku.set(sku,savedProductName(sku,entry.productName||''));
  }
  filter.innerHTML='<option value="">Todos com histórico ('+bySku.size+')</option>'+
