@@ -256,7 +256,7 @@ test('geração do slot 03 verifica as cotas da SKU antes de enviar comando à P
  assert.match(continu,/if\(allMissing\.includes\(3\)\)/);
  assert.match(continu,/await optimizerRequireThirdChatgptDimensions\(w,brief\)/);
  const card=app.slice(app.indexOf('let importThirdButton=null,thirdFallbackButton=null'),
-  app.indexOf('let measureButton=null',app.indexOf('let importThirdButton=null,thirdFallbackButton=null')));
- assert.match(card,/thirdFallbackButton=fallback/);
- assert.doesNotMatch(card,/actions\.append\(fallback\)/);
+  app.indexOf("const adjust=optimizerMake('button'",app.indexOf('let importThirdButton=null,thirdFallbackButton=null')));
+ assert.match(card,/measureButton=null/);
+ assert.doesNotMatch(card,/thirdFallbackButton=fallback|Aplicar medidas WeDrop|Criar com foto/);
 });
