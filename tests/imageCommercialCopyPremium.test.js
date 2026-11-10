@@ -111,7 +111,7 @@ test('imagem 03 mantém a arte final e desativa foto-base sem cotas',()=>{
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
  assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
  assert.doesNotMatch(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
- assert.match(manual,/criada pelo ChatGPT/);
+ assert.match(manual,/criadas pelo ChatGPT|criada no ChatGPT/);
  assert.match(manual,/X-Expect-Empty-Slot/);
  assert.match(manual,/X-Expected-Sha256/);
  assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
