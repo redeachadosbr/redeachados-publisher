@@ -154,6 +154,13 @@ async function refresh(report,{force=false}={}){
     financeCoverage=false;
     financeProblems.push(part.from+' a '+part.to+': cobertura financeira incompleta');
    }
+   // O backend financeiro lista CANCELLED pelo status atual, mas não consegue
+   // confirmar se um cancelamento teve pagamento aprovado anteriormente.
+   // Sem conciliação desse histórico, não chamar o resultado de confirmado.
+   if(Number(f.salesPipeline?.cancelled||0)>0){
+    financeCoverage=false;
+    financeProblems.push(part.from+' a '+part.to+': há cancelamentos com histórico de pagamento não conciliado por SKU');
+   }
    for(const order of f.paidOrders){
     const id=String(order?.orderSn||'');
     if(id&&!seenOrders.has(id)){seenOrders.add(id);rows.push(order)}
