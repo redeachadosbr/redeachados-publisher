@@ -12338,9 +12338,13 @@ async function optimizerChatgptContinueFromServer(){
     const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
     notify('Dimensões da imagem 03 confirmadas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
    }catch(error){
-    if(!optimizerImagesSameSku(w))throw error;
+    const reason=String(error?.message||error);
+    const dimensionPending=/^(?:Os eixos da imagem 03|Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas|IMAGEM 03 NÃO INICIADA|PROMPT ANTIGO DETECTADO)/i.test(reason);
+    // Falhas de rede, autenticação e API não são ambiguidades de dimensões.
+    // Nesses casos, informar o erro real, em vez de ignorar a posição 03.
+    if(!optimizerImagesSameSku(w)||!dimensionPending)throw error;
     deferredThird=true;
-    optimizerCommercialActionMessage('Imagem 03 pendente de medidas WeDrop verificadas. As outras posições continuam sem inventar cotas. '+String(error.message||error).slice(0,220));
+    optimizerCommercialActionMessage('Imagem 03 pendente de medidas WeDrop verificadas. As outras posições continuam sem inventar cotas. '+reason.slice(0,220));
    }
   }
   const missing=deferredThird?allMissing.filter(slot=>slot!==3):allMissing;
@@ -13237,6 +13241,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSameSku(w)){
    status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
     :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
+    :deferredThird?'Lote parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Imagem 03 pendente de dimensões WeDrop confirmadas; retome após a conferência.'
     :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
   }
  }
