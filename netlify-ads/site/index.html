@@ -352,9 +352,11 @@
 </div>
 <div class="ads-simple-call" id="simpleActionBox"><div class="heading" id="simpleActionTitle">Analisando…</div><div class="brief" id="simpleActionText">—</div></div>
 <p class="ads-simple-note" id="simpleBasis">—</p>
+<p class="ads-simple-note" id="ordersCompareQuick" hidden></p>
 </section>
 <details id="adsDetails" class="ads-advanced"><summary>Ver todas as métricas, regras e justificativas</summary>
-<div id="performanceStats" class="ads-kpis"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
+<div id="performanceStats" class="ads-kpis"></div>
+<div class="notice" id="ordersAdsCompare" hidden style="margin-top:10px"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
         <section id="criticalAdsDiagnosis" class="critical-ads" hidden aria-live="polite"></section>
         <div id="dailyBudgetSummary" class="notice" style="margin-top:12px" aria-live="polite"></div>
         <div id="resultAlerts"></div>
@@ -849,6 +851,7 @@ const performanceItems=[
  ['Itens vendidos',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
  ['Vendas',r.revenue===null?'—':money(r.revenue)]];
 $('performanceStats').innerHTML=performanceItems.map(([k,v])=>'<div class="stat"><div class="k">'+safe(k)+'</div><div class="v">'+safe(v)+'</div></div>').join('');
+renderOrdersAdsComparison(r);
 const decision=$('adsDecisionSummary');
 if(decision){
  decision.hidden=!r.unlimitedRule;
@@ -1218,6 +1221,7 @@ function saveCampaignProductPhoto(c,sku,manuallyConfirmed=false){
 }
 // WeDrop: arquivos XLSX lidos somente no navegador, sem expor lista de custos em site público.
 const supplierBySku=new Map(),supplierOrderBySku=new Map();
+let supplierOrderMeta=null;
 const SUP_DB='rede_achados_private_supplier_v1';
 function normalizeSupplierSku(value){return String(value??'').trim().toUpperCase()}
 function supplierHeaderIndex(row){
@@ -1242,28 +1246,121 @@ function importSupplierRows(rows){
  if(!result.length)throw Error('Nenhum SKU válido encontrado no catálogo.');
  return result;
 }
+// Armazena SOMENTE SKU, dia, quantidade e status; nunca nome, endereço ou ID dos compradores.
+function orderDateISO(raw){
+ if(typeof raw==='number'&&Number.isFinite(raw)&&raw>20000&&raw<100000){
+  const ms=Date.UTC(1899,11,30)+Math.floor(raw)*86400000;
+  return new Date(ms).toISOString().slice(0,10);
+ }
+ const str=String(raw??'').trim();
+ if(/^\d{4}-\d{2}-\d{2}/.test(str))return str.slice(0,10);
+ const br=/^(\d{2})\/(\d{2})\/(\d{4})/.exec(str);
+ if(!br)return '';
+ const iso=br[3]+'-'+br[2]+'-'+br[1];
+ const date=new Date(iso+'T12:00:00Z');
+ return Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==iso?'':iso;
+}
+function orderStatusGroup(status){
+ const v=String(status||'').toLowerCase().trim();
+ if(/cancel|cancell|refund|devol|return|estorn/.test(v))return 'cancelled';
+ if(/delivered|completed|complete|entreg|finaliz/.test(v))return 'delivered';
+ if(/shipped|transit|enviad|despach/.test(v))return 'shipped';
+ if(/picked|ready|separad|processing|pending|created|novo|aguard/.test(v))return 'pending';
+ return 'unknown';
+}
 function summarizeOrderRows(rows){
- const headers=supplierHeaderIndex(rows[0]),col={status:headers('status'),products:headers('produtos'),order:headers('numero do pedido'),date:headers('data de criacao')};
- if(Object.values(col).some(v=>v<0))throw Error('Planilha de pedidos incompatível: faltam Status, Produtos, Número do Pedido ou Data de Criação.');
+ const headers=supplierHeaderIndex(rows[0]),col={
+  status:headers('status'),products:headers('produtos'),
+  order:headers('numero do pedido'),date:headers('data de criacao')
+ };
+ if(Object.values(col).some(v=>v<0))throw Error('Planilha incompatível: faltam Status, Produtos, Número do Pedido ou Data de Criação.');
  const records=new Map(),statusCounts={},usedOrders=new Set();
+ let firstDate='',lastDate='',withoutDate=0;
  for(const row of rows.slice(1)){
-  const order=String(row?.[col.order]||'').trim(),status=String(row?.[col.status]||'').trim().toLowerCase();
+  const order=String(row?.[col.order]||'').trim();
+  const rawStatus=String(row?.[col.status]||'').trim();
+  const status=orderStatusGroup(rawStatus),date=orderDateISO(row?.[col.date]);
   const products=String(row?.[col.products]||'');
   if(!order||usedOrders.has(order))continue;
-  usedOrders.add(order);statusCounts[status]=(statusCounts[status]||0)+1;
+  usedOrders.add(order);
+  statusCounts[status]=(statusCounts[status]||0)+1;
+  if(!date)withoutDate++;else{
+   if(!firstDate||date<firstDate)firstDate=date;
+   if(!lastDate||date>lastDate)lastDate=date;
+  }
   const matches=[...products.matchAll(/SKU\s*:\s*([A-Za-z0-9._-]+)\s*\(\s*(\d+)\s*x\s*\)/gi)];
   const present=new Set();
   for(const match of matches){
    const sku=normalizeSupplierSku(match[1]),qty=Number(match[2]);
    if(!sku||!Number.isInteger(qty)||qty<1||qty>9999)continue;
-   const rec=records.get(sku)||{sku,orders:0,units:0,statuses:{}};
+   const rec=records.get(sku)||{sku,orders:0,units:0,statuses:{},byDate:{}};
    rec.units+=qty;
    if(!present.has(sku)){rec.orders++;present.add(sku)}
    rec.statuses[status]=(rec.statuses[status]||0)+qty;
+   if(date){
+    const day=rec.byDate[date]||{units:0,orders:0,statuses:{}};
+    day.units+=qty;
+    day.statuses[status]=(day.statuses[status]||0)+qty;
+    // Conta apenas uma vez cada pedido por SKU, inclusive em kits com linhas duplicadas.
+    if(day._lastOrder!==order){day.orders++;day._lastOrder=order}
+    rec.byDate[date]=day;
+   }
    records.set(sku,rec);
   }
  }
- return {orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],importedAt:new Date().toISOString()};
+ for(const rec of records.values())for(const day of Object.values(rec.byDate))delete day._lastOrder;
+ return {orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
+  firstDate,lastDate,withoutDate,importedAt:new Date().toISOString()};
+}
+function compareOrdersToAds(d){
+ if(!supplierOrderMeta)return null;
+ const rec=supplierOrderBySku.get(d.sku);
+ const from=d.dateStart,to=d.dateEnd;
+ const byDate=rec?.byDate||{};
+ let shipped=0,delivered=0,pending=0,cancelled=0,unknown=0,total=0,orders=0;
+ for(const [date,entry] of Object.entries(byDate)){
+  if((from&&date<from)||(to&&date>to))continue;
+  total+=Number(entry.units||0);orders+=Number(entry.orders||0);
+  for(const [status,count] of Object.entries(entry.statuses||{})){
+   if(status==='shipped')shipped+=count;
+   else if(status==='delivered')delivered+=count;
+   else if(status==='pending')pending+=count;
+   else if(status==='cancelled')cancelled+=count;
+   else unknown+=count;
+  }
+ }
+ const fileFrom=supplierOrderMeta.firstDate||'';
+ const fileTo=supplierOrderMeta.lastDate||'';
+ const rangeCovered=!!fileFrom&&!!fileTo&&from>=fileFrom&&to<=fileTo;
+ // Pedidos enviados/entregues ≠ vendas atribuídas a Ads; não substitui o campo da Shopee.
+ const fulfilled=shipped+delivered;
+ const adsItems=d.itemsSold===null?null:Number(d.itemsSold);
+ return {sku:d.sku,from,to,shipped,delivered,pending,cancelled,unknown,total,orders,fulfilled,
+  adsItems,rangeCovered,fileFrom,fileTo,source:supplierOrderMeta.sourceName||'planilha de pedidos'};
+}
+function renderOrdersAdsComparison(r){
+ const result=compareOrdersToAds(r.d),small=$('ordersCompareQuick'),details=$('ordersAdsCompare');
+ if(!small||!details)return;
+ small.hidden=!result;details.hidden=!result;
+ if(!result)return;
+ const ads=result.adsItems===null?'não informado':String(result.adsItems);
+ const rangeLabel=result.rangeCovered?'Arquivo cobre as datas selecionadas':
+  'Arquivo não cobre todo o período analisado';
+ const difference=result.adsItems!==null&&result.adsItems!==result.fulfilled;
+ small.textContent='Pedidos XLSX ('+apiDate(result.from)+'–'+apiDate(result.to)+'): '+
+  result.fulfilled+' un. enviadas/entregues · Itens Ads: '+ads+
+  (difference?' · Quantidades diferentes — confira o período e a atribuição.':
+   ' · Dados de fontes diferentes.');
+ details.textContent='Conferência por SKU e data · '+result.source+
+  ' | Ads: '+ads+' item(ns) informado(s)'+
+  ' | Pedidos totais na planilha: '+result.total+' unidade(s) em '+result.orders+' pedido(s)'+
+  ' | Enviados/entregues: '+result.fulfilled+' | Pendentes: '+result.pending+
+  ' | Cancelados/devolvidos: '+result.cancelled+
+  (result.unknown?' | Outros status: '+result.unknown:'')+
+  ' | '+rangeLabel+'. '+
+  'Importante: pedidos totais não são equivalentes a vendas atribuídas ao anúncio;'+
+  ' atrasos de atribuição e pedidos não presentes na exportação podem gerar diferenças.'+
+  ' O sistema NÃO substitui o campo Itens vendidos do Ads.';
 }
 function supplierDB(){
  return new Promise((resolve,reject)=>{
@@ -1293,10 +1390,12 @@ async function supplierRead(key){
 function renderSupplierOrdersHint(){
  const elem=$('supplierOrdersBySkuHint');if(!elem)return;
  const sku=$('productSelect').value,rec=supplierOrderBySku.get(sku);
- elem.textContent=rec?'Pedidos gerais do fornecedor: '+rec.orders+' pedido(s), '+rec.units+' unidade(s) com SKU '+sku+'. Status: '+
-  Object.entries(rec.statuses).map(([status,count])=>status+' '+count).join(' · ')+
-  '. NÃO comprova entrega ou que foram vendas de Ads.':
-  'Pedidos gerais: carregue a planilha .xlsx para conferir volumes por SKU. Ela não comprova atribuição aos Ads.';
+ elem.textContent=supplierOrderMeta
+  ?(rec?'Planilha: '+rec.orders+' pedido(s) e '+rec.units+' unidade(s) da SKU '+sku+
+     ' em todo o arquivo. Use o período da campanha para comparar os números.':
+    'Nenhum pedido desta SKU na planilha importada.')+
+    ' São pedidos gerais, não necessariamente vendas de Ads.'
+  :'Importe a planilha .xlsx em Produtos para comparar pedidos por SKU e período, sem confundir com vendas atribuídas a Ads.';
 }
 function updateExistingSupplierImages(){
  const products=readProducts();let images=0,costs=0;
@@ -1356,12 +1455,15 @@ async function receiveOrdersFile(file){
   const book=await window.RedeXlsx.read(file),summary=summarizeOrderRows(book.rows);
   supplierOrderBySku.clear();
   for(const rec of summary.bySku)supplierOrderBySku.set(rec.sku,rec);
+  summary.sourceName=String(file.name||'planilha.xlsx').slice(0,130);
+  supplierOrderMeta=summary;
   let persisted=true;
   try{await supplierSave('orders',summary)}catch{persisted=false}
-  $('ordersImportStatus').textContent='✓ '+summary.orderCount+' pedidos no arquivo: '+
+  $('ordersImportStatus').textContent='✓ '+summary.orderCount+' pedidos no arquivo ('+(summary.firstDate||'?')+' a '+(summary.lastDate||'?')+'): '+
    Object.entries(summary.statusCounts).map(([status,n])=>status+' '+n).join(' · ')+
    '. NÃO significa venda entregue ou atribuída a Ads. '+(persisted?'Resumo salvo neste navegador.':'Resumo apenas nesta sessão.');
   renderSupplierOrdersHint();
+  if(lastReport)renderOrdersAdsComparison(lastReport);
  }catch(e){$('ordersImportStatus').textContent='Erro nos pedidos: '+String(e.message||e).slice(0,220)}
  finally{btn.disabled=false;$('importOrdersXlsxFile').value=''}
 }
@@ -1383,8 +1485,10 @@ $('pSku').addEventListener('change',lookupSupplierSKU);
   if(Array.isArray(ord?.bySku)){
    supplierOrderBySku.clear();
    for(const rec of ord.bySku)supplierOrderBySku.set(rec.sku,rec);
+   supplierOrderMeta=ord;
    $('ordersImportStatus').textContent='Resumo local de '+ord.orderCount+' pedidos disponível. Não é atribuição de Ads.';
    renderSupplierOrdersHint();
+   if(lastReport)renderOrdersAdsComparison(lastReport);
   }
  }catch{/* IndexedDB opcional. Importação manual ainda funciona na sessão atual. */}
 })();
