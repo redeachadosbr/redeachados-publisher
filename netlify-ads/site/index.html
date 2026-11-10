@@ -1997,8 +1997,11 @@ function apiFillCampaign(c,start,end,options={}){
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
  // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
  if(!options.historical){
-  const d=getData();if(validate(d).length===0)render(analyze(d));
+  // A campanha precisa estar vinculada ANTES de renderizar o resultado.
+  // O bloco financeiro usa o ID confirmado; na ordem inversa podia consultar
+  // campanha antiga ou não iniciar quando quickCampaign ainda estava vazio.
   window.RedeAdsQuick?.campaignFilled?.(c,start,end);
+  const d=getData();if(validate(d).length===0)render(analyze(d));
  }
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
@@ -2194,9 +2197,9 @@ refreshChangeSelects();renderChangeHistory();
 <script src="/order-phase-metrics.js?v=20261110-2"></script>
 <script src="/evolution.js?v=20261110-3"></script>
 <script src="/decision-quick.js?v=20261110-4"></script>
-<script src="/campaign-finance-core.js?v=20261110-1"></script>
+<script src="/campaign-finance-core.js?v=20261110-2"></script>
 <script src="/xlsx-finance.js?v=20261110-1"></script>
-<script src="/decision-finance.js?v=20261110-2"></script>
+<script src="/decision-finance.js?v=20261110-3"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
