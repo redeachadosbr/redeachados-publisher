@@ -119,6 +119,7 @@ globalThis.RAKitWizardExecutionReviews=()=>{
 // anúncio exato pela Shopee, preservando o Item ID vinculado no banco.
 // O ID explicitamente confirmado tem prioridade sobre handoffs e rascunhos antigos.
 const kitWizardConfirmedItemId=kitSku=>String(kitSku)==='KIT-TX24505K-TX24508E'?'58222633999':'';
+const kitWizardConfirmedModelId=kitSku=>String(kitSku)==='KIT-TX24505K-TX24508E'?'229453873888':'';
 let kitWizardResumingTarget=false,kitWizardResumeTimeout=null;
 async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
@@ -150,10 +151,13 @@ async function kitWizardResumeTargetForExecution(){
   const savedId=backend?.sku===principal?String(backend.itemId||''):
    prior?.sku===principal&&prior?.mainSku===principal?
    String(prior.itemId||''):'';
+  const confirmedModel=kitWizardConfirmedModelId(current);
   const selected=savedId?
    matches.find(x=>String(x.itemId)===savedId&&
-    (!backend||String(x.modelId||'0')===String(backend.modelId||'0'))):
-   matches.length===1?matches[0]:null;
+    (!backend||String(x.modelId||'0')===String(backend.modelId||'0'))&&
+    (!confirmedModel||String(x.modelId)===confirmedModel)):
+   matches.length===1&&(!confirmedModel||String(matches[0].modelId)===confirmedModel)?
+    matches[0]:null;
   if(!selected){
    if(savedId)throw Error('O Item ID salvo '+savedId+
     ' não foi confirmado na Shopee para a SKU '+principal+'. Nenhum envio foi iniciado.');
@@ -246,9 +250,11 @@ async function kitWizardOpenExecutionFlow(){
  const reviewed=globalThis.RAKitWizardExecutionReviews?.();
  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
  const confirmedId=kitWizardConfirmedItemId(kitSku);
+ const confirmedModel=kitWizardConfirmedModelId(kitSku);
  const valid=handoff?.kitSku===kitSku&&
   /^[1-9]\d{0,17}$/.test(String(handoff.itemId||''))&&
   (!confirmedId||String(handoff.itemId)===confirmedId)&&
+  (!confirmedModel||String(handoff.modelId||'0')===confirmedModel)&&
   String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||
    $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
  const notes=[];
@@ -1038,10 +1044,12 @@ function kitWizardInit(){
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
   const principal=String(prepared.kit.components?.[0]?.sku||'');
   const confirmedId=kitWizardConfirmedItemId(prepared.kit.kitSku);
+  const confirmedModel=kitWizardConfirmedModelId(prepared.kit.kitSku);
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
    /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''))&&
-   (!confirmedId||String(handoff.itemId)===confirmedId);
+   (!confirmedId||String(handoff.itemId)===confirmedId)&&
+   (!confirmedModel||String(handoff.modelId||'0')===confirmedModel);
   const workspace=$('#kitOptimizerWorkspace');
   if(valid&&workspace&&!workspace.hidden){
    await kitWizardOpenExecutionFlow();

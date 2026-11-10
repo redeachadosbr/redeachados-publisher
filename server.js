@@ -1866,7 +1866,8 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
    /^[1-9]\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
    !prior?.itemId&&/^[1-9]\d{0,17}$/.test(String(saved.publication?.itemId||''))?
     String(saved.publication.itemId):'');
-  const storedModelId=userConfirmedItemId?'0':String(prior?.modelId||'0');
+  // O modelo exato é necessário porque a mochila principal possui variação.
+  const storedModelId=userConfirmedItemId?'229453873888':String(prior?.modelId||'0');
   let directFailure='',directMismatch=false;
   if(storedItemId){
    try{
@@ -2040,6 +2041,11 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    throw Error('O anúncio da Shopee deve usar a mesma SKU principal escolhida em Kits.');
   const itemId=validItemId(body.itemId),modelId=String(body.modelId??'0');
   if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo Shopee inválido.');
+  // O vínculo do rascunho errado só pode ser corrigido para a identidade
+  // original confirmada; jamais aceitar uma nova publicação como atalho.
+  if(kitSku==='KIT-TX24505K-TX24508E'&&
+     (sku!=='TX24505K'||String(itemId)!=='58222633999'||modelId!=='229453873888'))
+   throw Error('Anúncio original incorreto. Use Item ID 58222633999 e modelo 229453873888; nenhum envio foi iniciado.');
   const saved=await loadKitDraft(auth.shopId,kitSku);
   if(!saved?.kit)throw Error('Salve o rascunho do kit antes de vincular um anúncio.');
   const kit=await composeKit(auth.shopId,saved.skus,{
@@ -3728,8 +3734,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
   // A autorização do vendedor é para o Item ID original, nunca para o anúncio
   // duplicado ou para um job antigo ainda salvo no navegador.
-  if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&String(itemId)!=='58222633999')
-   throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999. O anúncio duplicado não será alterado.');
+  if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&
+     (String(itemId)!=='58222633999'||String(modelId)!=='229453873888'))
+   throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999 e o modelo 229453873888. O anúncio duplicado não será alterado.');
   let verifiedExecutionKit=null;
   if(linkedKit){
    verifiedExecutionKit=await verifiedLinkedKitQuote(auth,linkedKit);

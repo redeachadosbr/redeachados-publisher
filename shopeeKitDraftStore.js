@@ -299,6 +299,29 @@ export async function saveKitFiscalOrigin(shopId,kitSku,origins){
  if(rows.length!==1)throw Error('O kit mudou durante a edição. Atualize antes de gravar a origem.');
  return {saved:true,kitSku,fiscalBySku,marketplaceUpdated:false};
 }
+
+/**
+ * Autoriza SOMENTE a correção de identidade explicitamente solicitada pelo
+ * vendedor: kit mochila + estojo da WeDrop, anúncio principal original.
+ * Não migra jobs, aprovações, mídia nem dados fiscais do anúncio errado.
+ * A rota /prepare audita o anúncio alvo e bloqueia jobs antigos em curso.
+ */
+export function isAuthorizedKitTargetCorrection(current,link){
+ const previous=current?.optimization;
+ if(!previous||!link)return false;
+ return String(current.kitSku)==='KIT-TX24505K-TX24508E'&&
+  String(link.kitSku)==='KIT-TX24505K-TX24508E'&&
+  String(previous.itemId)==='58222623880'&&
+  String(link.itemId)==='58222633999'&&
+  ['0','239453860780'].includes(String(previous.modelId??'0'))&&
+  String(link.modelId)==='229453873888'&&
+  String(previous.sku)==='TX24505K'&&String(previous.mainSku)==='TX24505K'&&
+  String(link.sku)==='TX24505K'&&String(link.mainSku)==='TX24505K'&&
+  Array.isArray(current.skus)&&current.skus.map(String).join('|')==='TX24505K|TX24508E'&&
+  Array.isArray(link.componentSkus)&&
+  link.componentSkus.map(String).join('|')==='TX24505K|TX24508E';
+}
+
 export async function recordKitOptimization(shopId,kitSku,link){
  const id=shop(shopId);
  // Autosave de Informações por SKU e fiscal podem atualizar apenas updated_at
@@ -317,7 +340,8 @@ export async function recordKitOptimization(shopId,kitSku,link){
    current.skus.map(String).join('|')!==link.componentSkus?.map(String).join('|'))
    throw Error('A composição, preço ou texto comercial mudou. Recalcule a preparação deste kit.');
   if(current.optimization?.itemId&&
-     String(current.optimization.itemId)!==String(link.itemId))
+     String(current.optimization.itemId)!==String(link.itemId)&&
+     !isAuthorizedKitTargetCorrection(current,link))
    throw Error('O kit já foi vinculado a outro anúncio; reconfirme o Item ID.');
   const draft={kit:current.kit,importBatchId:current.importBatchId||null,
    creative:current.creative,logistics:current.logistics||null,
