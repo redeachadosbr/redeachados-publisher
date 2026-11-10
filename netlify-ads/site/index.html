@@ -549,7 +549,7 @@ function getData(){
  budgetMode:$('budgetMode').value,budget:val('budget'),minDesiredRoas:val('minDesiredRoas'),rapidBoost:$('rapidBoost').value,spent:val('spent'),
  target:val('target'),revenue:val('revenue'),actual:val('actual'),impressions:parseQuantity($('impressions').value),
  clicks:val('clicks'),ctrReported:val('ctrReported'),orders:val('orders'),itemsSold:val('itemsSold'),itemsSoldSource:window.RedeAdsHistory?.salesSource?.()||'manual_or_unknown',addToCart:val('addToCart'),
- periodClosed:$('periodClosed').checked&&$('dateEnd').value<brazilTodayISO(),budgetStable:$('budgetStable').checked,
+ periodClosed:$('periodClosed').checked&&(window.RedeAdsHistory?.analysisDates?.()?.end||$('dateEnd').value)<brazilTodayISO(),budgetStable:$('budgetStable').checked,
  price:validFinancial?product.price:null,cost:validFinancial?cost:null,
  feePercent:validFinancial?fees.percent+(product.extraPct||0):null,
  feeFixed:validFinancial?fees.fixed:null,taxPercent:validFinancial?product.tax:null,
@@ -1878,7 +1878,7 @@ async function apiOverview(start,end){
  return data;
 }
 let lastAdsFilledCampaignKey='';
-function apiFillCampaign(c,start,end){
+function apiFillCampaign(c,start,end,options={}){
  const sku=$('productSelect').value;
  const campaignKey=sku+'|'+String(c.campaignId||'');
  if(lastAdsFilledCampaignKey!==campaignKey){
@@ -1901,7 +1901,7 @@ function apiFillCampaign(c,start,end){
  }
  // Configuração ATUAL da Shopee: não declarar que permaneceu igual por 7/30 dias.
  // 0 é orçamento ilimitado; ausente permanece não confirmado.
- if(c.campaignBudget!==null&&c.campaignBudget!==undefined&&
+ if(!options.historical&&c.campaignBudget!==null&&c.campaignBudget!==undefined&&
     Number.isFinite(Number(c.campaignBudget))&&Number(c.campaignBudget)>=0){
   const amount=Number(c.campaignBudget);
   $('budgetMode').value=amount===0?'unlimited':'daily';
@@ -1911,13 +1911,15 @@ function apiFillCampaign(c,start,end){
   $('budgetMode').value='daily';
   $('budgetStable').checked=false;
  }
- if(c.roasTarget!==null&&c.roasTarget!==undefined&&Number.isFinite(Number(c.roasTarget))&&Number(c.roasTarget)>0)
+ if(!options.historical&&c.roasTarget!==null&&c.roasTarget!==undefined&&Number.isFinite(Number(c.roasTarget))&&Number(c.roasTarget)>0)
   $('target').value=Number(c.roasTarget).toLocaleString('pt-BR',{useGrouping:false,maximumFractionDigits:2});
  updateBudgetMode();
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
  // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
- const d=getData();if(validate(d).length===0)render(analyze(d));
- window.RedeAdsQuick?.campaignFilled?.(c,start,end);
+ if(!options.historical){
+  const d=getData();if(validate(d).length===0)render(analyze(d));
+  window.RedeAdsQuick?.campaignFilled?.(c,start,end);
+ }
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
 const API_CHOICE_KEY='redeachados_ads_campaign_choice_v13';
