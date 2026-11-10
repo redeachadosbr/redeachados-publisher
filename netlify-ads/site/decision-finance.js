@@ -31,12 +31,12 @@ panel.innerHTML='<div class="finance-top"><h3>Resultado financeiro desde o iníc
  '<button type="button" id="financeCumulativeRetry" class="btn-secondary mini">Atualizar</button></div>'+
  '<p id="financeCumulativeRange">—</p><div class="finance-kpis">'+
  '<div><small>Investimento Ads acumulado</small><strong class="amount" id="financeSpentTotal">—</strong></div>'+
- '<div><small>Lucro dos pedidos antes de Ads</small><strong class="amount" id="financeOrderProfit">—</strong></div>'+
- '<div><small>Resultado depois de Ads</small><strong class="amount" id="financeNetTotal">—</strong></div></div>'+
+ '<div><small id="financeProfitLabel">Lucro dos pedidos antes de Ads</small><strong class="amount" id="financeOrderProfit">—</strong></div>'+
+ '<div><small id="financeNetLabel">Resultado depois de Ads</small><strong class="amount" id="financeNetTotal">—</strong></div></div>'+
  '<div class="finance-status" id="financeCumulativeStatus" role="status" aria-live="polite">—</div>'+
  '<div class="finance-alert" id="financeCumulativeAlert" hidden></div>';
 get('resultContent').insertAdjacentElement('afterend',panel);
-let lastReport=null,token=0,lastCache=null;
+let lastReport=null,token=0,lastCache=null,inflightKey='';
 const setStatus=(text,detail)=>{
  get('financeCumulativeStatus').textContent=text;
  if(detail)get('financeCumulativeRange').textContent=detail;
@@ -64,21 +64,31 @@ function showFinancialAlert(r,result){
  let warning='';
  if(actionReduction&&(below||(result.afterAds!==null&&result.afterAds<0))){
   warning='Atenção financeira: reduzir o ROAS-alvo pode aumentar a entrega e o gasto'+
-   (result.afterAds!==null&&result.afterAds<0?' mesmo com prejuízo acumulado.':'.')+
+   (result.afterAds!==null&&result.afterAds<0?
+     (result.status==='estimated'?' mesmo com prejuízo estimado (não confirmado).':' mesmo com prejuízo acumulado.'):'.')+
    ' A recomendação conforme nossas regras permanece disponível; a decisão de aplicá-la é sua.';
  }
  get('financeCumulativeAlert').textContent=warning;
  get('financeCumulativeAlert').hidden=!warning;
 }
 function show(result,context,r){
- setValues(result.spent??result.knownSpend??null,result.operatingBeforeAds,result.afterAds,
-  !result.spent&&result.knownSpend!==null);
+ const pending=result.status==='pending',estimated=result.status==='estimated';
+ const partial=pending&&result.knownBeforeAds!==null&&result.knownOrders>0;
+ get('financeProfitLabel').textContent=partial?'Saldo conhecido de '+result.knownOrders+' pedido(s) (parcial)':
+  estimated?'Lucro operacional estimado (antes de Ads)':'Lucro dos pedidos antes de Ads';
+ get('financeNetLabel').textContent=estimated?'Resultado estimado após Ads':'Resultado depois de Ads';
+ const spent=result.spent??result.knownSpend??null;
+ setValues(spent,partial?result.knownBeforeAds:result.operatingBeforeAds,result.afterAds,
+  result.spent===null&&result.knownSpend!==null);
  if(result.afterAds!==null){
+  const status=estimated?'ESTIMATIVA — repasses e/ou custos de catálogo ainda não comprovados':
+   result.status==='confirmed'?'Conciliado pela API com custo efetivo':'Calculado com lucro antes de Ads explícito no XLSX';
   setStatus((result.afterAds<0?'Prejuízo':'Lucro')+
-   (result.status==='confirmed'?' conciliado pela API':' calculado com dados financeiros explícitos do XLSX')+
-   '. '+(context.orderCount||0)+' pedido(s) da SKU. Vendas da loja não são necessariamente atribuídas aos Ads.');
- }else setStatus('Resultado pendente. '+(result.reasons||[]).join('; ')+
-  '. Ausência de dados não significa R$ 0. Repasse não é o mesmo que lucro líquido.');
+   (estimated?' estimado':' no período')+'. '+status+'. '+
+   (context.orderCount||0)+' pedido(s) da SKU. Pedidos da loja não representam necessariamente atribuição ao Ads.');
+ }else setStatus('Resultado financeiro PENDENTE. '+(result.reasons||[]).join('; ')+
+  (partial?' O saldo parcial não deve ser subtraído do gasto total como se fosse um lucro final.':'')+
+  ' Ausência de dados não significa R$ 0.');
  showFinancialAlert(r,result);
 }
 async function readJson(url,abort){
@@ -129,7 +139,9 @@ async function refresh(report,{force=false}={}){
  if(!force&&lastCache?.key===cacheKey){
   show(lastCache.result,lastCache.context,r);return;
  }
+ if(!force&&inflightKey===cacheKey)return;
  if(controller)controller.abort();
+ inflightKey=cacheKey;
  controller=new AbortController();
  const signal=controller.signal,ticket=++token;
  setValues(null,null,null);
@@ -138,7 +150,14 @@ async function refresh(report,{force=false}={}){
   const adsResponses=await requests(chunks,'ads',signal,ticket);
   if(signal.aborted||ticket!==token)return;
   const ads=core.adSpend(adsResponses,campaignId);
-  // Se a consulta da API Ads for incompleta, conservar indicação parcial.
+  // O investimento é exibido assim que a Shopee Ads retorna; Payment pode ser lento.
+  get('financeProfitLabel').textContent='Lucro dos pedidos antes de Ads';
+  get('financeNetLabel').textContent='Resultado depois de Ads';
+  setValues(ads.spent??ads.knownSpend??null,null,null,ads.spent===null&&ads.knownSpend!==null);
+  setStatus(ads.complete?
+   'Investimento Ads confirmado para '+chunks.length+' bloco(s). Consultando pedidos, repasses e custos WeDrop...':
+   'Investimento Ads incompleto; '+ads.missing.length+' bloco(s) sem métricas confirmadas. Conferindo pedidos...');
+  // Se a consulta de Finance falhar, o gasto Ads permanece visível.
   const financeResponses=await requests(chunks,'finance',signal,ticket);
   if(signal.aborted||ticket!==token)return;
   const rows=[],seenOrders=new Set();
@@ -177,11 +196,13 @@ async function refresh(report,{force=false}={}){
   show(result,{orderCount},r);
  }catch(error){
   if(signal.aborted||ticket!==token)return;
-  setValues(null,null,null);setStatus('Cálculo financeiro pendente: '+String(error.message||error)+
-   '. A recomendação Ads permanece independente.');
+  setStatus('Cálculo financeiro pendente: '+String(error.message||error)+
+   '. Os gastos Ads já confirmados serão preservados; a recomendação Ads não muda.');
+ }finally{
+  if(ticket===token)inflightKey='';
  }
 }
 get('financeCumulativeRetry').addEventListener('click',()=>refresh(null,{force:true}));
-get('productSelect').addEventListener('change',()=>{token++;controller?.abort();lastReport=null;lastCache=null;panel.hidden=true});
+get('productSelect').addEventListener('change',()=>{token++;controller?.abort();inflightKey='';lastReport=null;lastCache=null;panel.hidden=true});
 window.RedeAdsFinance={refresh,show};
 })();
