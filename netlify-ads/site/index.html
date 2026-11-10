@@ -733,6 +733,7 @@ function makeSimpleDecision(r){
  const floorText=minimum===null?'não validado':Number.isFinite(minimum)?roas(minimum):'inviável';
  const missingRevenue=actual===null;
  const mismatch=d.actual!==null&&d.revenue!==null&&actual!==null&&Math.abs(d.actual-actual)>.1;
+ const supplier=supplierBySku.get(d.sku),outOfStock=supplier&&/indispon[ií]vel/i.test(supplier.availability||'');
  const costly=!!r.fin&&(!Number.isFinite(financialBreak)||(actual!==null&&actual<financialBreak));
  const poorMargin=!!r.fin&&actual!==null&&actual<r.fin.minRoas;
  const dailyOver=ref!==null&&spent!==null&&spent>ref;
@@ -742,6 +743,10 @@ function makeSimpleDecision(r){
  if(mismatch){
   title='Conferir números da campanha';
   message='O ROAS informado não corresponde a vendas ÷ investimento. Confira se os dados são da mesma campanha e período antes de alterar preço ou anúncios.';
+  tone='risk';
+ }else if(outOfStock){
+  title='Verificar estoque no fornecedor';
+  message='O catálogo WeDrop importado informa que este SKU está indisponível. Confirme o estoque atual no fornecedor antes de investir. Avalie pausar manualmente o Ads se não houver reposição; nenhuma ação será executada automaticamente.';
   tone='risk';
  }else if(missingRevenue){
   title='Confirmar vendas e ROAS';
