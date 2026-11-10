@@ -76,12 +76,20 @@ export function settingsFromShopeeResponse(data,expectedIds){
     if(!allowed.has(id))continue;
     const info=c?.common_info||{};
     const status=typeof info.campaign_status==='string'?info.campaign_status.trim().toLowerCase():'';
+    // Configuração ATUAL, nunca assumir que o mesmo orçamento valeu nos dias passados.
+    const rawBudget=info.campaign_budget;
+    const campaignBudget=rawBudget!==null&&rawBudget!==undefined&&rawBudget!==''&&
+      Number.isFinite(Number(rawBudget))&&Number(rawBudget)>=0?Number(rawBudget):null;
+    const rawRoas=c?.auto_bidding_info?.roas_target;
+    const roasTarget=rawRoas!==null&&rawRoas!==undefined&&rawRoas!==''&&
+      Number.isFinite(Number(rawRoas))&&Number(rawRoas)>0?Number(rawRoas):null;
     byId.set(id,{
       campaignId:id,
       status:status||'unknown',
       statusGroup:classifyShopeeCampaignStatus(status),
       name:String(info.ad_name||'').trim(),
       placement:String(info.campaign_placement||'').trim(),
+      campaignBudget,roasTarget,
       // Lista oficial dos produtos anunciados, nunca derivada do nome da campanha.
       itemIdList:Array.isArray(info.item_id_list)
         ?[...new Set(info.item_id_list.map(String).filter(x=>/^[1-9]\d*$/.test(x)))]:[]
@@ -93,10 +101,15 @@ export async function fetchShopeeCampaignSettings(cfg,auth,callApi,discovered){
   const map=new Map();
   for(let i=0;i<discovered.length;i+=100){
     const ids=discovered.slice(i,i+100).map(x=>x.campaignId);
-    const d=await callApi(cfg,{
+    // Pedir informações comuns e ROAS-alvo de lances automáticos; se a
+    // Shopee não aceitar o tipo 3, manter o funcionamento anterior.
+    const query=info_type_list=>({
       path:SETTINGS_PATH,accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{campaign_id_list:ids.join(','),info_type_list:'1'}
+      query:{campaign_id_list:ids.join(','),info_type_list}
     });
+    let d;
+    try{d=await callApi(cfg,query('1,3'));}
+    catch{d=await callApi(cfg,query('1'));}
     for(const [k,v] of settingsFromShopeeResponse(d,ids))map.set(k,v);
   }
   return map;
@@ -200,6 +213,9 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end,allowDat
     if(details.name)campaign.name=details.name;
     campaign.placement=details.placement;
     campaign.itemIdList=details.itemIdList;
+    campaign.campaignBudget=details.campaignBudget;
+    campaign.roasTarget=details.roasTarget;
+    campaign.settingsAsOf=brazilAdsToday();
   }
   const statusCounts={
     active:summary.campaigns.filter(x=>x.statusGroup==='active').length,
