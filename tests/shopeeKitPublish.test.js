@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {kitPublishFields,kitPublishPayload,kitApprovalFingerprint,validatePublishedKitResponse} from '../shopeeKitPublish.js';
 import {chooseUniqueLiveKitSku,plausibleKitComponentTitle} from '../shopeeKitPlatform.js';
+import {validateKitOptimizationTarget} from '../shopeeKitOptimization.js';
 const kit={
  kitSku:'KIT-CO400-GA500',
  components:[{sku:'CO400',name:'Copo'},{sku:'GA500',name:'Garrafa'}],
@@ -134,4 +135,30 @@ test('Etapa 10 utiliza somente a SKU principal Shopee, sem exigir anuncio dos co
  assert.match(flow,/kitExistingOptimizer\.resumeLiveVerifiedTarget/);
  assert.ok(flow.indexOf('kitWizardEnsureExecutionLink')<flow.indexOf('kitExistingOptimizer.resumeLiveVerifiedTarget'));
  assert.match(optimization,/SKUs complementares são vinculadas na WeDrop/);
+});
+
+test('Mochila Shopee e estojo somente WeDrop: permitir a SKU principal sem anuncio secundario',()=>{
+ const kit={
+  kitSku:'KIT-TX24505K-TX24508E',
+  components:[{sku:'TX24505K',name:'Mochila Escolar de Rodinhas Dinossauro'},
+   {sku:'TX24508E',name:'Estojo Escolar T-Rex Attack'}],
+  componentCost:49.98,kitCost:49.98,shipping:0,packing:0,
+  quote:{grossPrice:149.90,marketplacePrice:99.50,targetMarginPct:15}
+ };
+ const saved={
+  kitSku:kit.kitSku,skus:kit.components.map(p=>p.sku),kit,
+  creative:{title:'Kit Mochila Escolar de Rodinhas e Estojo Dinossauro',
+   description:'✨ Kit completo com mochila escolar de rodinhas e estojo para materiais escolares.'}
+ };
+ const itemId='58271882120';
+ const linked=validateKitOptimizationTarget({saved,kit,
+  record:{itemId,sku:'TX24505K',selectedModelId:0,status:'NORMAL',
+   title:'Mochila Escolar de Rodinhas Dinossauro'},
+  targetSku:'TX24505K',mainSku:'TX24505K',itemId,modelId:'0',
+  confirmedItemId:itemId
+ });
+ assert.equal(linked.mainSku,'TX24505K');
+ assert.deepEqual(linked.componentSkus,['TX24505K','TX24508E']);
+ assert.equal(linked.componentCost,49.98);
+ assert.ok(linked.componentNames.some(name=>name.includes('Estojo')));
 });
