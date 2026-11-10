@@ -3647,7 +3647,7 @@ async function optimizerImageCorrectionImportFile(file){
    dimensionCount=spec?.measurements?.length||0;
    if(optimizerManualThirdBaseMode&&dimensionCount){
     const {addConfirmedSpecificationCard}=
-     await import('/specificationCard.js?v=1.4.3-reference-design');
+     await import('/specificationCard.js?v=20261110-product-package-scope');
     spec.productTitle=w.draftTitle||w.productTitle||'';
     imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
     usedLocalOverlay=true;
@@ -11340,7 +11340,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261105-slot03-ai-photo-v5'),
+  import('/chatgptPrompts.js?v=20261110-product-package-scope'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -11366,7 +11366,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  // Não descartar medidas válidas por falta apenas desse metadado opcional.
  const trustedText=String(evidence?.sku||'').trim()===String(w.sku).trim()
   ?String(evidence.sourceText||''):'';
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
  // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
  // plano aberto antes da importação ainda não tenha o supplierProduct.
  const verifiedCatalog=String(source?.supplierSku||'')===String(w.sku)||
@@ -11440,7 +11440,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -12119,7 +12119,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    if((spec?.measurements?.length||0)<2)
     throw Error('Imagem 03 recusada: faltam pelo menos duas dimensões verificadas nas Informações da WeDrop desta SKU.');
    spec.productTitle=w.draftTitle||w.productTitle||'';
-   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
    const final=await addConfirmedSpecificationCard(prepared.blob,spec);
    if(!(final instanceof Blob)||final.type!=='image/png'||final.size<1024)
     throw Error('Imagem 03 recusada: não foi possível compor as cotas WeDrop na foto gerada pelo ChatGPT.');
@@ -12536,7 +12536,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=1.21.83-prompts-hd-wedrop');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261110-product-package-scope');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
@@ -12640,7 +12640,7 @@ async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}=
   if(String(photo.headers.get('X-Image-SHA256')||'')!==String(original.sha256))
    throw Error('A foto-base mudou durante a leitura. Nada foi salvo.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.3-reference-design');
+   await import('/specificationCard.js?v=20261110-product-package-scope');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const output=await addConfirmedSpecificationCard(await photo.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a criação. Nada foi salvo.');
@@ -12697,7 +12697,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.3-reference-design');
+   await import('/specificationCard.js?v=20261110-product-package-scope');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -13103,7 +13103,7 @@ async function optimizerImagesLoad(){
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
  const {addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=1.4.3-reference-design');
+  await import('/specificationCard.js?v=20261110-product-package-scope');
  const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
  spec.productTitle=w.draftTitle||w.productTitle||'';
