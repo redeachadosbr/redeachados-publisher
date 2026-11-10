@@ -71,8 +71,8 @@ function resetUi(){
  salesFlag='manual_or_unknown';lastLoaded=null;pending=null;phaseKey='';
 }
 function onProductChange(sku,preferId){
- revision++;selectedSku=sku;
  const currentValue=sku===selectedSku?periodSelect.value:'';
+ revision++;selectedSku=sku;
  phases=build(sku);
  if(phases.length){
   historyLabel.firstChild.nodeValue='Período do histórico';
@@ -91,6 +91,7 @@ function applyDates(){
  if(key!==phaseKey){
   phaseKey=key;
   lastLoaded=null;pending=null;salesFlag='xlsx_unconfirmed';
+  campaignSelect.disabled=true;campaignSelect.innerHTML='<option value="">Aguardando consulta desta fase</option>';
   for(const k of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','budget'])byId(k).value='';
   byId('budgetStable').checked=false;
   byId('budgetMode').value='daily';updateBudgetMode();
@@ -184,7 +185,6 @@ function fill(c,phase){
  refreshOrders();
  rememberApiCampaign(phase.sku,String(c.campaignId));
  apiStoreOne(c,phase.sku,phase.fromFull,phase.toFull);
- const currentCampaign=campaignSelect.value;
  if(![...campaignSelect.options].some(o=>o.value===String(c.campaignId))){
   campaignSelect.innerHTML='<option value="'+escapeText(c.campaignId)+'">ID '+escapeText(c.campaignId)+' · '+escapeText(c.productTitle||c.name||phase.sku)+'</option>';
  }
