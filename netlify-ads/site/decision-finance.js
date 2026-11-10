@@ -49,14 +49,13 @@ const setValues=(spent,profit,net,partial=false)=>{
  output.className='amount'+(net===null||net===undefined?'':net<0?' negative':' positive');
 };
 const currentCampaign=sku=>{
- const picked=String(get('quickCampaign')?.value||'');
- const preferred=typeof apiCampaignPreference==='function'?String(apiCampaignPreference(sku)||''):'';
  const filled=typeof lastAdsFilledCampaignKey==='string'?lastAdsFilledCampaignKey:'';
- // A campanha exibida precisa ter sido realmente carregada para esta SKU.
- // Não reaproveitar a seleção visual anterior ao trocar de produto.
- if(/^\d+$/.test(picked)&&filled===sku+'|'+picked)return picked;
- if(/^\d+$/.test(preferred)&&filled===sku+'|'+preferred)return preferred;
- return '';
+ // O ID da campanha é confirmado internamente quando a API carrega um anúncio.
+ // Não precisa de painel extra. Nunca misturar campanhas de SKUs distintos.
+ const separator=filled.lastIndexOf('|');
+ if(separator<1)return '';
+ const linkedSku=filled.slice(0,separator),id=filled.slice(separator+1);
+ return linkedSku===sku&&/^\d+$/.test(id)?id:'';
 };
 function showFinancialAlert(r,result){
  const candidate=r?.suggestedROAS;
@@ -135,7 +134,7 @@ async function refresh(report,{force=false}={}){
  const start=origin.start;
  const cacheKey=[sku,campaignId,start,end].join('|');
  get('financeCumulativeAlert').hidden=true;
- if(!campaignId){setValues(null,null,null);setStatus('Campanha Ads ainda não confirmada para esta SKU. Clique em Consultar e analisar para carregar a campanha correta.');return}
+ if(!campaignId){setValues(null,null,null);setStatus('Consulte os Ads pelo período manual para identificar a campanha vinculada a esta SKU.');return}
  if(!start){setValues(null,null,null);setStatus(origin.reason+' Registre o início real no histórico para obter gasto desde o início.');return}
  get('financeCumulativeRange').textContent='SKU '+sku+' · Campanha ID '+campaignId+
   ' · '+fmt(start)+' a '+fmt(end)+' (até ontem; hoje ainda não contabilizado)';
