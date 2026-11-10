@@ -13,7 +13,7 @@ function calculate(meta,record,from,to){
  if(!dayStart||!dayEnd||dayStart>dayEnd)return {...empty,reason:'Período inválido'};
  if(!meta)return {...empty,reason:'Importe o relatório de pedidos XLSX na aba Produtos.'};
  if(meta.formatVersion!==3||!Array.isArray(meta.bySku))
-  return {...empty,reason:'Reimporte o XLSX: o resumo antigo não contém datas por SKU.'};
+  return {...empty,reason:'Reimporte o XLSX: o resumo anterior pode ter omitido SKUs em pedidos com várias linhas.'};
  const firstDate=iso(meta.firstDate),lastDate=iso(meta.lastDate);
  const source=String(meta.sourceName||'Relatório de pedidos Shopee');
  const covered=!!firstDate&&!!lastDate&&firstDate<=dayStart&&lastDate>=dayEnd&&
