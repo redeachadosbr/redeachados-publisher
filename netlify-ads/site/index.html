@@ -1655,6 +1655,7 @@ async function receiveOrdersFile(file){
   renderSupplierOrdersHint();
   if(lastReport)renderOrdersAdsComparison(lastReport);
   window.RedeEvolution?.ordersUpdated?.();
+  window.RedeAdsFinance?.refresh?.(null,{force:true});
  }catch(e){$('ordersImportStatus').textContent='Erro nos pedidos: '+String(e.message||e).slice(0,220)}
  finally{btn.disabled=false;$('importOrdersXlsxFile').value=''}
 }
@@ -2174,7 +2175,8 @@ refreshChangeSelects();renderChangeHistory();
 <script src="/evolution.js?v=20261110-3"></script>
 <script src="/decision-quick.js?v=20261110-4"></script>
 <script src="/campaign-finance-core.js?v=20261110-1"></script>
-<script src="/decision-finance.js?v=20261110-1"></script>
+<script src="/xlsx-finance.js?v=20261110-1"></script>
+<script src="/decision-finance.js?v=20261110-2"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
