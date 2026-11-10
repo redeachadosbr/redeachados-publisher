@@ -122,9 +122,10 @@ async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
  kitWizardResumingTarget=true;
  const current=String(prepared.kit.kitSku);
- const principal=String($('#kitOptimizeMainSku')?.value||
-  $('#kitPrincipalSku')?.value||prepared.optimization?.mainSku||
-  prepared.kit.components?.[0]?.sku||'');
+ const principal=String(prepared.kit.components?.[0]?.sku||'');
+ const chosen=$('#kitOptimizeMainSku'),selectedMain=$('#kitPrincipalSku');
+ if(chosen&&[...chosen.options].some(x=>x.value===principal))chosen.value=principal;
+ if(selectedMain&&[...selectedMain.options].some(x=>x.value===principal))selectedMain.value=principal;
  const notice=$('#kitWizardExecutionDirectStatus');
  const report=text=>{
   if(notice){notice.hidden=false;notice.textContent=text;}
@@ -155,12 +156,22 @@ async function kitWizardResumeTargetForExecution(){
    if(savedId)throw Error('O Item ID salvo '+savedId+
     ' não foi confirmado na Shopee para a SKU '+principal+'. Nenhum envio foi iniciado.');
    throw Error(matches.length>1?
-    'Existem vários anúncios para esta SKU. Selecione o Item ID correto na Etapa 09.':
-    'A Shopee não encontrou anúncio editável para a SKU principal '+principal+'.');
+    'A SKU principal possui mais de um anúncio ativo; confirme qual Item ID pertence a este kit.':
+    'Não encontrei anúncio ativo da SKU principal '+principal+
+    '. As SKUs complementares não precisam estar anunciadas na Shopee.');
   }
+  // Criar e auditar PRIMEIRO o vínculo do rascunho com o anúncio principal.
+  // O motor completo só reconhece kitOptimization depois desse preparo.
+  report('Conferindo composição WeDrop e preparando a SKU principal na Shopee...');
+  const itemId=String(selected.itemId),modelId=String(selected.modelId||'0');
+  const ready=await kitWizardEnsureExecutionLink({
+   kitSku:current,sku:principal,itemId,modelId
+  });
+  if(!ready.ok)throw Error(ready.error||'O Item ID principal não foi preparado.');
+  if(String(prepared?.kit?.kitSku)!==current||kitWizardStage!==10||!kitWizardExecutionIntent)
+   return false;
   const linked=kitExistingOptimizer.resumeLiveVerifiedTarget?.({
-   kitSku:current,sku:principal,itemId:String(selected.itemId),
-   modelId:String(selected.modelId||'0')
+   kitSku:current,sku:principal,itemId,modelId
   });
   if(!linked?.ok)throw Error(linked?.error||'Motor da SKU principal não iniciou.');
   report('Item ID '+selected.itemId+' recuperado e confirmado na Shopee. Carregando o motor para enviar apenas as pendências...');
@@ -343,8 +354,11 @@ async function kitWizardOpenExecutionFlow(){
    kitSku,sku:String(handoff.sku),itemId:String(handoff.itemId),modelId:String(handoff.modelId||'0')
   });
   if(notice){
-   notice.hidden=Boolean(output?.ok&&output?.submitted);
-   notice.textContent=output?.error||output?.message||'Publicacao solicitada. Acompanhando resposta da Shopee.';
+   notice.hidden=false;
+   notice.textContent=output?.submitted?
+    '✓ Execução enviada para a SKU principal '+String(handoff.sku)+
+    '. O sistema está conferindo as alterações na Shopee. Os componentes do kit estão no rascunho WeDrop.':
+    output?.error||output?.message||'A execução não teve confirmação. Consulte o resultado antes de tentar novamente.';
   }
   if(!output?.ok){
    status('A execução das 9 etapas não foi iniciada: '+
@@ -352,7 +366,7 @@ async function kitWizardOpenExecutionFlow(){
     '. Nenhum check local foi tratado como publicação.','warning');
    return;
   }
-  $('#optimizerExecutionTracker')?.scrollIntoView?.({behavior:'smooth',block:'center'});
+  // Painel interno permanece oculto: o andamento fica no aviso da etapa 10.
  }catch(error){
   const message='Execução interrompida: '+String(error.message||error)+
    '. Nada será marcado como concluído; os arquivos salvos foram preservados.';
@@ -387,106 +401,9 @@ function kitWizardExecutionAudit(){
  const button=$('#kitWizardOpenExecution');
  if(button)button.textContent='▶ Executar na Shopee';
 }
-let kitWizardNewKitBusy=false;
-async function kitWizardExecuteNewKit(){
- if(kitWizardNewKitBusy||kitPublishBusy)return;
- const button=$('#kitWizardOpenExecution'),sku=String(prepared?.kit?.kitSku||'');
- if(!sku)return kitWizardExecutionFeedback('Abra um kit salvo.','error');
- const say=(msg,type='info')=>kitWizardExecutionFeedback(msg,type);
- kitWizardNewKitBusy=true;
- if(button){button.disabled=true;button.textContent='Executando...';}
- try{
-  if(!kitSaved){
-   say('Salvando as informações...');
-   if(!await saveDraft())throw Error('Não consegui salvar título e descrição.');
-  }
-  if(prepared?.kit?.kitSku!==sku)throw Error('Outro kit foi selecionado.');
-  say('Conferindo o kit na Shopee...');
-  const publication=(await api('/api/shopee/kits/publish/status',{body:{kitSku:sku}}))?.publication||{};
-  if(publication.itemId||['publishing','uncertain','published_pending','published'].includes(String(publication.status||'')))
-   throw Error('O kit já foi enviado ou a resposta está pendente. Confirme na Shopee antes de tentar novamente.');
-  if(kitDraftNeedsRefresh||!kitStockReady)throw Error('Estoque ou custo WeDrop precisa de atualização.');
-  await kitReadinessCheck();
-  if(!kitReadiness)throw Error($('#kitPublishStatus')?.textContent||'Produtos não confirmados na Shopee.');
-  if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
-  if(prepared?.kit?.kitSku!==sku)throw Error('O kit mudou durante a conferência.');
-  const principal=String(prepared.kit.components?.[0]?.sku||'');
-  if(![...$('#kitMainSku').options].some(x=>x.value===principal))
-   throw Error('Não consegui identificar o produto principal.');
-  $('#kitMainSku').value=principal;
-  const channels=kitReadiness.channels||[],channel=$('#kitLogisticId');
-  if(!channels.some(x=>String(x.id)===String(channel.value))){
-   if(channels.length!==1)throw Error('Falta confirmar o canal de envio; há várias opções disponíveis.');
-   channel.value=String(channels[0].id);
-  }
-  const missing=[['#kitWeightKg','peso'],['#kitLengthCm','comprimento'],['#kitWidthCm','largura'],
-   ['#kitHeightCm','altura']].filter(([field])=>!(Number($(field)?.value)>0)).map(x=>x[1]);
-  if(missing.length)throw Error('Faltam medidas reais do pacote: '+missing.join(', ')+'. Não posso inventá-las.');
-  if(images.size<9){
-   for(const row of await kitPhotoStore.list(sku)){
-    if(images.has(row.slot))continue;
-    if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
-       /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&
-       await kitStoredPhotoApproved(row))images.set(row.slot,row.dataUrl);
-   }
-   renderImageSlots();
-  }
-  if(images.size!==9||Array.from({length:9},(_,i)=>i+1).some(n=>!images.has(n)))
-   throw Error('As 9 imagens não estão disponíveis. Recupere-as na etapa 02.');
-  if(!kitWizardChecked().includes(2))throw Error('É preciso conferir as 9 imagens na etapa 02.');
-  await restoreKitVideo(sku);
-  if(kitWizardChecked().includes(3)&&!kitVideoData&&!kitVideoRemote?.ready)
-   throw Error('Vídeo conferido, mas não encontrado. Revise a etapa 03.');
-  const approved=window.confirm('PUBLICAR ESTE KIT NA SHOPEE?\n\n'+
-   prepared.kit.components.map(x=>x.name).join(' + ')+
-   '\nPreço bruto: '+money(prepared.kit.quote.grossPrice)+
-   '\nEmbalagem: '+$('#kitWeightKg').value+' kg; '+
-   [$('#kitLengthCm').value,$('#kitWidthCm').value,$('#kitHeightCm').value].join(' × ')+' cm.'+
-   '\n\nConfirmo os produtos, as 9 fotos fiéis e o envio de tudo em um pacote.'+
-   '\nO desconto é uma etapa separada, depois da criação.\n\nConfirmar?');
-  if(!approved){say('Publicação cancelada. Nenhum anúncio foi criado.');return;}
-  $('#kitContentsReviewed').checked=true;
-  $('#kitPhotosReviewed').checked=true;
-  $('#kitSingleParcelConfirmed').checked=true;
-  say('Enviando as imagens aprovadas...');
-  if(kitShopeePhotoSlots.size<9)await kitSendPhotos();
-  if(kitShopeePhotoSlots.size!==9)
-   throw Error($('#kitPublishStatus')?.textContent||'As imagens não foram confirmadas.');
-  if(kitVideoData&&!kitVideoRemote?.ready){
-   say('Enviando o vídeo salvo...');
-   const response=await fetch('/api/shopee/kits/video/prepare',{
-    method:'POST',headers:{'Content-Type':'application/octet-stream','x-kit-sku':sku,
-     'x-video-filename':encodeURIComponent(kitVideoData.name)},body:kitVideoData.blob});
-   let progress=await response.json().catch(()=>({}));
-   if(!response.ok)throw Error(progress.error||'Falha no envio do vídeo.');
-   for(let i=0;i<40&&!progress.ready;i++){
-    if(prepared?.kit?.kitSku!==sku)throw Error('O kit foi alterado durante o vídeo.');
-    if(progress.phase==='processing')await kitVideoSleep(2500);
-    progress=await api('/api/shopee/kits/video/advance',{body:{kitSku:sku}});
-   }
-   if(!progress.ready)throw Error('A Shopee ainda não confirmou o vídeo. Tente novamente sem reenviar as imagens.');
-   kitVideoRemote=progress;kitVideoUI();
-  }
-  if(kitVideoData&&kitVideoRemote?.ready)$('#kitVideoInclude').checked=true;
-  say('Conferindo a prévia...');
-  await kitPreparePublishPreview();
-  if(!kitPublishToken)throw Error($('#kitPublishStatus')?.textContent||'Prévia recusada.');
-  say('Criando anúncio na Shopee...');
-  const result=await api('/api/shopee/kits/publish/execute',{body:{
-   kitSku:sku,fields:kitPublishFields(),token:kitPublishToken,confirm:true
-  }});
-  if(!result.itemId)throw Error('A Shopee não confirmou o Item ID. Não repita antes de verificar o catálogo.');
-  kitItemId=result.itemId;clearKitPublishApproval();
-  $('#kitPublishedMessage').textContent=result.message||'Publicação enviada.';
-  say('✓ Kit criado na Shopee! Item ID '+kitItemId+'. Desconto ainda não aplicado.','success');
-  void loadDrafts();
- }catch(error){
-  say('Não foi possível executar: '+String(error?.message||error).slice(0,440),'error');
- }finally{
-  kitWizardNewKitBusy=false;
-  if(button){button.disabled=false;button.textContent='▶ Executar na Shopee';}
- }
-}
+// A etapa 10 usa SOMENTE a SKU principal da Shopee. Os demais produtos
+// existem no rascunho WeDrop e não exigem anúncios individuais na Shopee.
+// O publicador Kit Formal continua isolado, fora deste botão.
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
  const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/10 conferidas';
@@ -1098,17 +1015,15 @@ function kitWizardInit(){
    kitWizardExecutionFeedback('Abra um rascunho salvo antes de executar. Nenhum envio realizado.','warning');
    return;
   }
-  // Um kit ainda nao publicado nao tem Item ID. Nunca procurar uma SKU
-  // existente para editar como se fosse este novo Kit Formal.
-  if(kitWizardIsNewUnpublished()){
-   kitWizardExecutionIntent=false;
-   await kitWizardExecuteNewKit();
-   return;
-  }
+  // Kit WeDrop: a PRIMEIRA SKU identifica o anúncio já publicado da Shopee.
+  // As demais SKUs compõem o kit somente no lado WeDrop; não usar add_kit_item.
   if(!kitSaved){
-   kitWizardExecutionIntent=false;
-   kitWizardExecutionFeedback('Salve o rascunho antes de executar pendências de um anúncio existente.','warning');
-   return;
+   kitWizardExecutionFeedback('Salvando o rascunho antes de executar...','info');
+   if(!await saveDraft()){
+    kitWizardExecutionIntent=false;
+    kitWizardExecutionFeedback('Não consegui salvar o kit. Confira o título e a descrição nas etapas 04 e 06.','error');
+    return;
+   }
   }
   const selected=globalThis.RAKitWizardExecutionReviews?.();
   // O kit pode ter todas as etapas conferidas; publicar neste comando
@@ -1118,8 +1033,7 @@ function kitWizardInit(){
   }
   kitWizardMountTechnical();
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
-  const principal=String($('#kitOptimizeMainSku')?.value||
-   $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
+  const principal=String(prepared.kit.components?.[0]?.sku||'');
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
    /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''));
