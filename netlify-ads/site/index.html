@@ -1823,6 +1823,7 @@ function refreshChangeSelects(){
  else filter.value='';
 }
 function renderChangeHistory(){
+ window.RedeAdsHistory?.refreshFromHistory?.();
  refreshChangeSelects();
  const sku=$('changeFilter').value;
  const type=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
