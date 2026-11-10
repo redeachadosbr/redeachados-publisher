@@ -86,7 +86,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
    '',
   'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e medidas verificadas ('+(verifiedAxes||'ALTURA, LARGURA, COMPRIMENTO ou DIÂMETRO quando comprovados')+'). Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
   'PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER: a fotografia que você gera é a BASE de uma arte de DIMENSÕES, não o resultado publicado. O Manager acrescentará uma única camada vetorial verificável com as cotas '+(verifiedAxes||'confirmadas')+' EXATAS da WeDrop à imagem recebida e só então salvará a imagem 03. Para impedir duplicação ou erros de números na arte final, NÃO escreva texto, números, etiquetas ou setas na foto-base. As cotas serão aplicadas automaticamente sobre ESTA FOTO NOVA, não sobre a imagem 02.',
-  'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
+  axes.length===3?'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.':'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
  ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
