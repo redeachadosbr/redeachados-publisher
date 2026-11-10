@@ -11334,7 +11334,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261110-product-package-scope'),
+  import('/chatgptPrompts.js?v=20261110-chatgpt-final-cotas'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -12534,7 +12534,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261110-product-package-scope');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261110-chatgpt-final-cotas');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
@@ -12892,7 +12892,7 @@ async function optimizerImagesLoad(){
    if(slot===3){
     generate.textContent=image?'↻ Refazer 03 no ChatGPT + medidas':'✧ Gerar 03 no ChatGPT + medidas';
     generate.title='Solicita uma nova imagem 03 com medidas desenhadas no próprio ChatGPT; o Manager não aplica caixas ou setas sobre a foto.';
-    if(image&&!/^chatgpt-auto-03-cotas-wedrop\.png$/i.test(String(image.filename||'')))
+    if(image&&!/^chatgpt-auto-03-arte-final\.png$/i.test(String(image.filename||'')))
      detail.append(optimizerMake('small','optimizer-commercial-original-caption',
       '⚠ Arte antiga. Use Refazer 03 no ChatGPT: as medidas serão integradas na própria imagem, sem sobreposição do Manager. Confira a foto antes de aprovar.'));
    }
