@@ -1062,7 +1062,7 @@ for(const el of $('productForm').querySelectorAll('input,select')){el.addEventLi
 $('productSearch').addEventListener('input',renderProductList);$('curveFilter').addEventListener('change',renderProductList);$('adsStatusFilter').addEventListener('change',renderProductList);
 $('campaignAdsFilter').addEventListener('change',()=>{hideApiCampaignPicker();refreshProductSelect();showCurveInAds()});
 $('productSelect').addEventListener('change',()=>{hideApiCampaignPicker();if($('productSelect').value)selectProductForAds($('productSelect').value,false);else{showCurveInAds();loadMinDesiredRoas();}});
-$('exportProductsBtn').addEventListener('click',()=>{const items=readProducts();if(!items.length){alert('Cadastre produtos antes de exportar.');return}const columns=['SKU','Nome','Curva','Status_Ads','Alterado_Ads_em','Kit','Quantidade_kit','Custo_unitario','Custo_total','Preco_venda','Media_mercado','Dif_%','Competitividade','ROAS_simulado','Lucro_sem_ads','Lucro_com_ads','Margem_com_ads','Margem_desejada_pct','ROAS_equilibrio','ROAS_para_margem_desejada'];const rows=items.map(p=>{const c=computeProduct(p);return [p.sku,p.name,p.curve||'',ADS_STATUS_LABELS[adsStatusOf(p)],p.adsStatusChangedAt||'',p.isKit?'SIM':'NÃO',p.isKit?p.kitQuantity:1,p.cost,c.totalCost,p.price,p.market,c.difference,c.competitiveness.label,p.target,c.contribution,c.profitWithAds,c.marginWithAds,p.margin,Number.isFinite(c.breakEven)?c.breakEven:'Sem equilíbrio',Number.isFinite(c.minimum)?c.minimum:'Meta não atingível']});const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';downloadFile('Rede_Achados_BR_Produtos.csv','\uFEFF'+[columns,...rows].map(row=>row.map(esc).join(';')).join('\r\n'),'text/csv;charset=utf-8')});
+$('exportProductsBtn').addEventListener('click',()=>{const items=readProducts();if(!items.length){alert('Cadastre produtos antes de exportar.');return}const columns=['SKU','Nome','Foto_URL','Curva','Status_Ads','Alterado_Ads_em','Kit','Quantidade_kit','Custo_unitario','Custo_total','Preco_venda','Media_mercado','Dif_%','Competitividade','ROAS_simulado','Lucro_sem_ads','Lucro_com_ads','Margem_com_ads','Margem_desejada_pct','ROAS_equilibrio','ROAS_para_margem_desejada'];const rows=items.map(p=>{const c=computeProduct(p);return [p.sku,p.name,p.imageUrl||'',p.curve||'',ADS_STATUS_LABELS[adsStatusOf(p)],p.adsStatusChangedAt||'',p.isKit?'SIM':'NÃO',p.isKit?p.kitQuantity:1,p.cost,c.totalCost,p.price,p.market,c.difference,c.competitiveness.label,p.target,c.contribution,c.profitWithAds,c.marginWithAds,p.margin,Number.isFinite(c.breakEven)?c.breakEven:'Sem equilíbrio',Number.isFinite(c.minimum)?c.minimum:'Meta não atingível']});const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';downloadFile('Rede_Achados_BR_Produtos.csv','\uFEFF'+[columns,...rows].map(row=>row.map(esc).join(';')).join('\r\n'),'text/csv;charset=utf-8')});
 function downloadFile(name,contents,mimetype){const link=document.createElement('a');const url=URL.createObjectURL(new Blob([contents],{type:mimetype}));link.href=url;link.download=name;document.body.appendChild(link);link.click();setTimeout(()=>{URL.revokeObjectURL(url);link.remove()},1200)}
 $('backupExportBtn').addEventListener('click',()=>{const payload={app:'Rede Achados BR - Decisor Shopee Ads',schemaVersion:4,exportedAt:new Date().toISOString(),products:readProducts(),history:getHistory(),changes:getChanges(),adsSnapshots:getAdsSnapshots()};downloadFile('Rede_Achados_BR_Backup_Produtos_Ads.json',JSON.stringify(payload,null,2),'application/json;charset=utf-8');$('dataStatus').textContent='Backup baixado: envie o arquivo JSON para o Google Drive manualmente.'});
 $('backupImportBtn').addEventListener('click',()=>$('importBackupInput').click());
@@ -1175,6 +1175,7 @@ async function apiOverview(start,end){
  return data;
 }
 function apiFillCampaign(c,start,end){
+ saveCampaignProductPhoto(c,$('productSelect').value);
  $('campaign').value=c.productTitle||c.name||$('campaign').value;
  $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
  const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
@@ -1255,6 +1256,7 @@ $('apiApplyCampaignBtn').addEventListener('click',()=>{
  apiFillCampaign(c,range[0],range[1]);
  rememberApiCampaign(context.sku,id);
  const linked=saveApiCampaignLink(context.sku,id);
+ saveCampaignProductPhoto(c,context.sku,true);
  const saved=apiStoreOne(c,context.sku,range[0],range[1]);
  setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.'+(linked?' Vínculo salvo no cadastro e enviado à sincronização do Drive.':' ATENÇÃO: não foi possível salvar o vínculo; faça backup.')+
  '\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico registrado.':' Histórico não foi salvo; faça backup.')+
@@ -1273,7 +1275,7 @@ async function apiSyncProductStatuses(){
    let matching=data.campaigns.filter(c=>c.productSku&&normalized(c.productSku)===normalized(product.sku));
    if(!matching.length){const target=normalized(product.name);matching=data.campaigns.filter(c=>target&&normalized(c.productTitle)===target)}
    const verified=matching.filter(c=>c.statusGroup==='active'||c.statusGroup==='inactive');
-   if(verified.length){const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';apiObservedAdsStatus.set(product.sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});confirmed++}
+   if(verified.length){if(verified.length===1)saveCampaignProductPhoto(verified[0],product.sku);const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';apiObservedAdsStatus.set(product.sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});confirmed++}
   }
   renderProductList();refreshProductSelect();showCurveInAds();
   out.textContent=confirmed+' produto(s) com situação confirmada pela API nesta sessão; '+(readProducts().length-confirmed)+' sem correspondência exata, mantendo status manual. Nenhum anúncio foi alterado.'+(data.statusWarning?' Atenção: alguns status não foram confirmados pela Shopee.':'');
