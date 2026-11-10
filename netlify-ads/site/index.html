@@ -2036,6 +2036,10 @@ async function apiSyncProductStatuses(){
 }
 $('syncProductStatusesBtn').addEventListener('click',apiSyncProductStatuses);
 async function apiLoadRange(syncMany=false){
+ if(window.RedeAdsHistory?.isSelected?.()){
+  if(syncMany){setApiStatus('O período está vinculado a uma alteração do histórico. Use “Consultar e analisar” para não misturar fases.','error');return;}
+  return window.RedeAdsHistory.consult();
+ }
  const btn=syncMany?$('apiHistoryBtn'):$('apiReadBtn');
  if(!apiReadAccess()){setApiStatus('Abra esta página no serviço Render e faça login para consultar a API.','error');return}
  const sku=$('productSelect').value,product=readProducts().find(p=>p.sku===sku);
