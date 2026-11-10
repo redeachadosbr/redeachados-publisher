@@ -181,7 +181,7 @@ function render(model,results,chosenId,loaded=false){
   (latestOrders.covered?formatNumber(latestOrders.units):'Parcial: '+formatNumber(latestOrders.units));
  e('evoLatestUnitsNote').textContent=!latestOrders?.available?'Importe o XLSX em Produtos':
   (latestOrders.covered?'Pedidos não cancelados (inclui pendentes)':'Relatório sem cobertura de todas as datas');
- e('evoOrderStatus').textContent=supplierOrderMeta?.formatVersion===2?
+ e('evoOrderStatus').textContent=supplierOrderMeta?.formatVersion===3?
    'Pedidos por SKU carregados de '+String(supplierOrderMeta.sourceName||'XLSX')+
    '. Datas do arquivo: '+showDate(supplierOrderMeta.firstDate||'')+' a '+showDate(supplierOrderMeta.lastDate||'')+
    '. Não são atribuídos automaticamente ao Ads.':
