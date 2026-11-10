@@ -66,8 +66,7 @@ function makePhases(sku,from,until,today,changes){
 function requestsFor(model){
  const jobs=[];
  for(const phase of [...model.phases,...(model.current?[model.current]:[])]){
-  // Dias com mudança ficam apenas como marcações; não são atribuídos a nenhuma configuração.
-  if(phase.type==='transition')continue;
+  // Dias com mudança são consultados, mas mostrados SEPARADAMENTE e nunca usados nas comparações.
   let day=phase.from;
   while(day<=phase.to){
    const endCandidate=historyMoveDay(day,27);
@@ -156,7 +155,7 @@ function render(model,results,chosenId,loaded=false){
  e('evoLatestRoas').textContent=last&&!last.missing&&last.actual!==null?roas(last.actual):'—';
  e('evoCurrentLabel').textContent=latest?latest.phase.label+' · '+showDate(latest.phase.from)+' a '+showDate(latest.phase.to):'Sem período fechado';
  const floor=computeProduct(p);
- e('evoLatestTarget').textContent='Gasto desejado: '+(val('budget')?money(val('budget'))+'/dia':'configure em Campanhas Ads')+
+ e('evoLatestTarget').textContent='Gasto desejado: '+(e('productSelect')?.value===p.sku&&val('budget')?money(val('budget'))+'/dia (referência)':'consulte a referência em Decisão atual')+
    ' · ROAS mínimo: '+(p.adsMinRoas?roas(p.adsMinRoas):'não informado')+
    (floor?' · mínimo financeiro '+(Number.isFinite(floor.minimum)?roas(floor.minimum):'inviável'):'');
  const changeDays=model.changes.length;
@@ -166,8 +165,13 @@ function render(model,results,chosenId,loaded=false){
  for(let i=0;i<model.phases.length;i++){
   const phase=model.phases[i];
   if(phase.type==='transition'){
+   const transition=results.get(phase.from+'|'+phase.to);
+   const m=aggregate(phase,[transition],chosenId);
+   const details=m.missing?'Indicadores indisponíveis para este dia.':
+    'Gasto '+(m.spent===null?'—':money(m.spent))+' · ROAS '+(m.actual===null?'—':roas(m.actual));
    out.push('<article class="evo-change"><div class="evo-marker">✎</div><div><strong>'+safeText(showDate(phase.from))+
-    ' · '+safeText(phase.label)+'</strong><div class="evo-small">Dia da modificação: excluído da comparação para evitar misturar configurações.</div></div></article>');
+    ' · '+safeText(phase.label)+'</strong><div class="evo-small">'+safeText(details)+
+    '. Dia da modificação: não entra na comparação porque pode incluir duas configurações.</div></div></article>');
    continue;
   }
   const row=withMetrics.find(x=>x.phase===phase),m=row?.metrics||{missing:true},before=withMetrics[withMetrics.indexOf(row)-1]?.metrics;
