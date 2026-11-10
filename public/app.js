@@ -12326,15 +12326,29 @@ async function optimizerChatgptContinueFromServer(){
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
-  const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
-  if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
-  if(Number(missing[0])===3){
-   const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
-   notify('Dimensões da imagem 03 confirmadas na WeDrop antes de enviar o prompt: '+
-    confirmed.map(x=>x.label+' '+x.value).join(' · ')+'. '+stored.length+'/9 imagens preservadas.');
-  }else if(missing.includes(3)&&brief.dimensionWarning){
-   optimizerCommercialActionMessage(brief.dimensionWarning);
+  const allMissing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
+  if(!allMissing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
+  // A imagem 03 exige cotas verificadas; a falta delas não retém 01/02/04–09.
+  // Nunca declarar 03 salva: somente a fila da extensão a pula temporariamente.
+  let deferredThird=false;
+  if(allMissing.includes(3)){
+   try{
+    if(brief.dimensionWarning||(brief.confirmedDimensions?.measurements?.length||0)<2)
+     throw Error('Os eixos da imagem 03 ainda não estão confirmados para esta SKU.');
+    const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
+    notify('Dimensões da imagem 03 confirmadas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
+   }catch(error){
+    if(!optimizerImagesSameSku(w))throw error;
+    deferredThird=true;
+    optimizerCommercialActionMessage('Imagem 03 pendente de medidas WeDrop verificadas. As outras posições continuam sem inventar cotas. '+String(error.message||error).slice(0,220));
+   }
   }
+  const missing=deferredThird?allMissing.filter(slot=>slot!==3):allMissing;
+  if(!missing.length){
+   const msg='Somente a imagem 03 está pendente: conferir os eixos em Informações da WeDrop. As outras imagens permanecem salvas.';
+   notify(msg);return {ok:false,error:msg};
+  }
+  const bridgeCompleted=deferredThird?[...stored,3].sort((a,b)=>a-b):stored;
   const first=String(missing[0]).padStart(2,'0');
   const preparedThirdReference=Number(missing[0])===3?
    await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
@@ -12379,6 +12393,12 @@ async function optimizerChatgptContinueFromServer(){
    await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
    recovered={reason:'NO_RECOVERABLE_JOB'};
    notify('Imagem 03/09: sessão anterior da Ponte reconciliada. Criando NOVO comando com cotas WeDrop verificadas, preservando '+stored.length+'/9 imagens.');
+  }else if(deferredThird){
+   // Não reativar uma sessão antiga que ainda possa gerar a imagem 03 sem cotas.
+   // Encerrar somente a sessão da SKU, preservar tudo que já está no servidor.
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,bridgeCompleted);
+   recovered={reason:'NO_RECOVERABLE_JOB'};
+   notify('Imagem 03 aguardando confirmação. Iniciando somente as posições '+missing.map(x=>String(x).padStart(2,'0')).join(', ')+'.');
   }else{
    // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
    // foto. Repetir somente a leitura da referência, jamais apagar imagens.
@@ -12386,7 +12406,7 @@ async function optimizerChatgptContinueFromServer(){
     referenceIndex=i;referenceUrl=refs[i];
     recovered=await optimizerBridgeRecoverFromExtension({
      sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
-     completed:stored,imageUrl:referenceUrl,prompts:brief.prompts
+     completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief.prompts
     });
     if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
        !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
@@ -12430,8 +12450,8 @@ async function optimizerChatgptContinueFromServer(){
     const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-     imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-     referenceDataUrl:preparedThirdReference,restart:freshThird
+     imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+     referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
     }},location.origin);
     startResult=await startAck;
     if(startResult?.ok)break;
@@ -12446,8 +12466,8 @@ async function optimizerChatgptContinueFromServer(){
      const secondAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-      referenceDataUrl:preparedThirdReference,restart:freshThird
+      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+      referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
      }},location.origin);
      startResult=await secondAck;
      if(startResult?.ok)break;
@@ -13177,12 +13197,26 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
- let count=0,errorMessage='';
+ let count=0,errorMessage='',deferredThird=false;
  try{
   // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
   for(let slot=1;slot<=9;slot++){
    if(optimizerImagesStopRequested||!optimizerImagesSameSku(w))break;
    if(optimizerImagesSavedSlots.has(slot))continue;
+   if(slot===3){
+    try{
+     const verified=await optimizerVerifiedDimensionSpec(w);
+     if((verified?.measurements?.length||0)<2){
+      deferredThird=true;status.textContent='Imagem 03 pendente de medidas confirmadas; gerando as demais sem alterar 03.';
+      continue;
+     }
+    }catch(error){
+     if(!optimizerImagesSameSku(w)||
+        !/Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas/i.test(String(error.message||'')))throw error;
+     deferredThird=true;status.textContent='Imagem 03 pendente de conferência WeDrop; as demais prosseguem.';
+     continue;
+    }
+   }
    status.textContent='OpenAI gerando imagem '+slot+' de 9. '+optimizerImagesSavedSlots.size+'/9 concluídas. Não feche o anúncio.';
    await optimizerImagesGenerateSlot(w,slot,false);
    count++;
@@ -13192,6 +13226,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
    status.textContent=optimizerImagesSavedSlots.size===9
     ?'9/9 imagens prontas e salvas. Confira a galeria e aprove a etapa antes do envio à Shopee.'
     :optimizerImagesStopRequested?'Geração interrompida. '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Clique novamente para continuar.'
+    :deferredThird?'Geração parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas; apenas a imagem 03 aguarda cotas WeDrop confirmadas.'
     :'Geração parcial. '+optimizerImagesSavedSlots.size+'/9 imagens disponíveis.';
  }catch(e){
   errorMessage=e.message;
