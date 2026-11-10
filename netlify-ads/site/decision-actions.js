@@ -40,9 +40,9 @@ function summarize(r,diagnosis){
   add('Manter orçamento',d.budget>0?brMoney(d.budget):'');
   extra();
  }else if(r?.scenario===4){
-  add('Opção A: orçamento +20%','Manter ROAS-alvo');
-  add('Opção B: ROAS-alvo +20%','Manter orçamento');
-  add('Opção C: ambos +20%','Com verba e maior meta');
+  add('Opção A: orçamento +20%',brMoney(d.budget)+' → '+brMoney(d.budget*1.2)+' · ROAS igual');
+  add('Opção B: ROAS-alvo +20%',brNumber(d.target)+'x → '+brNumber(d.target*1.2)+'x · orçamento igual');
+  add('Opção C: ambos +20%','Orçamento '+brMoney(d.budget*1.2)+' · ROAS '+brNumber(d.target*1.2)+'x');
  }else if(r?.previewScenario){
   add('Acompanhar até fechar o período','Cenário '+r.previewScenario+' provisório; não executar ainda');
  }else if(r?.unlimitedRule){
