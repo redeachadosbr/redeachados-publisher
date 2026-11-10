@@ -314,7 +314,7 @@ export function isAuthorizedKitTargetCorrection(current,link){
   String(previous.itemId)==='58222623880'&&
   String(link.itemId)==='58222633999'&&
   ['0','239453860780'].includes(String(previous.modelId??'0'))&&
-  String(link.modelId)==='229453873888'&&
+  ['0','229453873888'].includes(String(link.modelId))&&
   String(previous.sku)==='TX24505K'&&String(previous.mainSku)==='TX24505K'&&
   String(link.sku)==='TX24505K'&&String(link.mainSku)==='TX24505K'&&
   Array.isArray(current.skus)&&current.skus.map(String).join('|')==='TX24505K|TX24508E'&&

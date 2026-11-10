@@ -42,7 +42,7 @@ import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitB
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,saveKitFiscalOrigin,findKitDraftsLinkedToItemId} from './shopeeKitDraftStore.js';
-import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
+import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition,resolveKitMainListingModel} from './shopeeKitOptimization.js';
 import {classifyPendingImageEditor} from './shopeePendingImageEditor.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
@@ -1866,8 +1866,8 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
    /^[1-9]\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
    !prior?.itemId&&/^[1-9]\d{0,17}$/.test(String(saved.publication?.itemId||''))?
     String(saved.publication.itemId):'');
-  // O modelo exato é necessário porque a mochila principal possui variação.
-  const storedModelId=userConfirmedItemId?'229453873888':String(prior?.modelId||'0');
+  // ID de modelo exibido na Shopee pode ser somente o identificador padrão.
+  const storedModelId=String(prior?.modelId||'0');
   let directFailure='',directMismatch=false;
   if(storedItemId){
    try{
@@ -1875,24 +1875,10 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
     const state=String(live.item_status||live.status||'').toUpperCase();
     if(!['NORMAL','UNLIST'].includes(state))
      throw Error('O anúncio está com status '+(state||'não informado')+' na Shopee.');
-    let verifiedModelId='0';
-    if(String(live.item_sku||'').trim()!==sku){
-     if(live.has_model!==true)
-      throw Error('A SKU principal do Item ID salvo difere da SKU atual do anúncio.');
-     const currentModels=(await shopeeLiveVariationState(cfg,auth,storedItemId,live)).models;
-     const matching=currentModels.filter(x=>String(x.model_sku||'').trim()===sku);
-     const exact=storedModelId!=='0'?
-      matching.find(x=>String(x.model_id)===storedModelId):
-      matching.length===1?matching[0]:null;
-     if(!exact)throw Error('O Item ID salvo não corresponde a uma variação única da SKU principal.');
-     verifiedModelId=String(exact.model_id);
-    }else if(storedModelId!=='0'){
-     const currentModels=(await shopeeLiveVariationState(cfg,auth,storedItemId,live)).models;
-     const exact=currentModels.find(x=>String(x.model_id)===storedModelId&&
-      String(x.model_sku||'').trim()===sku);
-     if(!exact)throw Error('O modelo salvo não corresponde mais à SKU principal na Shopee.');
-     verifiedModelId=storedModelId;
-    }
+    const currentModels=String(live.item_sku||'').trim()===sku?[]:
+     (await shopeeLiveVariationState(cfg,auth,storedItemId,live)).models;
+    const verifiedModelId=resolveKitMainListingModel({item:live,models:currentModels,sku});
+    // A identidade é validada ao vivo: nunca reutilizar o modelId do rascunho antigo.
     const verified={sku,itemId:storedItemId,modelId:verifiedModelId,
      status:state,title:String(live.item_name||sku)};
     return res.json({ok:true,kitSku,sku,searchMode:userConfirmedItemId?
@@ -2044,8 +2030,8 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   // O vínculo do rascunho errado só pode ser corrigido para a identidade
   // original confirmada; jamais aceitar uma nova publicação como atalho.
   if(kitSku==='KIT-TX24505K-TX24508E'&&
-     (sku!=='TX24505K'||String(itemId)!=='58222633999'||modelId!=='229453873888'))
-   throw Error('Anúncio original incorreto. Use Item ID 58222633999 e modelo 229453873888; nenhum envio foi iniciado.');
+     (sku!=='TX24505K'||String(itemId)!=='58222633999'))
+   throw Error('Anúncio original incorreto. Use somente Item ID 58222633999; nenhum envio foi iniciado.');
   const saved=await loadKitDraft(auth.shopId,kitSku);
   if(!saved?.kit)throw Error('Salve o rascunho do kit antes de vincular um anúncio.');
   const kit=await composeKit(auth.shopId,saved.skus,{
@@ -3734,9 +3720,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
   // A autorização do vendedor é para o Item ID original, nunca para o anúncio
   // duplicado ou para um job antigo ainda salvo no navegador.
-  if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&
-     (String(itemId)!=='58222633999'||String(modelId)!=='229453873888'))
-   throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999 e o modelo 229453873888. O anúncio duplicado não será alterado.');
+  if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&String(itemId)!=='58222633999')
+   throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999. O anúncio duplicado não será alterado.');
   let verifiedExecutionKit=null;
   if(linkedKit){
    verifiedExecutionKit=await verifiedLinkedKitQuote(auth,linkedKit);

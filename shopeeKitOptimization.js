@@ -38,6 +38,24 @@ export function assertKitListingComposition({kit,record}={}){
   '. Não alterar título, imagens, descrição, preço ou desconto. Confirme na Shopee o Item ID do kit correto ou crie um Kit Formal com ID próprio.');
  return {itemId,kitSku:String(kit.kitSku),componentSkus:parts.map(p=>String(p.sku))};
 }
+// O Seller Center exibe ID de modelo até em anúncio sem variações.
+// Na atualização do anúncio-pai, modelo interno é 0 se item_sku é a SKU.
+// Apenas variação com SKU exata e única utiliza model_id da API.
+export function resolveKitMainListingModel({item,models=[],sku}={}){
+ const wanted=String(sku??'').trim();
+ if(!wanted)throw Error('SKU principal do kit não informada.');
+ if(String(item?.item_sku??'').trim()===wanted)return '0';
+ if(item?.has_model!==true)
+  throw Error('A SKU principal não corresponde ao anúncio confirmado na Shopee.');
+ const candidates=(Array.isArray(models)?models:[]).filter(m=>
+  String(m?.model_sku??'').trim()===wanted&&/^[1-9]\d{0,17}$/.test(String(m?.model_id??'')));
+ if(candidates.length!==1)
+  throw Error('A SKU principal não possui uma única variação identificada na Shopee.');
+ const chosen=candidates[0];
+ if(chosen.model_status&&!['NORMAL','MODEL_NORMAL'].includes(String(chosen.model_status).toUpperCase()))
+  throw Error('A variação encontrada não está ativa na Shopee.');
+ return String(chosen.model_id);
+}
 export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId,modelId,mainSku,confirmedItemId}){
  const parts=Array.isArray(saved?.skus)?saved.skus.map(str):[];
  if(!saved?.kit||!kit||parts.length<2||parts.length>4||

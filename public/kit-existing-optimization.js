@@ -257,9 +257,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    // Kit com ID informado: consultar a ficha oficial DIRETAMENTE por item_id.
    // Evita percorrer todas as páginas do catálogo em toda abertura do kit.
    const pinned=USER_CONFIRMED_KIT_TARGETS[current];
-   const endpoint=pinned
-    ?'/api/shopee/optimizer/audit?'+new URLSearchParams({item_id:pinned,sku:code,
-     ...(current==='KIT-TX24505K-TX24508E'?{model_id:'229453873888'}:{})})
+   const endpoint=current==='KIT-TX24505K-TX24508E'
+    ?'/api/shopee/kits/optimization/find?'+new URLSearchParams({kitSku:current,sku:code,mainSku:code})
+    :pinned
+    ?'/api/shopee/optimizer/audit?'+new URLSearchParams({item_id:pinned,sku:code})
     :'/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:deep?'1':'0'});
    const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(pinned?25000:deep?60000:30000)])});
    if(pinned&&data.record){
