@@ -79,7 +79,7 @@ function fillProducts(){
 function selectDates(){
  const now=today(),earliest=shift(now,-179),sku=e('adsTlSku').value;
  const changes=getChanges().filter(x=>x.sku===sku).map(x=>saoPauloDate(x.timestamp)).sort();
- const userStart=$id('dateStart')?.value||changes[0]||earliest;
+ const userStart=[changes[0],$id('dateStart')?.value].filter(Boolean).sort()[0]||earliest;
  e('adsTlStart').max=now;e('adsTlEnd').max=now;
  e('adsTlStart').value=userStart<earliest?earliest:userStart>now?earliest:userStart;
  e('adsTlEnd').value=now;
