@@ -856,8 +856,8 @@ const performanceItems=[
  ['Dias do período',String(r.days)],
  ['ROAS',r.actual===null?'—':roas(r.actual)],
  ['Adicionar ao carrinho',r.d.addToCart===null?'—':String(r.d.addToCart)],
- ['Itens vendidos',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
- ['Vendas',r.revenue===null?'—':money(r.revenue)]];
+ ['Itens vendidos (Ads informado)',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
+ ['Vendas atribuídas (Ads)',r.revenue===null?'—':money(r.revenue)]];
 $('performanceStats').innerHTML=performanceItems.map(([k,v])=>'<div class="stat"><div class="k">'+safe(k)+'</div><div class="v">'+safe(v)+'</div></div>').join('');
 renderOrdersAdsComparison(r);
 const decision=$('adsDecisionSummary');
@@ -1362,11 +1362,11 @@ function renderOrdersAdsComparison(r){
   'Arquivo não cobre todo o período analisado';
  const difference=result.adsItems!==null&&result.adsItems!==result.fulfilled;
  small.textContent='Pedidos XLSX ('+apiDate(result.from)+'–'+apiDate(result.to)+'): '+
-  result.fulfilled+' un. enviadas/entregues · Itens Ads: '+ads+
+  result.fulfilled+' un. enviadas/entregues · Itens informados Ads: '+ads+
   (difference?' · Quantidades diferentes — confira o período e a atribuição.':
    ' · Dados de fontes diferentes.');
  details.textContent='Conferência por SKU e data · '+result.source+
-  ' | Ads: '+ads+' item(ns) informado(s)'+
+  ' | Painel Ads: '+ads+' item(ns) informado(s)'+
   ' | Pedidos totais na planilha: '+result.total+' unidade(s) em '+result.orders+' pedido(s)'+
   ' | Enviados/entregues: '+result.fulfilled+' | Pendentes: '+result.pending+
   ' | Cancelados/devolvidos: '+result.cancelled+
