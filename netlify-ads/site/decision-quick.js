@@ -58,6 +58,31 @@ const setDates=()=>{
  const end=move(brazilTodayISO(),-1);
  byId('dateEnd').value=end;byId('dateStart').value=move(end,1-Number(period.value));syncPeriodClosed();
 };
+const suggestedDates=()=>{
+ // Datas manuais têm prioridade. Preencher uma sugestão só no primeiro acesso,
+ // quando ambos os campos estiverem vazios. A escolha posterior do usuário fica preservada.
+ if(byId('dateStart').value||byId('dateEnd').value)return false;
+ setDates();return true;
+};
+const restoreCampaign=()=>{
+ // A seleção salva é apenas um vínculo anterior, não uma nova confirmação da API.
+ const sku=byId('productSelect').value;
+ const product=readProducts().find(p=>p.sku===sku);
+ const preferred=String(apiCampaignPreference(sku)||'');
+ const ids=[...new Set((Array.isArray(product?.linkedCampaignIds)?product.linkedCampaignIds:[])
+   .map(String).filter(id=>/^\d+$/.test(id)))];
+ if(/^\d+$/.test(preferred)&&!ids.includes(preferred))ids.unshift(preferred);
+ if(!ids.length){
+  selected.innerHTML='<option value="">Campanha será identificada na consulta</option>';
+  selected.disabled=true;
+ }else{
+  selected.innerHTML=ids.length>1?'<option value="">Escolha uma campanha vinculada</option>':'';
+  selected.innerHTML+=ids.map(id=>'<option value="'+escapeText(id)+'">Campanha vinculada · ID '+escapeText(id)+'</option>').join('');
+  selected.disabled=ids.length===1;
+  selected.value=ids.includes(preferred)?preferred:(ids.length===1?ids[0]:'');
+ }
+ help('');
+};
 const clearCampaign=()=>{
  selected.disabled=true;selected.innerHTML='<option value="">Buscando campanhas…</option>';help('');
 };
@@ -180,6 +205,17 @@ async function consult(){
  const sku=byId('productSelect').value;
  if(!sku){status('Selecione um produto primeiro.','warn');return}
  if(active){queued=true;return}
+ // Nunca travar o seletor antes de validar o período.
+ suggestedDates();
+ const start=byId('dateStart').value,end=byId('dateEnd').value;
+ if(!start||!end){
+  status('Informe as datas inicial e final. A campanha vinculada continuará disponível.','warn');
+  return;
+ }
+ if(start>end||end>brazilTodayISO()){
+  status('Confira as datas: o início deve vir antes do fim e o fim não pode ser futuro.','warn');
+  return;
+ }
  active=true;const revision=changes;
  button.disabled=true;button.textContent='Consultando...';clearCampaign();
  try{
@@ -192,6 +228,9 @@ async function consult(){
   }
  }catch(err){status('Erro: '+String(err.message||err),'error')}
  finally{
+  // Se a API falhar ou não encontrar correspondência, nunca deixar o campo
+  // permanentemente em "Buscando campanhas...".
+  if(changes===revision&&byId('productSelect').value===sku)restoreCampaign();
   active=false;button.disabled=false;button.textContent='Consultar e analisar';
   if(queued){queued=false;void consult()}
  }
@@ -220,10 +259,18 @@ byId('productSelect').addEventListener('change',event=>{
  latestProduct=sku;lastCampaign='';
  for(const id of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','budget'])byId(id).value='';
  byId('budgetMode').value='daily';updateBudgetMode();
- status('Período manual preservado. Selecione as datas e clique em Consultar e analisar.');
+ const didSuggest=suggestedDates();
+ restoreCampaign();
+ status(didSuggest?
+  'Sugestão inicial de datas preenchida. Você pode alterar as duas datas antes de consultar.':
+  'Datas escolhidas preservadas. Clique em Consultar e analisar para atualizar a campanha.');
 });
 if(byId('productSelect').value){
  latestProduct=byId('productSelect').value;
- status('Produto selecionado. Clique em Consultar e analisar para carregar as campanhas.');
+ const didSuggest=suggestedDates();
+ restoreCampaign();
+ status(didSuggest?
+  'Sugestão inicial de datas preenchida. Você pode editar o período e consultar.':
+  'Produto selecionado. As datas manuais serão respeitadas na próxima consulta.');
 }
 })();
