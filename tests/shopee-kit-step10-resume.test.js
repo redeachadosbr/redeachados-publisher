@@ -57,4 +57,6 @@ test('kit mochila T-Rex usa o Item ID original e falha fechado sem criar duplica
  assert.match(find,/verifiedSavedTarget:verified/);
  assert.match(service,/if\(kitSku==='KIT-TX24505K-TX24508E'\)/);
  assert.match(service,/Não criar outro anúncio/);
+ assert.match(builder,/const kitWizardConfirmedItemId=kitSku=>/);
+ assert.match(builder,/\(!confirmedId\|\|String\(handoff\.itemId\)===confirmedId\)/);
 });

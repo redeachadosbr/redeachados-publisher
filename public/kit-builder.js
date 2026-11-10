@@ -117,6 +117,8 @@ globalThis.RAKitWizardExecutionReviews=()=>{
 };
 // O handoff da aba é efêmero: ao reabrir um kit, identificar novamente o
 // anúncio exato pela Shopee, preservando o Item ID vinculado no banco.
+// O ID explicitamente confirmado tem prioridade sobre handoffs e rascunhos antigos.
+const kitWizardConfirmedItemId=kitSku=>String(kitSku)==='KIT-TX24505K-TX24508E'?'58222633999':'';
 let kitWizardResumingTarget=false,kitWizardResumeTimeout=null;
 async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
@@ -243,8 +245,10 @@ async function kitWizardOpenExecutionFlow(){
  const kitSku=String(prepared.kit.kitSku);
  const reviewed=globalThis.RAKitWizardExecutionReviews?.();
  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ const confirmedId=kitWizardConfirmedItemId(kitSku);
  const valid=handoff?.kitSku===kitSku&&
   /^[1-9]\d{0,17}$/.test(String(handoff.itemId||''))&&
+  (!confirmedId||String(handoff.itemId)===confirmedId)&&
   String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||
    $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
  const notes=[];
@@ -1033,9 +1037,11 @@ function kitWizardInit(){
   kitWizardMountTechnical();
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
   const principal=String(prepared.kit.components?.[0]?.sku||'');
+  const confirmedId=kitWizardConfirmedItemId(prepared.kit.kitSku);
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
-   /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''));
+   /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''))&&
+   (!confirmedId||String(handoff.itemId)===confirmedId);
   const workspace=$('#kitOptimizerWorkspace');
   if(valid&&workspace&&!workspace.hidden){
    await kitWizardOpenExecutionFlow();
