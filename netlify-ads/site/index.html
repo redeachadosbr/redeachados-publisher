@@ -1150,13 +1150,35 @@ function updateProductPhotoElement(imgId,emptyId,value,alt){
   }
  }
  img.onload=success;
- img.onerror=failure;
+ img.onerror=()=>{
+  if(img.dataset.photoSource!==link)return;
+  // Se o CDN WeDrop estiver indisponível, tentar somente o endpoint
+  // de origem público do MESMO bucket e arquivo (DigitalOcean Spaces).
+  // Não procura imagens similares nem associa outro SKU.
+  if(img.dataset.photoFallbackTried!=='yes'){
+   try{
+    const original=new URL(link);
+    if(original.hostname==='wedrop-products-images.nyc3.cdn.digitaloceanspaces.com'){
+     original.hostname='wedrop-products-images.nyc3.digitaloceanspaces.com';
+     img.dataset.photoFallbackTried='yes';
+     img.dataset.photoState='loading';
+     img.hidden=false;
+     img.style.opacity='0';
+     empty.hidden=false;
+     img.setAttribute('src',original.href);
+     return;
+    }
+   }catch{/* endereço já validado, mas não será usado se inválido */}
+  }
+  failure();
+ };
  img.alt=alt||'Foto do produto';
  if(img.dataset.photoSource!==link){
   // O elemento fica VISÍVEL (com opacidade zero) para que o navegador
   // inicie a requisição. O ícone permanece até o onload.
   img.dataset.photoSource=link;
   img.dataset.photoState='loading';
+  img.dataset.photoFallbackTried='';
   img.hidden=false;
   img.style.opacity='0';
   empty.hidden=false;
