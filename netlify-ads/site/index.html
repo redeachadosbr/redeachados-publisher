@@ -156,6 +156,41 @@
 .ads-advanced-input .campaign-fields{margin-top:12px}
 .ads-simple-status{font-size:11px;color:#b8c2cd;margin-top:5px}
 @media(max-width:440px){.ads-simple-grid{grid-template-columns:1fr}.ads-simple-kpi .number{font-size:18px}}
+
+/* Evolução Ads: linha do tempo compacta e focada em ação */
+.evo-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.evo-form{display:grid;grid-template-columns:minmax(210px,2fr) minmax(145px,1fr) minmax(145px,1fr) auto;gap:10px;align-items:end}
+.evo-form .field{min-width:0}
+.evo-form input,.evo-form select{width:100%}
+.evo-decision{border:1px solid #80683f;background:#2b251d;border-radius:13px;padding:14px;margin:12px 0}
+.evo-decision.risk{background:#2e1c22;border-color:#8b4f5a}
+.evo-decision.ok{background:#192b24;border-color:#4d8465}
+.evo-decision .main{font-size:19px;font-weight:760;line-height:1.35}
+.evo-decision p{font-size:13px;line-height:1.55;margin:5px 0 0}
+.evo-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.evo-quick>div{background:#10171e;border:1px solid #3c424b;border-radius:12px;padding:12px}
+.evo-quick small{display:block;color:#c2c9d4}
+.evo-quick b{display:block;color:#f1cc88;font-size:22px}
+.evo-phase{border:1px solid #46505c;border-radius:14px;padding:13px;margin:12px 0;background:#161c24}
+.evo-phase-top{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.evo-phase-top strong{color:#f5c77e;font-size:15px}
+.evo-phase-top span{color:#b8c3d0;font-size:12px}
+.evo-mini-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.evo-mini-grid>div{padding:9px;background:#111820;border:1px solid #353f4a;border-radius:9px;min-width:0}
+.evo-mini-grid small{display:block;font-size:11px;color:#b4c0cb}
+.evo-mini-grid b{font-size:14px;display:block;overflow-wrap:anywhere}
+.evo-small{font-size:12px;color:#b7c2cf;line-height:1.55;margin:5px 0}
+.evo-conclusion{padding:10px;border:1px solid #75613c;border-radius:10px;background:#282319;margin-top:10px;font-size:12px}
+.evo-conclusion.risk{border-color:#8e5963;background:#2e1d24}
+.evo-conclusion.ok{border-color:#4b8168;background:#192920}
+.evo-conclusion strong{display:block;margin-bottom:3px}
+.evo-conclusion span{display:block;color:#d5dbe4;line-height:1.5}
+.evo-change{display:flex;gap:12px;align-items:flex-start;margin:12px 0;border-left:2px solid #5a4831;padding:9px 12px;background:#1b1d20;border-radius:0 10px 10px 0}
+.evo-change strong{color:#e7c084}
+.evo-marker{font-size:19px;color:#e2bf7e}
+.evo-status{font-size:12px;color:#c7d2df;margin:10px 0}
+@media(max-width:780px){.evo-form{grid-template-columns:1fr 1fr}.evo-form .field:first-child{grid-column:1/-1}.evo-form button{grid-column:1/-1}.evo-mini-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.evo-quick{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -165,7 +200,7 @@
     <span class="pill">V16.5 · Fotos WeDrop + Drive</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
-  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ 4 regras + ilimitado</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
+  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Decisão atual</button><button class="tab" data-tab="evolucao">▥ Evolução</button><button class="tab" data-tab="historico">◷ Alterações</button><button class="tab" data-tab="regras">▤ Regras Ads</button></nav>
   <section class="view" id="produtos">
     <div class="catalog-layout">
       <div class="panel" id="productDetail">
@@ -385,6 +420,43 @@
  <ul class="list-check"><li><strong>Primeiros 7 dias ou período incompleto:</strong> manter ROAS 30x e observar; não alterar com base em um dia.</li><li><strong>ROAS acima da meta e margem protegida:</strong> manter a meta. Se entrega muito baixa, avaliar redução gradual de 10% após estabilização e somente se preservar o lucro.</li><li><strong>ROAS abaixo do alvo, mas acima do mínimo desejado e financeiro:</strong> avaliar gasto, cliques e conversão antes de qualquer teste gradual após 7 dias completos.</li><li><strong>ROAS abaixo do equilíbrio, do mínimo escolhido ou sem vendas atribuídas:</strong> não reduzir a meta para buscar tráfego; revisar oferta e controlar o risco.</li><li><strong>Gasto acima da sua referência diária:</strong> emitir alerta. Para um teto verdadeiro, configurar orçamento diário real na Shopee.</li></ul>
  <p class="muted-line">Após um teste de 7 a 14 dias, reduções de até 10% podem ser consideradas para entrega baixa quando o mínimo de margem permitir. A meta nunca é mudada automaticamente. O mesmo mecanismo se aplica a metas diferentes de 30x.</p>
  </div><div class="panel" style="margin-top:16px"><h2>Proteções para o dropshipping</h2><ul class="list-check"><li>Com orçamento <strong>ilimitado</strong>, as regras 01–04 de consumo não se aplicam; o sistema usa a <strong>Regra 05</strong>. Uma referência diária não é teto real.</li><li>Não compare o <strong>gasto de vários dias</strong> ao teto de apenas um dia. Calcule <strong>gasto total ÷ dias do período</strong> e compare com o orçamento diário (matematicamente equivalente a gasto total ÷ orçamento acumulado). A média não revela o consumo de cada dia.</li><li>Campanha com data parcial: resultado <strong>provisório</strong>; não tome decisões fortes apenas com o dia em andamento.</li><li>ROAS de equilíbrio ≈ preço / (preço − custos unitários anteriores aos Ads). Se a contribuição for zero ou negativa, anúncios não resolvem a margem.</li><li>O ROAS necessário para atingir sua margem desejada é <strong>maior</strong> do que o ROAS de equilíbrio. Alvo de ROAS não é garantia de lucro.</li><li>Revisão diária na primeira semana; depois, semanal, sempre observando atrasos de atribuição e amostra de cliques/pedidos.</li></ul></div></section>
+<section class="view" id="evolucao">
+ <div class="panel">
+  <div class="evo-header">
+   <div><div class="overline">Acompanhe a campanha sem misturar mudanças</div>
+    <h2>Evolução da campanha</h2>
+    <p class="subtle">A API organiza as métricas por fase. Cada alteração vira um ponto na linha do tempo.</p></div>
+   <button type="button" id="evoHistoryLink" class="btn-secondary mini">Ver histórico de alterações</button>
+  </div>
+  <div class="evo-form">
+   <div class="field"><label for="evoSku">Produto / SKU</label><select id="evoSku"><option value="">Selecione um produto</option></select></div>
+   <div class="field"><label for="evoStart">Desde</label><input id="evoStart" type="date"></div>
+   <div class="field"><label for="evoEnd">Até</label><input id="evoEnd" type="date"></div>
+   <button type="button" id="evoRefresh" class="btn-primary">Consultar evolução</button>
+  </div>
+  <div class="field" id="evoCampaignWrap" hidden style="margin-top:12px">
+   <label for="evoCampaign">Existe mais de uma campanha vinculável. Escolha o ID correto</label>
+   <select id="evoCampaign"><option value="">Selecione a campanha</option></select>
+  </div>
+  <p id="evoStatus" role="status" class="evo-status">Selecione o produto para consultar a evolução.</p>
+  <div id="evoSummary" hidden>
+   <div class="evo-small" id="evoCurrentLabel"></div>
+   <div class="evo-quick">
+    <div><small>Gasto médio diário · última fase</small><b id="evoLatestSpent">—</b></div>
+    <div><small>ROAS real · última fase</small><b id="evoLatestRoas">—</b></div>
+   </div>
+   <p class="evo-small" id="evoLatestTarget"></p>
+   <div id="evoTopBox" class="evo-decision">
+    <div id="evoTopDecision" class="main">—</div>
+    <p id="evoTopDecisionText">—</p>
+   </div>
+   <div id="evoCount" class="evo-small"></div>
+  </div>
+  <h3 style="margin:20px 0 8px">Linha do tempo das modificações</h3>
+  <div id="evoTimeline"><p class="subtle">Os períodos aparecerão aqui, do mais antigo para o mais recente.</p></div>
+  <p class="tiny">Os dias das alterações são excluídos das comparações porque podem conter duas configurações. O dia atual é exibido separadamente. Vendas atribuídas à publicidade não equivalem necessariamente aos pedidos totais da loja; períodos diferentes não são comparados usando apenas totais. Nenhuma campanha é modificada.</p>
+ </div>
+</section>
   <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Cenário</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
     <div class="panel history-split" id="changeHistoryPanel">
       <div class="section-head"><div><div class="overline">Modificações do anúncio</div><h2>Registrar alteração por produto</h2></div><span class="subtle">Data e hora automáticas</span></div>
@@ -424,7 +496,7 @@
       <p class="tiny">Histórico local preservado no backup JSON e sincronizado com o Google Drive quando a conexão estiver disponível.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.6</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.7</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
 <script>
@@ -919,7 +991,7 @@ if(r.fin){const f=r.fin;let finRows=[['Contribuição antes dos Ads por unidade'
 else $('financeOutput').innerHTML='<p class="muted-line">Margem não validada. Selecione um SKU cadastrado com dados financeiros completos em Produtos para visualizar ROAS de equilíbrio e a margem desejada.</p>';
 $('safeAction').textContent=r.safeAction;
 const checklist=['Concorrência: preço final e ofertas similares.','Capa, título, fotos e benefícios reais do anúncio.','Frete, prazo de entrega, cupons e avaliação do produto.','Custo WeDrop, taxas CNPJ, impostos e margem líquida.','Estoque disponível e possíveis atrasos no relatório de atribuição.'];$('checkList').innerHTML=checklist.map(v=>'<li>'+safe(v)+'</li>').join('');$('reviewNote').textContent='Reavalie diariamente na primeira semana e, depois, semanalmente. Não execute dois ajustes simultâneos sem registrar o resultado anterior.';}
-function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory()}
+function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory();if(tab==='evolucao')window.RedeEvolution?.open();}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
 function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
 $('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
@@ -1961,6 +2033,7 @@ $('apiHistoryBtn').addEventListener('click',()=>apiLoadRange(true));
 refreshChangeSelects();renderChangeHistory();
 
 </script>
+<script src="/evolution.js"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
