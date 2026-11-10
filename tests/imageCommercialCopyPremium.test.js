@@ -194,8 +194,8 @@ test('WS20357 instrui ChatGPT a criar cena final com três cores e cotas',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const bridge=app.slice(app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;"),
    app.indexOf('const existing=await json(',app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;")));
- assert.match(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(bridge,/chatgpt-auto-03-cotas-wedrop.png/);
+ assert.doesNotMatch(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(bridge,/chatgpt-auto-03-arte-final.png/);
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
   app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
  assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
