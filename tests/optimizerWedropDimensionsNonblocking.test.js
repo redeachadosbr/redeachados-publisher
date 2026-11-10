@@ -115,6 +115,30 @@ test('SKU 895332: texto real multiline confirma apenas altura e diâmetro do pro
  assert.equal(spec.measurements.some(x=>x.value==='14 cm'||x.value==='21 cm'),false);
 });
 
+test('SKU 895332: medidas 14 x 21 x 21 são da embalagem e nunca viram cotas do produto',async()=>{
+ const {confirmedSpecCard}=await import('../public/specificationCard.js');
+ const base={sku:'895332',sourceEvidenceSku:'895332',sourceSaved:true,
+  supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:14,widthCm:21,lengthCm:21}};
+ const product=confirmedSpecCard({...base,sourceText:[
+  'Fonte Bebedouro 3 Modos para Pets 20 cm',
+  'Especificações:', 'Dimensões:', '',
+  '20cm altura x 19cm diamentro/',
+  'Dimensões da embalagem: 14cm altura x 21cm largura x 21cm comprimento',
+  'ALTURA', '14cm', 'LARGURA', '21cm', 'COMPRIMENTO', '21cm'
+ ].join('\\n')});
+ assert.deepEqual(product?.measurements.map(x=>[x.label,x.value]),[
+  ['ALTURA','20 cm'],['DIAMETRO','19 cm']
+ ]);
+ assert.doesNotMatch(JSON.stringify(product),/14 cm|21 cm/);
+ assert.equal(confirmedSpecCard({...base,sourceText:
+  'ALTURA\\n14cm\\nLARGURA\\n21cm\\nCOMPRIMENTO\\n21cm'}),null,
+  'campos logísticos isolados não validam medidas comerciais');
+ assert.equal(confirmedSpecCard({...base,sourceText:
+  'Dimensões da embalagem: 14cm altura x 21cm largura x 21cm comprimento'}),null,
+  'dimensões explicitamente da embalagem nunca autorizam a imagem 03');
+});
+
 test('linha seguinte só pode conter cotas explícitas; não aceita dados do cabo ou embalagem',()=>{
  assert.equal(confirmedProductDimensionsFromWeDrop(
   'Dimensões:\n\nComprimento do cabo USB: 1,40m'),null);
