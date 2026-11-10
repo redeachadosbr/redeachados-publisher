@@ -140,6 +140,23 @@ function formatDelta(current,prev,unit,type){
  if(type==='money')return (delta>0?'▲ ':'▼ ')+money(Math.abs(delta))+'/dia';
  return (delta>0?'▲ ':'▼ ')+roas(Math.abs(delta));
 }
+function ordersFor(sku,from,to){
+ return window.RedeOrderPhase?.calculate(supplierOrderMeta,supplierOrderBySku.get(sku),from,to)||{available:false,covered:false,reason:'Leitura do XLSX indisponível.'};
+}
+function orderBadge(record,compact=false){
+ if(!record.available)return '<span class="evo-sales-status">Pedidos XLSX: '+safeText(record.reason||'não importados')+'</span>';
+ const count=record.units;
+ const prefix=record.covered?'Unidades em pedidos não cancelados':'Unidades no trecho disponível';
+ const coverage=record.covered?'datas abrangidas pelo arquivo':'cobertura incompleta';
+ const dateLabel=record.firstDate&&record.lastDate?' · arquivo: '+showDate(record.firstDate)+' a '+showDate(record.lastDate):'';
+ const line='<strong>'+safeText(prefix)+': '+formatNumber(count)+'</strong>'+
+  ' · enviadas/entregues '+formatNumber(record.fulfilled)+
+  ' · pendentes '+formatNumber(record.pending)+
+  ' · canceladas/devolvidas '+formatNumber(record.cancelled)+
+  (record.unknown?' · status não reconhecido '+formatNumber(record.unknown):'');
+ const detail=compact?'':'<small>'+safeText(coverage+dateLabel+'. Status conforme a data da importação. Pedidos da loja ≠ vendas atribuídas aos Ads.')+'</small>';
+ return '<div class="evo-sales-line">'+line+detail+'</div>';
+}
 function render(model,results,chosenId,loaded=false){
  const p=readProducts().find(x=>x.sku===e('evoSku').value);
  if(!p){e('evoSummary').hidden=true;e('evoTimeline').innerHTML='Selecione um SKU cadastrado.';return}
@@ -147,7 +164,7 @@ function render(model,results,chosenId,loaded=false){
  const withMetrics=total.map(phase=>{
   const req=requestsFor({phases:[phase],current:null});
   const chunks=req.map(job=>results.get(job.from+'|'+job.to));
-  return {phase,metrics:aggregate(phase,chunks,chosenId)};
+  return {phase,metrics:aggregate(phase,chunks,chosenId),orders:ordersFor(p.sku,phase.from,phase.to)};
  });
  const latest=withMetrics.at(-1),previous=withMetrics.at(-2);
  const last=latest?.metrics,prev=previous?.metrics;
@@ -159,6 +176,16 @@ function render(model,results,chosenId,loaded=false){
  e('evoTopBox').className='evo-decision '+decision.kind;
  e('evoLatestSpent').textContent=last&&!last.missing&&last.daily!==null?money(last.daily)+'/dia':'—';
  e('evoLatestRoas').textContent=last&&!last.missing&&last.actual!==null?roas(last.actual):'—';
+ const latestOrders=latest?.orders;
+ e('evoLatestUnits').textContent=!latestOrders?.available?'XLSX ausente':
+  (latestOrders.covered?formatNumber(latestOrders.units):'Parcial: '+formatNumber(latestOrders.units));
+ e('evoLatestUnitsNote').textContent=!latestOrders?.available?'Importe o XLSX em Produtos':
+  (latestOrders.covered?'Pedidos não cancelados (inclui pendentes)':'Relatório sem cobertura de todas as datas');
+ e('evoOrderStatus').textContent=supplierOrderMeta?.formatVersion===2?
+   'Pedidos por SKU carregados de '+String(supplierOrderMeta.sourceName||'XLSX')+
+   '. Datas do arquivo: '+showDate(supplierOrderMeta.firstDate||'')+' a '+showDate(supplierOrderMeta.lastDate||'')+
+   '. Não são atribuídos automaticamente ao Ads.':
+   'Importe o XLSX de pedidos na aba Produtos para visualizar unidades por fase, separando pendentes e cancelados.';
  e('evoCurrentLabel').textContent=latest?latest.phase.label+' · '+showDate(latest.phase.from)+' a '+showDate(latest.phase.to):'Sem período fechado';
  const floor=computeProduct(p);
  e('evoLatestTarget').textContent='Gasto desejado: '+(e('productSelect')?.value===p.sku&&val('budget')?money(val('budget'))+'/dia (referência)':'consulte a referência em Decisão atual')+
@@ -171,16 +198,20 @@ function render(model,results,chosenId,loaded=false){
  for(let i=0;i<model.phases.length;i++){
   const phase=model.phases[i];
   if(phase.type==='transition'){
-   const transition=results.get(phase.from+'|'+phase.to);
-   const m=aggregate(phase,[transition],chosenId);
-   const details=m.missing?'Indicadores indisponíveis para este dia.':
-    'Gasto '+(m.spent===null?'—':money(m.spent))+' · ROAS '+(m.actual===null?'—':roas(m.actual));
+   const dayOrders=ordersFor(p.sku,phase.from,phase.to);
    out.push('<article class="evo-change"><div class="evo-marker">✎</div><div><strong>'+safeText(showDate(phase.from))+
-    ' · '+safeText(phase.label)+'</strong><div class="evo-small">'+safeText(details)+
-    '. Dia da modificação: não entra na comparação porque pode incluir duas configurações.</div></div></article>');
+    ' · '+safeText(phase.label)+'</strong><div class="evo-small">'+
+    'Dia de transição separado: não somar os indicadores deste dia às duas fases.</div>'+
+    orderBadge(dayOrders,true)+'</div></article>');
    continue;
   }
-  const row=withMetrics.find(x=>x.phase===phase),m=row?.metrics||{missing:true},before=withMetrics[withMetrics.indexOf(row)-1]?.metrics;
+  const row=withMetrics.find(x=>x.phase===phase),m=row?.metrics||{missing:true},beforeRow=withMetrics[withMetrics.indexOf(row)-1],before=beforeRow?.metrics;
+  const orderData=row?.orders||ordersFor(p.sku,phase.from,phase.to);
+  const ordersCompared=window.RedeOrderPhase?.compareDaily(orderData,beforeRow?.orders)||null;
+  const orderComparison=ordersCompared?.delta!==null&&ordersCompared?
+   ' · unidades/dia '+(ordersCompared.delta>=0?'+':'')+ordersCompared.delta.toLocaleString('pt-BR',{maximumFractionDigits:1})+'% vs. fase anterior':'';
+  const orderHtml=orderBadge(orderData)+
+   (orderComparison?'<div class="evo-small">'+safeText(orderComparison.slice(3))+'</div>':'');
   const signal=phaseMessage(phase,m,before,p);
   const impressions=m.impressions===null||m.missing?'—':formatNumber(m.impressions);
   const clicks=m.clicks===null||m.missing?'—':formatNumber(m.clicks);
@@ -197,15 +228,16 @@ function render(model,results,chosenId,loaded=false){
    '<div><small>CTR</small><b>'+safeText(ctr)+'</b></div>'+
    '<div><small>Cliques / impressões</small><b>'+safeText(clicks+' / '+impressions)+'</b></div></div>'+
    '<div class="evo-small">'+safeText(confidence+diff)+'</div>'+
-   '<div class="evo-conclusion '+signal.kind+'"><strong>'+safeText(signal.title)+'</strong><span>'+safeText(signal.text)+'</span></div></article>');
+   orderHtml+
+   '<div class="evo-conclusion '+signal.kind+'"><strong>'+safeText(signal.title)+'</strong><span>'+safeText(signal.text)+
+   (orderData.available&&!orderData.covered?' Os dados do relatório de pedidos não cobrem todo o intervalo; não interpretar a contagem como total de vendas.':'')+
+   '</span></div></article>');
  }
  if(current){
-  const chunks=requestsFor({phases:[],current});
-  const m=aggregate(current,chunks.map(job=>results.get(job.from+'|'+job.to)),chosenId);
+  const todayOrders=ordersFor(p.sku,current.from,current.to);
   out.push('<article class="evo-change"><div class="evo-marker">◷</div><div><strong>Hoje ('+showDate(current.from)+') · parcial</strong>'+
-   '<div class="evo-small">Gasto '+(m.missing||m.spent===null?'—':money(m.spent))+
-   ' · ROAS '+(m.missing||m.actual===null?'—':roas(m.actual))+
-   '. Não entra na decisão das fases completas.</div></div></article>');
+   '<div class="evo-small">O dia atual não entra no diagnóstico das fases fechadas; pedidos podem chegar após a última importação.</div>'+
+   orderBadge(todayOrders,true)+'</div></article>');
  }
  e('evoTimeline').innerHTML=out.join('')||'<p>Não há períodos completos neste intervalo.</p>';
  if(loaded)e('evoStatus').textContent='✓ Evolução consultada · '+showDate(model.from)+' a '+showDate(model.until)+
@@ -289,9 +321,8 @@ async function fetchAll(force=false){
    if(!sel.value){e('evoTimeline').innerHTML='<p>Foram encontradas várias campanhas para este SKU. Escolha o ID correto acima para não somar anúncios diferentes.</p>';return}
   }
   if(!found.size){
-   e('evoSummary').hidden=true;
-   e('evoTimeline').innerHTML='<p>Não foram encontrados indicadores vinculados a essa SKU na API para o período. Confira o vínculo com o ID da campanha.</p>';
-   e('evoStatus').textContent='Sem dados vinculados ao SKU neste intervalo.';
+   render(model,new Map(),'Sem campanha identificada',false);
+   e('evoStatus').textContent='Sem dados Ads vinculados ao SKU neste intervalo. As fases e os pedidos do XLSX permanecem visíveis, sem inventar ROAS.';
    return;
   }
   useCampaign(e('evoCampaignWrap').hidden?[...found.keys()][0]:e('evoCampaign').value);
@@ -357,6 +388,18 @@ function ordersUpdated(){
  if(!cached)return;
  const choice=e('evoCampaignWrap').hidden?[...cached.found.keys()][0]:e('evoCampaign').value;
  if(choice)useCampaign(choice);
+ else render(cached.model,new Map(),'Sem campanha identificada',false);
 }
-window.RedeEvolution={open,makePhases,requestsFor,aggregate,phaseMessage,ordersUpdated};
+function selectSku(sku){
+ if(!readProducts().some(p=>p.sku===sku))return false;
+ lastSku='';
+ e('evoSku').value=sku;
+ // Ao abrir a aba, populate seleciona o produto do formulário sem depender do filtro.
+ if(e('productSelect')&&readProducts().some(p=>p.sku===sku)){
+  e('productSelect').value=sku;
+ }
+ switchTab('evolucao');
+ return true;
+}
+window.RedeEvolution={open,makePhases,requestsFor,aggregate,phaseMessage,ordersUpdated,selectSku};
 })();
