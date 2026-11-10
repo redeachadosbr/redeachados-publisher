@@ -3,23 +3,35 @@
 // campos isolados do fornecedor ou medidas de caixa/transporte.
 const normalized=value=>String(value??'').replace(/\\r\\n|\\n|\\r/g,'\n').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fmtNumber=value=>String(Number(String(value).replace(',','.'))).replace('.',',');
-const axisNames=Object.freeze({altura:'altura',largura:'largura',comprimento:'comprimento',profundidade:'profundidade'});
+const axisNames=Object.freeze({altura:'altura',largura:'largura',comprimento:'comprimento',profundidade:'profundidade',diametro:'diametro',diamentro:'diametro'});
 const number='(\\d{1,4}(?:[.,]\\d{1,2})?)';
-const axisPattern=new RegExp(number+'\\s*(cm|mm|m)\\s*(?:de\\s+)?(altura|largura|comprimento|profundidade)\\b','gi');
+const axisPattern=new RegExp(number+'\\s*(cm|mm|m)\\s*(?:de\\s+)?(altura|largura|comprimento|profundidade|diametro|diamentro)\\b','gi');
 // A ficha pode nomear o eixo antes do valor: "Altura: 20 cm × Largura: 15 cm".
-const axisFirstPattern=new RegExp('\\b(altura|largura|comprimento|profundidade)\\s*(?::|=|-|de\\s+)?\\s*'+number+'\\s*(cm|mm|m)\\b','gi');
+const axisFirstPattern=new RegExp('\\b(altura|largura|comprimento|profundidade|diametro|diamentro)\\s*(?::|=|-|de\\s+)?\\s*'+number+'\\s*(cm|mm|m)\\b','gi');
 export function confirmedProductDimensionsFromWeDrop(sourceText){
  const text=normalized(sourceText).replace(/\r/g,'').slice(0,12000);
  if(!text.trim())return null;
  const entries=[];
- for(const line of text.split('\n')){
-  const lineTrim=line.trim();
-  // Aceitar exclusivamente uma declaracao "Dimensoes/Medidas" do produto.
-  // Excluir caixas, pacotes e medidas logisticas mesmo quando numericas.
-  const label=lineTrim.match(/^(?:[-*•]\s*)?(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.+)$/i);
+ const lines=text.split('\n');
+ for(let i=0;i<lines.length;i++){
+  const lineTrim=lines[i].trim();
+  // A ficha real da SKU 895332 separa "Dimensões:" e "20cm altura x 19cm diamentro".
+  // Aceitar continuação somente com pelo menos DOIS eixos textuais explícitos.
+  // Nunca buscar números soltos nem campos de peso/embalagem nas linhas seguintes.
+  const label=lineTrim.match(/^(?:[-*•]\s*)?(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.*)$/i);
   if(!label||/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/.test(lineTrim))continue;
+  let axisSource=label[2].trim();
+  if(!axisSource){
+   let j=i+1;
+   while(j<lines.length&&j<=i+3&&!lines[j].trim())j++;
+   const candidate=String(lines[j]||'').trim();
+   const axesNamed=candidate.match(/\b(?:altura|largura|comprimento|profundidade|diametro|diamentro)\b/g)||[];
+   if(j>i+3||axesNamed.length<2||
+      /embalagem|caixa|pacote|frete|logistic|transporte/.test(candidate))continue;
+   axisSource=candidate;
+  }
   const axes={};
-  for(const m of label[2].matchAll(axisPattern)){
+  for(const m of axisSource.matchAll(axisPattern)){
    const axis=axisNames[m[3]];
    let numberValue=Number(m[1].replace(',','.'));
    if(m[2]==='m')numberValue*=100;
@@ -30,7 +42,7 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
    axes[axis]=value;
   }
   if(!axes.invalid){
-   for(const m of label[2].matchAll(axisFirstPattern)){
+   for(const m of axisSource.matchAll(axisFirstPattern)){
     const axis=axisNames[m[1]];
     let numberValue=Number(m[2].replace(',','.'));
     if(m[3]==='m')numberValue*=100;
@@ -43,10 +55,10 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
   }
   if(axes.invalid)continue;
   // Apenas grandezas explicitamente nomeadas, nao assumir que x/y/z sejam A/L/C.
-  const measurements=['altura','largura','comprimento','profundidade'].filter(axis=>axes[axis]).map(axis=>({
+  const measurements=['altura','largura','comprimento','profundidade','diametro'].filter(axis=>axes[axis]).map(axis=>({
    label:axis.toUpperCase(),value:axes[axis],axis
   }));
-  if(measurements.length>=2)entries.push({measurements,sourceLine:lineTrim});
+  if(measurements.length>=2)entries.push({measurements,sourceLine:axisSource===label[2].trim()?lineTrim:lineTrim+' '+axisSource});
  }
  if(!entries.length)return null;
  const signature=x=>JSON.stringify(x.measurements);
