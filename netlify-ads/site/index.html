@@ -160,17 +160,31 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16.4 · Decisão rápida + Drive</span>
+    <span class="pill">V16.5 · Fotos WeDrop + Drive</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
   <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ 4 regras + ilimitado</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
   <section class="view" id="produtos">
     <div class="catalog-layout">
       <div class="panel" id="productDetail">
+        <div class="supplier-import" style="border:1px solid #746039;border-radius:12px;padding:12px;margin-bottom:15px">
+         <strong>Catálogo do fornecedor e pedidos</strong>
+         <p class="tiny">Importe os arquivos Excel originais. A foto e o custo são associados pela SKU exata. Os pedidos gerais não são confundidos com vendas atribuídas ao Ads.</p>
+         <div class="actions non-print">
+          <button type="button" id="importSupplierXlsxBtn" class="btn-primary mini">Importar catálogo .xlsx</button>
+          <input type="file" id="importSupplierXlsxFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+          <button type="button" id="importOrdersXlsxBtn" class="btn-secondary mini">Importar pedidos .xlsx</button>
+          <input type="file" id="importOrdersXlsxFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+         </div>
+         <div id="supplierImportStatus" role="status" class="subtle" style="margin-top:8px">Nenhum catálogo importado neste navegador.</div>
+         <div id="ordersImportStatus" role="status" class="subtle" style="margin-top:5px"></div>
+        </div>
         <div class="section-head"><div><div class="overline">01 · Cadastro</div><h2 id="productFormTitle">Cadastrar produto</h2></div><span class="subtle">Dados manuais</span></div>
         <form id="productForm" novalidate>
           <div class="field-grid">
-            <div class="field"><label for="pSku">SKU *</label><input id="pSku" placeholder="Ex.: TRC0593" required maxlength="70"></div>
+            <div class="field"><label for="pSku">SKU *</label><input id="pSku" placeholder="Ex.: TRC0593" required maxlength="70">
+ <button type="button" id="supplierSkuLookup" class="btn-secondary mini" style="margin-top:7px">Buscar SKU no catálogo</button>
+ <p id="supplierSkuResult" class="tip">Carregue o catálogo para preencher foto, custo e nome por SKU.</p></div>
             <div class="field full"><label for="pName">Nome do produto *</label><input id="pName" placeholder="Ex.: Ralador Multiuso 3 em 1" required maxlength="240"></div>
 <div class="field full"><label for="pImageUrl">Foto principal do SKU (link HTTPS) · opcional</label>
 <div class="product-photo-input-row"><div class="ads-product-photo" title="Prévia da foto"><img id="productFormPhoto" alt="Prévia da foto do produto" loading="lazy" referrerpolicy="no-referrer" hidden><span id="productFormPhotoEmpty" aria-hidden="true">▧</span></div>
@@ -277,7 +291,8 @@
 <select id="productSelect"><option value="">— Selecione um produto —</option></select></div>
 <p class="ads-photo-help" id="selectedProductPhotoNote">Selecione um SKU para visualizar a foto ao lado.</p></div>
           <div class="field full"><label for="campaign">Nome da campanha / SKU</label><input id="campaign" placeholder="Nome do produto ou SKU"></div>
-          <div class="field full"><details class="ads-advanced" id="productQuickDetails"><summary>Ver situação, curva e preço de mercado do produto</summary><div id="curveAdsHint" class="curve-help">Selecione um produto cadastrado para consultar sua curva manual.</div><div id="marketAdsHint" class="curve-help" style="margin-top:8px">A comparação com o mercado virá do cadastro.</div><div id="statusAdsHint" class="curve-help" style="margin-top:8px">Status Ads será confirmado pela API quando a campanha for identificada; sem resposta, usa seu status manual.</div><div id="linkedCampaignHint" class="curve-help" style="margin-top:8px">Nenhum ID de campanha vinculado ainda.</div></details></div>
+          <div class="field full"><details class="ads-advanced" id="productQuickDetails"><summary>Ver situação, curva e preço de mercado do produto</summary><div id="curveAdsHint" class="curve-help">Selecione um produto cadastrado para consultar sua curva manual.</div><div id="marketAdsHint" class="curve-help" style="margin-top:8px">A comparação com o mercado virá do cadastro.</div><div id="statusAdsHint" class="curve-help" style="margin-top:8px">Status Ads será confirmado pela API quando a campanha for identificada; sem resposta, usa seu status manual.</div><div id="linkedCampaignHint" class="curve-help" style="margin-top:8px">Nenhum ID de campanha vinculado ainda.</div>
+<div id="supplierOrdersBySkuHint" class="curve-help" style="margin-top:8px">Pedidos gerais: importe o arquivo .xlsx em Produtos para conferir volumes por SKU, sem atribuição automática aos Ads.</div></details></div>
           <div class="field"><label for="dateStart">Período: início *</label><input type="date" id="dateStart" required></div>
           <div class="field"><label for="dateEnd">Período: fim *</label><input type="date" id="dateEnd" required></div>
         </div>
@@ -399,8 +414,9 @@
       <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.4</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.5</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
+<script src="/xlsx-reader.js"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
