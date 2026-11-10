@@ -11379,11 +11379,13 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
    w.supplierProduct?.catalogMeasurements||
    w.supplierProduct?.product_data?.catalogMeasurements||null
  }):null;
- if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
+ // Não paralisar as imagens 01, 02 e 04–09 por uma ambiguidade EXCLUSIVA
+ // da imagem 03. Nunca afirmar um eixo nem desenhar números por inferência.
+ const dimensionWarning=/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
     !confirmedDimensionSpec?.measurements?.length&&
-    !/dimensões da pista montada/i.test(trustedText))
-  throw Error('Há dimensões salvas na WeDrop da SKU '+w.sku+
-   ', mas não foi possível identificar os eixos com segurança. Confira os valores do catálogo. Nenhuma medida será inventada.');
+    !/dimensões da pista montada/i.test(trustedText)
+   ?'Medidas WeDrop cadastradas, mas os eixos ainda não foram confirmados. A imagem 03 exigirá a conferência exata da SKU antes de receber cotas; as demais imagens podem prosseguir.':'';
+
  const linkedSupplierPhoto=!existingKit&&
   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(
@@ -11413,7 +11415,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   supplierMetrics:existingKit?[]:w.sourceFacts?.metrics||[]
  });
  return {...brief,referenceCandidates:bridgeReferences,
-  bridgeOriginal:bridgeReferences[0]||''};
+  bridgeOriginal:bridgeReferences[0]||'',dimensionWarning};
 }
 // O campo "Informações da WeDrop" é salvo por shop + Item ID + modelo + SKU.
 // Antes de importar a fotografia 03, ler novamente do servidor; não depender
@@ -12326,10 +12328,12 @@ async function optimizerChatgptContinueFromServer(){
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
   const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
   if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
-  if(missing.includes(3)){
+  if(Number(missing[0])===3){
    const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
    notify('Dimensões da imagem 03 confirmadas na WeDrop antes de enviar o prompt: '+
     confirmed.map(x=>x.label+' '+x.value).join(' · ')+'. '+stored.length+'/9 imagens preservadas.');
+  }else if(missing.includes(3)&&brief.dimensionWarning){
+   optimizerCommercialActionMessage(brief.dimensionWarning);
   }
   const first=String(missing[0]).padStart(2,'0');
   const preparedThirdReference=Number(missing[0])===3?
