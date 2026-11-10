@@ -1105,7 +1105,13 @@ function updateProductPhotoElement(imgId,emptyId,value,alt){
  const img=$(imgId),empty=$(emptyId);if(!img||!empty)return false;
  const link=safeProductPhotoUrl(value);
  img.onload=()=>{if(img.getAttribute('src')===link){img.hidden=false;empty.hidden=true}};
- img.onerror=()=>{img.hidden=true;empty.hidden=false};
+ img.onerror=()=>{
+  img.hidden=true;empty.hidden=false;
+  if(imgId==='selectedProductPhoto'){
+   const note=$('selectedProductPhotoNote');
+   if(note)note.textContent='A foto foi encontrada no cadastro, mas o servidor da imagem não respondeu. Confira o link da foto em Produtos → Editar.';
+  }
+};
  if(!link){img.hidden=true;empty.hidden=false;img.removeAttribute('src');return false}
  img.alt=alt||'Foto do produto';
  if(img.getAttribute('src')!==link){img.hidden=true;empty.hidden=false;img.setAttribute('src',link)}
