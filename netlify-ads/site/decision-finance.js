@@ -101,8 +101,9 @@ function updateResult(){
   return;
  }
  const net=Math.round((profit-spend)*100)/100;
- netText.textContent=br(net);netText.className='value '+(net<0?'negative':'positive');
- setStatus((net<0?'Prejuízo':'Lucro')+' acumulado: '+br(net)+'. Valor dos pedidos informado manualmente.'+
+ netText.textContent=br(net);netText.className='value '+(net<0?'negative':net>0?'positive':'');
+ const situation=net<0?'Prejuízo':net>0?'Lucro':'Resultado zerado';
+ setStatus(situation+' acumulado: '+br(net)+'. Valor dos pedidos informado manualmente.'+
   (lastSaveWorked?'':' Atenção: não foi possível salvar o valor neste navegador.'));
  const r=lastReport,reduce=r?.scenario===1||r?.scenario===2||
   (r?.unlimitedRule?.candidate!==null&&r?.unlimitedRule?.candidate!==undefined&&r.unlimitedRule.candidate<r.d.target);
