@@ -44,3 +44,17 @@ test('etapa 10 executa TODAS as nove etapas da auditoria raiz, e nao apenas míd
  assert.match(run,/optimizerExecuteApproved\(false\)/);
  assert.doesNotMatch(run,/scope\.value='media_fiscal'/);
 });
+
+test('kit mochila T-Rex usa o Item ID original e falha fechado sem criar duplicata',()=>{
+ const server=source('server.js');
+ const service=source('shopeeKitPublicationService.js');
+ assert.match(existing,/'KIT-TX24505K-TX24508E':'58222633999'/);
+ const find=server.slice(server.indexOf("app.get('/api/shopee/kits/optimization/find'"),
+  server.indexOf("app.get('/api/shopee/optimizer/find'"));
+ assert.match(find,/kitSku==='KIT-TX24505K-TX24508E'&&sku==='TX24505K'/);
+ assert.match(find,/userConfirmedItemId\|\|\(/);
+ assert.match(find,/if\(userConfirmedItemId\)throw Error/);
+ assert.match(find,/verifiedSavedTarget:verified/);
+ assert.match(service,/if\(kitSku==='KIT-TX24505K-TX24508E'\)/);
+ assert.match(service,/Não criar outro anúncio/);
+});

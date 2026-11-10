@@ -1854,14 +1854,19 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
    throw Error('Kit não salvo. Salve o rascunho antes de localizar o anúncio na Shopee.');
   if(!saved.skus.includes(sku)||String(req.query?.mainSku||sku).trim()!==sku)
    throw Error('Selecione a SKU principal do kit. A Shopee utiliza somente essa SKU única.');
+  // Seleção explícita do vendedor: este kit deve atualizar o anúncio original,
+  // não criar/usar o anúncio duplicado identificado na Shopee.
+  // O ID ainda deve passar por leitura oficial de status, SKU e modelo.
+  const userConfirmedItemId=kitSku==='KIT-TX24505K-TX24508E'&&sku==='TX24505K'
+   ?'58222633999':'';
   const prior=saved.optimization;
   // Preferir a leitura oficial por Item ID. A pesquisa por SKU é uma busca
   // de descoberta, portanto não pode invalidar um anúncio já persistido.
-  const storedItemId=prior?.sku===sku&&prior?.mainSku===sku&&
+  const storedItemId=userConfirmedItemId||(prior?.sku===sku&&prior?.mainSku===sku&&
    /^[1-9]\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
    !prior?.itemId&&/^[1-9]\d{0,17}$/.test(String(saved.publication?.itemId||''))?
-    String(saved.publication.itemId):'';
-  const storedModelId=String(prior?.modelId||'0');
+    String(saved.publication.itemId):'');
+  const storedModelId=userConfirmedItemId?'0':String(prior?.modelId||'0');
   let directFailure='',directMismatch=false;
   if(storedItemId){
    try{
@@ -1889,12 +1894,17 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
     }
     const verified={sku,itemId:storedItemId,modelId:verifiedModelId,
      status:state,title:String(live.item_name||sku)};
-    return res.json({ok:true,kitSku,sku,searchMode:'saved_item_id_official_readback',
+    return res.json({ok:true,kitSku,sku,searchMode:userConfirmedItemId?
+     'user_confirmed_item_id_official_readback':'saved_item_id_official_readback',
      matches:[verified],verifiedSavedTarget:verified,notFound:false,canDeepSearch:true,
      warnings:[],marketplaceUpdated:false,
      message:'Item ID salvo recuperado e SKU principal conferida diretamente na ficha da Shopee.'});
    }catch(error){
     directFailure=String(error.message||error).slice(0,220);
+    // Nunca recuar para outro anúncio quando o vendedor informou o ID exato.
+    if(userConfirmedItemId)throw Error('Item ID '+userConfirmedItemId+
+     ' não foi confirmado para a SKU '+sku+' na Shopee: '+directFailure+
+     '. Nenhum anúncio alternativo será usado.');
     directMismatch=/sku principal|não corresponde|modelo salvo|variação única|status /i.test(directFailure);
    }
   }

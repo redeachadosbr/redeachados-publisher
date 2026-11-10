@@ -182,6 +182,10 @@ export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
   }};
 }
 export async function kitPublishApproved({cfg,auth,kitSku,input,token,secret}){
+ // Este kit já tem anúncio de origem confirmado. Criar um Kit Formal novo
+ // duplicaria a SKU principal e desrespeitaria a composição via WeDrop.
+ if(kitSku==='KIT-TX24505K-TX24508E')
+  throw Error('Este kit deve atualizar o anúncio existente ID 58222633999 pela etapa Executar na Shopee. Não criar outro anúncio.');
  const k=key(auth.shopId,kitSku);
  if(pendingLocks.has(k))throw Error('Publicação deste kit já está em andamento.');
  pendingLocks.add(k);
