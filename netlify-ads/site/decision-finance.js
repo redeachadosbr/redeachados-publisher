@@ -1,211 +1,209 @@
-// Painel de resultado financeiro acumulado: não interfere nas regras de decisão Shopee Ads.
+// Resultado Ads simplificado — apenas gasto API + lucro ANTES de Ads informado manualmente.
+// Não chama API Payment/Returns nem interfere nas 5 regras de decisão.
 (()=>{
 'use strict';
 const core=window.RedeCampaignFinance;
 const get=id=>document.getElementById(id);
 if(!core||!get('resultContent')||!get('productSelect'))return;
+const keyName='redeachados_ads_lucro_manual_v1';
 const br=v=>v===null||v===undefined?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmt=x=>String(x||'').split('-').reverse().join('/')||'—';
+const fmt=x=>String(x||'').split('-').reverse().join('/');
+function parseMoney(raw){
+ const rawText=String(raw??'').trim();
+ if(!rawText)return {state:'empty',value:null};
+ let t=rawText.replace(/R\$/gi,'').replace(/\s/g,'');
+ if(/^-?\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(t))
+  t=t.replace(/\./g,'').replace(',','.');
+ else if(/^-?\d+(?:,\d{1,2})?$/.test(t))t=t.replace(',','.');
+ else if(!/^-?\d+\.\d{1,2}$/.test(t))return {state:'invalid',value:null};
+ const n=Number(t);
+ if(!Number.isFinite(n)||Math.abs(n)>100000000||!Number.isSafeInteger(Math.round(n*100)))
+  return {state:'invalid',value:null};
+ return {state:'valid',value:Math.round(n*100)/100};
+}
+function getSaved(key){
+ try{
+  const x=JSON.parse(localStorage.getItem(keyName)||'{}');
+  const v=x[key];return v===undefined||v===null?'':String(v);
+ }catch{return ''}
+}
+function saveValue(key,amount){
+ if(!key)return false;
+ try{
+  const x=JSON.parse(localStorage.getItem(keyName)||'{}');
+  if(amount===null)delete x[key];else x[key]=amount;
+  const keys=Object.keys(x);for(const k of keys.slice(0,Math.max(0,keys.length-300)))delete x[k];
+  localStorage.setItem(keyName,JSON.stringify(x));
+  return true;
+ }catch{return false}
+}
 const css=document.createElement('style');
 css.textContent=[
-'.ads-finance-total{border:1px solid #52728d;border-radius:14px;background:#172839;margin-top:17px;padding:15px}',
-'.ads-finance-total h3{color:#f5faff;font-size:16px;margin:0 0 6px}',
-'.ads-finance-total p{font-size:12px;line-height:1.5;color:#c9dceb;margin:5px 0}',
-'.ads-finance-total .finance-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}',
-'.ads-finance-total .finance-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:13px}',
-'.ads-finance-total .finance-kpis>div{border:1px solid #43576e;background:#111f2c;padding:10px;border-radius:10px;min-width:0}',
-'.ads-finance-total small{display:block;font-size:11px;color:#abc4db;margin-bottom:6px}',
-'.ads-finance-total strong.amount{font-size:18px;color:#fff;overflow-wrap:anywhere}',
-'.ads-finance-total strong.amount.positive{color:#8cf0b8}',
-'.ads-finance-total strong.amount.negative{color:#ffb6b7}',
-'.ads-finance-total .finance-status{font-size:11px;color:#f7d6a6;margin-top:9px;line-height:1.5}',
-'.ads-finance-total .finance-alert{border-left:3px solid #e9b55f;background:#392c1e;padding:10px;border-radius:7px;font-size:12px;color:#f9e5c8;margin-top:11px}',
-'@media(max-width:520px){.ads-finance-total .finance-kpis{grid-template-columns:1fr}}'
-].join('\n');
-document.head.append(css);
+ '.ads-finance-total{margin-top:16px;padding:15px;border:1px solid #4d7090;border-radius:13px;background:#182a3c}',
+ '.ads-finance-total h3{font-size:15px;color:#f7fbff;margin:0}',
+ '.ads-finance-total .top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}',
+ '.ads-finance-total p{font-size:12px;color:#bfd1e5;line-height:1.5;margin:7px 0}',
+ '.ads-finance-total .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}',
+ '.ads-finance-total .cell{border:1px solid #39536b;border-radius:9px;background:#111e2b;padding:10px;min-width:0}',
+ '.ads-finance-total .cell label,.ads-finance-total .cell small{display:block;font-size:11px;color:#bed1e4;margin-bottom:7px}',
+ '.ads-finance-total .value{font-size:21px;font-weight:800;color:#fff;overflow-wrap:anywhere}',
+ '.ads-finance-total input{width:100%;border:1px solid #738ea7;border-radius:8px;background:#091621;color:#fff;padding:10px 7px;font-size:17px;font-weight:750;min-width:0}',
+ '.ads-finance-total input:disabled{opacity:.55}',
+ '.ads-finance-total .positive{color:#97edb8}',
+ '.ads-finance-total .negative{color:#ffb3b3}',
+ '.ads-finance-total .result-status{font-size:12px;color:#d3e1f1;margin-top:10px}',
+ '.ads-finance-total .warn{color:#ffd99a;font-size:12px;margin-top:10px}',
+ '@media(max-width:560px){.ads-finance-total .cols{grid-template-columns:1fr}}'
+].join('\n');document.head.append(css);
 const panel=document.createElement('section');
-panel.className='ads-finance-total';
-panel.hidden=true;
-panel.setAttribute('aria-label','Resultado financeiro acumulado da campanha');
-panel.innerHTML='<div class="finance-top"><h3>Resultado financeiro desde o início da campanha</h3>'+
- '<button type="button" id="financeCumulativeRetry" class="btn-secondary mini">Atualizar</button></div>'+
- '<p id="financeCumulativeRange">—</p><div class="finance-kpis">'+
- '<div><small>Investimento Ads acumulado</small><strong class="amount" id="financeSpentTotal">—</strong></div>'+
- '<div><small id="financeProfitLabel">Lucro dos pedidos antes de Ads</small><strong class="amount" id="financeOrderProfit">—</strong></div>'+
- '<div><small id="financeNetLabel">Resultado depois de Ads</small><strong class="amount" id="financeNetTotal">—</strong></div></div>'+
- '<div class="finance-status" id="financeCumulativeStatus" role="status" aria-live="polite">—</div>'+
- '<div class="finance-alert" id="financeCumulativeAlert" hidden></div>';
+panel.className='ads-finance-total';panel.hidden=true;
+panel.setAttribute('aria-label','Resultado financeiro acumulado simplificado');
+panel.innerHTML='<div class="top"><h3>Resultado financeiro desde o início da campanha</h3>'+
+ '<button type="button" class="btn-secondary mini" id="financeCumulativeRetry">Atualizar Ads</button></div>'+
+ '<p id="financeCumulativeRange">Campanha não consultada.</p>'+
+ '<div class="cols"><div class="cell"><small>Investimento Ads acumulado</small>'+
+ '<div class="value" id="financeSpentTotal">—</div></div>'+
+ '<div class="cell"><label for="financeManualProfit">Lucro dos pedidos antes de Ads (R$)</label>'+
+ '<input id="financeManualProfit" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 120,00" disabled>'+
+ '</div><div class="cell"><small>Resultado depois de Ads</small>'+
+ '<div class="value" id="financeNetTotal">—</div></div></div>'+
+ '<p id="financeManualHelp">Informe o lucro total dos pedidos, já descontados os custos e taxas, mas ANTES dos Ads, para o mesmo período acumulado.</p>'+
+ '<p class="result-status" id="financeCumulativeStatus" role="status" aria-live="polite">Consulte a campanha pela API.</p>'+
+ '<p class="warn" id="financeCumulativeAlert" hidden></p>';
 get('resultContent').insertAdjacentElement('afterend',panel);
-let lastReport=null,token=0,lastCache=null,inflightKey='';
-const setStatus=(text,detail)=>{
- get('financeCumulativeStatus').textContent=text;
- if(detail)get('financeCumulativeRange').textContent=detail;
-};
-const setValues=(spent,profit,net,partial=false)=>{
- get('financeSpentTotal').textContent=br(spent)+(partial&&spent!==null?' (parcial)':'');
- get('financeOrderProfit').textContent=br(profit);
- const output=get('financeNetTotal');
- output.textContent=br(net);
- output.className='amount'+(net===null||net===undefined?'':net<0?' negative':' positive');
-};
+const input=get('financeManualProfit'),spentText=get('financeSpentTotal'),netText=get('financeNetTotal');
+const label=get('financeCumulativeRange'),status=get('financeCumulativeStatus'),alert=get('financeCumulativeAlert');
+let lastReport=null,currentKey='',lastCache=null,inflight='',controller=null,token=0,ads=null;
+let lastSaveWorked=true;
+const setStatus=text=>{status.textContent=text};
 const currentCampaign=sku=>{
  const filled=typeof lastAdsFilledCampaignKey==='string'?lastAdsFilledCampaignKey:'';
- // O ID da campanha é confirmado internamente quando a API carrega um anúncio.
- // Não precisa de painel extra. Nunca misturar campanhas de SKUs distintos.
- const separator=filled.lastIndexOf('|');
- if(separator<1)return '';
- const linkedSku=filled.slice(0,separator),id=filled.slice(separator+1);
- return linkedSku===sku&&/^\d+$/.test(id)?id:'';
+ const i=filled.lastIndexOf('|'),matched=i>=1&&filled.slice(0,i)===sku?filled.slice(i+1):'';
+ return /^\d+$/.test(matched)?matched:'';
 };
-function showFinancialAlert(r,result){
- const candidate=r?.suggestedROAS;
- const floor=r?.fin?.minRoas;
- const proposal=candidate??r?.unlimitedRule?.candidate??null;
- const below=Number.isFinite(floor)&&proposal!==null&&proposal!==undefined&&proposal<floor;
- const actionReduction=r?.scenario===1||r?.scenario===2||
-  (r?.unlimitedRule?.candidate!==null&&r?.unlimitedRule?.candidate!==undefined&&r.unlimitedRule.candidate<r.d.target);
- let warning='';
- if(actionReduction&&(below||(result.afterAds!==null&&result.afterAds<0))){
-  warning='Atenção financeira: reduzir o ROAS-alvo pode aumentar a entrega e o gasto'+
-   (result.afterAds!==null&&result.afterAds<0?
-     (result.status==='estimated'?' mesmo com prejuízo estimado (não confirmado).':' mesmo com prejuízo acumulado.'):'.')+
-   ' A recomendação conforme nossas regras permanece disponível; a decisão de aplicá-la é sua.';
+function updateResult(){
+ const entry=parseMoney(input.value),profit=entry.value;
+ const spend=ads?.spent??null;
+ netText.className='value';
+ alert.hidden=true;alert.textContent='';
+ if(entry.state==='invalid'){
+  netText.textContent='—';setStatus('Confira o lucro informado. Use, por exemplo, 120,50 ou -10,00.');return;
  }
- get('financeCumulativeAlert').textContent=warning;
- get('financeCumulativeAlert').hidden=!warning;
+ if(spend===null){
+  netText.textContent='—';
+  setStatus(ads?.complete===false?'Gasto Ads incompleto. O resultado não será calculado com valor parcial.':
+   'Consultando o gasto Ads acumulado na Shopee...');
+  return;
+ }
+ if(entry.state==='empty'){
+  netText.textContent='—';
+  setStatus('Gasto Ads confirmado. Digite o lucro antes de Ads para calcular o resultado.');
+  return;
+ }
+ const net=Math.round((profit-spend)*100)/100;
+ netText.textContent=br(net);netText.className='value '+(net<0?'negative':'positive');
+ setStatus((net<0?'Prejuízo':'Lucro')+' acumulado: '+br(net)+'. Valor dos pedidos informado manualmente.'+
+  (lastSaveWorked?'':' Atenção: não foi possível salvar o valor neste navegador.'));
+ const r=lastReport,reduce=r?.scenario===1||r?.scenario===2||
+  (r?.unlimitedRule?.candidate!==null&&r?.unlimitedRule?.candidate!==undefined&&r.unlimitedRule.candidate<r.d.target);
+ if(net<0&&reduce){
+  alert.textContent='Atenção: baixar o ROAS-alvo pode aumentar o gasto. A recomendação da regra Ads continua disponível.';
+  alert.hidden=false;
+ }
 }
-function show(result,context,r){
- const pending=result.status==='pending',estimated=result.status==='estimated';
- const partial=pending&&result.knownBeforeAds!==null&&result.knownOrders>0;
- get('financeProfitLabel').textContent=partial?'Saldo conhecido de '+result.knownOrders+' pedido(s) (parcial)':
-  estimated?'Lucro operacional estimado (antes de Ads)':'Lucro dos pedidos antes de Ads';
- get('financeNetLabel').textContent=estimated?'Resultado estimado após Ads':'Resultado depois de Ads';
- const spent=result.spent??result.knownSpend??null;
- setValues(spent,partial?result.knownBeforeAds:result.operatingBeforeAds,result.afterAds,
-  result.spent===null&&result.knownSpend!==null);
- if(result.afterAds!==null){
-  const status=estimated?'ESTIMATIVA — repasses e/ou custos de catálogo ainda não comprovados':
-   result.status==='confirmed'?'Conciliado pela API com custo efetivo':'Calculado com lucro antes de Ads explícito no XLSX';
-  setStatus((result.afterAds<0?'Prejuízo':'Lucro')+
-   (estimated?' estimado':' no período')+'. '+status+'. '+
-   (context.orderCount||0)+' pedido(s) da SKU. Pedidos da loja não representam necessariamente atribuição ao Ads.');
- }else setStatus('Resultado financeiro PENDENTE. '+(result.reasons||[]).join('; ')+
-  (partial?' O saldo parcial não deve ser subtraído do gasto total como se fosse um lucro final.':'')+
-  ' Ausência de dados não significa R$ 0.');
- showFinancialAlert(r,result);
+function fillManualForKey(key){
+ if(currentKey===key)return;
+ currentKey=key;
+ input.value=getSaved(key);
+ input.disabled=false;
+ lastSaveWorked=true;
 }
-async function readJson(url,abort){
- const response=await fetch(url,{method:'GET',credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store',signal:abort});
- let data;try{data=await response.json()}catch{throw Error('O servidor não retornou JSON para '+url.split('?')[0])}
- if(!response.ok||data?.ok===false||data?.error)throw Error(String(data?.error||'Erro '+response.status).slice(0,200));
- return data;
-}
-const requests=async (chunks,kind,signal,ticket)=>{
+input.addEventListener('input',()=>{
+ if(!currentKey)return;
+ const x=parseMoney(input.value);
+ lastSaveWorked=x.state==='invalid'?false:saveValue(currentKey,x.value);
+ updateResult();
+});
+input.addEventListener('blur',()=>{
+ const x=parseMoney(input.value);
+ if(x.state==='valid')input.value=x.value.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+});
+async function readAds(start,end,id,signal,ticket){
+ const chunks=core.makeRanges(start,end,28);
  const all=[];
  for(let i=0;i<chunks.length;i++){
-  if(signal.aborted||ticket!==token)throw Error('Consulta substituída.');
-  const [start,end]=chunks[i];
-  setStatus('Conferindo '+(kind==='ads'?'investimento Ads':'repasses e custos')+' ('+(i+1)+'/'+chunks.length+')...');
-  const qs=kind==='ads'?'start_date='+encodeURIComponent(start)+'&end_date='+encodeURIComponent(end):
-   'start='+encodeURIComponent(start)+'&end='+encodeURIComponent(end);
-  const route=kind==='ads'?'/api/shopee/ads/overview':'/api/shopee/finance/orders';
+  if(signal.aborted||ticket!==token)throw Error('Consulta cancelada');
+  const [from,to]=chunks[i];
+  setStatus('Lendo investimento Ads ('+(i+1)+'/'+chunks.length+')...');
+  const url='/api/shopee/ads/overview?start_date='+encodeURIComponent(from)+'&end_date='+encodeURIComponent(to);
   try{
-   const data=await readJson(route+'?'+qs,signal);
-   all.push({from:start,to:end,data});
+   const response=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store',signal});
+   let data;try{data=await response.json()}catch{throw Error('Resposta da Shopee não é JSON')}
+   if(!response.ok||data?.ok===false||data?.error)throw Error(String(data?.error||'Falha '+response.status));
+   all.push({from,to,data});
   }catch(error){
    if(signal.aborted)throw error;
-   all.push({from:start,to:end,data:null,error:String(error.message||error)});
+   all.push({from,to,error:String(error.message||error),data:null});
   }
  }
- return all;
-};
-let controller=null;
+ return core.adSpend(all,id);
+}
 async function refresh(report,{force=false}={}){
  if(report)lastReport=report;
- const r=lastReport;
- if(!r||!get('productSelect').value)return;
+ const r=lastReport,sku=r?.d?.sku||get('productSelect').value;
+ if(!sku)return;
  panel.hidden=false;
- const sku=r.d?.sku||get('productSelect').value;
- const campaignId=currentCampaign(sku);
- const today=brazilTodayISO();
- // O dia corrente costuma ser parcial. Somente dias fechados entram no total.
- const end=new Date(Date.parse(today+'T12:00:00Z')-86400000).toISOString().slice(0,10);
- const origin=core.campaignStart(getChanges(),sku,today);
- const start=origin.start;
- const cacheKey=[sku,campaignId,start,end].join('|');
- get('financeCumulativeAlert').hidden=true;
- if(!campaignId){setValues(null,null,null);setStatus('Consulte os Ads pelo período manual para identificar a campanha vinculada a esta SKU.');return}
- if(!start){setValues(null,null,null);setStatus(origin.reason+' Registre o início real no histórico para obter gasto desde o início.');return}
- get('financeCumulativeRange').textContent='SKU '+sku+' · Campanha ID '+campaignId+
-  ' · '+fmt(start)+' a '+fmt(end)+' (até ontem; hoje ainda não contabilizado)';
- if(start>end){setValues(null,null,null);setStatus('Campanha iniciada hoje: aguarde pelo menos dois dias completos de dados Ads.');return}
- if(!force&&lastCache?.key===cacheKey){
-  show(lastCache.result,lastCache.context,r);return;
+ const id=currentCampaign(sku);
+ const today=typeof brazilTodayISO==='function'?brazilTodayISO():'';
+ const end=today?new Date(Date.parse(today+'T12:00:00Z')-86400000).toISOString().slice(0,10):'';
+ const origin=core.campaignStart(getChanges(),sku,today),start=origin.start;
+ if(!id||!start||!end||start>=end){
+  controller?.abort();token++;inflight='';lastCache=null;ads=null;
+  currentKey='';input.value='';input.disabled=true;
+  spentText.textContent='—';netText.textContent='—';
+  label.textContent='SKU '+sku+' · campanha a confirmar';
+  setStatus(!id?'Consulte os Ads nas datas manuais para identificar a campanha.':
+   !start?origin.reason:'Ainda não existem dois dias completos para somar os Ads.');
+  alert.hidden=true;return;
  }
- if(!force&&inflightKey===cacheKey)return;
+ const key=[sku,id,start,end].join('|');
+ const changed=key!==currentKey;
+ if(changed){ads=null;spentText.textContent='—';netText.textContent='—';}
+ fillManualForKey(key);
+ label.textContent='SKU '+sku+' · Campanha '+id+' · '+fmt(start)+' a '+fmt(end)+' (até ontem)';
+ if(!force&&lastCache?.key===key){
+  ads=lastCache.ads;spentText.textContent=ads.spent===null?(ads.knownSpend===null?'—':br(ads.knownSpend)+' (parcial)'):br(ads.spent);
+  updateResult();return;
+ }
+ if(!force&&inflight===key)return;
  if(controller)controller.abort();
- inflightKey=cacheKey;
  controller=new AbortController();
  const signal=controller.signal,ticket=++token;
- setValues(null,null,null);
+ inflight=key;
+ ads=null;spentText.textContent='—';updateResult();
  try{
-  const chunks=core.makeRanges(start,end,28);
-  const adsResponses=await requests(chunks,'ads',signal,ticket);
+  const result=await readAds(start,end,id,signal,ticket);
   if(signal.aborted||ticket!==token)return;
-  const ads=core.adSpend(adsResponses,campaignId);
-  // O investimento é exibido assim que a Shopee Ads retorna; Payment pode ser lento.
-  get('financeProfitLabel').textContent='Lucro dos pedidos antes de Ads';
-  get('financeNetLabel').textContent='Resultado depois de Ads';
-  setValues(ads.spent??ads.knownSpend??null,null,null,ads.spent===null&&ads.knownSpend!==null);
-  setStatus(ads.complete?
-   'Investimento Ads confirmado para '+chunks.length+' bloco(s). Consultando pedidos, repasses e custos WeDrop...':
-   'Investimento Ads incompleto; '+ads.missing.length+' bloco(s) sem métricas confirmadas. Conferindo pedidos...');
-  // Se a consulta de Finance falhar, o gasto Ads permanece visível.
-  const financeResponses=await requests(chunks,'finance',signal,ticket);
-  if(signal.aborted||ticket!==token)return;
-  const rows=[],seenOrders=new Set();
-  let financeCoverage=financeResponses.length===chunks.length;
-  const financeProblems=[];
-  for(const part of financeResponses){
-   const f=part.data;
-   if(!f||!Array.isArray(f.paidOrders)){
-    financeCoverage=false;financeProblems.push(part.from+' a '+part.to+': '+(part.error||'pedidos não retornados'));continue;
-   }
-   if(f.paidOrderCoverage?.complete!==true||f.returnsCoverage?.complete!==true||
-      Number(f.skippedCompleted||0)>0||f.paymentAccessWarning){
-    financeCoverage=false;
-    financeProblems.push(part.from+' a '+part.to+': cobertura financeira incompleta');
-   }
-   // O backend financeiro lista CANCELLED pelo status atual, mas não consegue
-   // confirmar se um cancelamento teve pagamento aprovado anteriormente.
-   // Sem conciliação desse histórico, não chamar o resultado de confirmado.
-   if(Number(f.salesPipeline?.cancelled||0)>0){
-    financeCoverage=false;
-    financeProblems.push(part.from+' a '+part.to+': há cancelamentos com histórico de pagamento não conciliado por SKU');
-   }
-   for(const order of f.paidOrders){
-    const id=String(order?.orderSn||'');
-    if(id&&!seenOrders.has(id)){seenOrders.add(id);rows.push(order)}
-   }
+  ads=result;
+  lastCache={key,ads:result};
+  spentText.textContent=result.spent!==null?br(result.spent):
+   result.knownSpend===null?'—':br(result.knownSpend)+' (parcial)';
+  updateResult();
+  if(!result.complete){
+   setStatus('Gasto Ads incompleto em '+result.missing.length+' bloco(s). Não é possível calcular um resultado final.');
   }
-  const orders=core.orderBalance(rows,sku);
-  const xlsx=window.RedeAdsFinanceXlsx?.summarize?.(sku,start,end)||null;
-  const result=core.reconcile({ads,orders,financialCoverage:financeCoverage,xlsx});
-  if(result.status==='pending'&&xlsx?.reason)result.reasons.push('XLSX: '+xlsx.reason);
-  if(!financeCoverage)result.reasons=[...(result.reasons||[]),...financeProblems.slice(0,4)];
-  if(signal.aborted||ticket!==token)return;
-  const orderCount=result.source==='xlsx_before_ads'?Number(xlsx?.orders||0):orders.orderCount;
-  lastCache={key:cacheKey,result,context:{orderCount}};
-  show(result,{orderCount},r);
  }catch(error){
   if(signal.aborted||ticket!==token)return;
-  setStatus('Cálculo financeiro pendente: '+String(error.message||error)+
-   '. Os gastos Ads já confirmados serão preservados; a recomendação Ads não muda.');
+  ads=null;spentText.textContent='—';netText.textContent='—';
+  setStatus('Não foi possível consultar o gasto Ads: '+String(error.message||error).slice(0,200));
  }finally{
-  if(ticket===token)inflightKey='';
+  if(ticket===token)inflight='';
  }
 }
 get('financeCumulativeRetry').addEventListener('click',()=>refresh(null,{force:true}));
-get('productSelect').addEventListener('change',()=>{token++;controller?.abort();inflightKey='';lastReport=null;lastCache=null;panel.hidden=true});
-window.RedeAdsFinance={refresh,show};
+get('productSelect').addEventListener('change',()=>{
+ controller?.abort();token++;inflight='';lastCache=null;lastReport=null;ads=null;
+ currentKey='';input.value='';input.disabled=true;panel.hidden=true;
+});
+window.RedeAdsFinance={refresh,parseMoney};
 })();
