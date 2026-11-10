@@ -880,6 +880,25 @@ function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductS
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
 function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Orçamento real na Shopee: ILIMITADO. Informe quanto gostaria de gastar por dia (ex.: R$ 10 ou R$ 15). É um valor de CONTROLE, não um limite aplicado à Shopee. A Regra 05 analisará o ROAS alvo e o desempenho sem fingir que a verba acabou.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
 $('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+// Quando uma regra ou métrica muda, atualiza a recomendação sem exigir outro clique.
+let liveAnalysisTimer=null;
+const quickLiveFields=['budget','budgetMode','minDesiredRoas','target','dateStart','dateEnd',
+ 'spent','revenue','actual','impressions','clicks','ctrReported','addToCart','itemsSold','rapidBoost',
+ 'periodClosed','budgetStable'];
+function refreshDecisionIfReady(){
+ if(!lastReport||lastReport.d.sku!==$('productSelect').value)return;
+ syncPeriodClosed();
+ const d=getData();
+ if(validate(d).length===0)render(analyze(d));
+}
+function scheduleDecisionRefresh(){
+ clearTimeout(liveAnalysisTimer);
+ liveAnalysisTimer=setTimeout(refreshDecisionIfReady,250);
+}
+for(const id of quickLiveFields){
+ const node=$(id);
+ if(node){node.addEventListener('input',scheduleDecisionRefresh);node.addEventListener('change',scheduleDecisionRefresh)}
+}
 $('resetBtn').addEventListener('click',()=>{$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateMinDesiredRoasHint();updateBudgetMode();syncPeriodClosed();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
 const fieldIds=['campaign','dateStart','dateEnd','budgetMode','budget','minDesiredRoas','rapidBoost','spent','target','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart'];const checks=['periodClosed','budgetStable'];
 function fillData(d){for(const id of fieldIds){if(d[id]!==undefined&&d[id]!==null)$(id).value=d[id];else if(id==='rapidBoost')$(id).value='unknown';else $(id).value='';}for(const id of checks)$(id).checked=!!d[id];$('productSelect').value=d.sku||'';showCurveInAds();updateMinDesiredRoasHint();updateBudgetMode();syncPeriodClosed()}
@@ -1186,7 +1205,13 @@ $('pImageUrl').addEventListener('input',renderFormProductPhoto);
 for(const el of $('productForm').querySelectorAll('input,select')){el.addEventListener('input',updatePriceMode);el.addEventListener('change',updatePriceMode)}
 $('productSearch').addEventListener('input',renderProductList);$('curveFilter').addEventListener('change',renderProductList);$('adsStatusFilter').addEventListener('change',renderProductList);
 $('campaignAdsFilter').addEventListener('change',()=>{hideApiCampaignPicker();refreshProductSelect();showCurveInAds()});
-$('productSelect').addEventListener('change',()=>{hideApiCampaignPicker();if($('productSelect').value)selectProductForAds($('productSelect').value,false);else{showCurveInAds();loadMinDesiredRoas();}});
+$('productSelect').addEventListener('change',()=>{
+ clearTimeout(liveAnalysisTimer);
+ lastReport=null;lastData=null;
+ $('resultContent').hidden=true;$('resultEmpty').style.display='flex';
+ $('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Selecione o período e consulte os Ads</h2><p>A decisão deste produto aparecerá aqui, sem misturar campanhas diferentes.</p>';
+ $('resultTimestamp').textContent='Sem análise';
+ hideApiCampaignPicker();if($('productSelect').value)selectProductForAds($('productSelect').value,false);else{showCurveInAds();loadMinDesiredRoas();}});
 $('exportProductsBtn').addEventListener('click',()=>{const items=readProducts();if(!items.length){alert('Cadastre produtos antes de exportar.');return}const columns=['SKU','Nome','Foto_URL','Curva','Status_Ads','Alterado_Ads_em','Kit','Quantidade_kit','Custo_unitario','Custo_total','Preco_venda','Media_mercado','Dif_%','Competitividade','ROAS_simulado','Lucro_sem_ads','Lucro_com_ads','Margem_com_ads','Margem_desejada_pct','ROAS_equilibrio','ROAS_para_margem_desejada'];const rows=items.map(p=>{const c=computeProduct(p);return [p.sku,p.name,p.imageUrl||'',p.curve||'',ADS_STATUS_LABELS[adsStatusOf(p)],p.adsStatusChangedAt||'',p.isKit?'SIM':'NÃO',p.isKit?p.kitQuantity:1,p.cost,c.totalCost,p.price,p.market,c.difference,c.competitiveness.label,p.target,c.contribution,c.profitWithAds,c.marginWithAds,p.margin,Number.isFinite(c.breakEven)?c.breakEven:'Sem equilíbrio',Number.isFinite(c.minimum)?c.minimum:'Meta não atingível']});const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';downloadFile('Rede_Achados_BR_Produtos.csv','\uFEFF'+[columns,...rows].map(row=>row.map(esc).join(';')).join('\r\n'),'text/csv;charset=utf-8')});
 function downloadFile(name,contents,mimetype){const link=document.createElement('a');const url=URL.createObjectURL(new Blob([contents],{type:mimetype}));link.href=url;link.download=name;document.body.appendChild(link);link.click();setTimeout(()=>{URL.revokeObjectURL(url);link.remove()},1200)}
 $('backupExportBtn').addEventListener('click',()=>{const payload={app:'Rede Achados BR - Decisor Shopee Ads',schemaVersion:4,exportedAt:new Date().toISOString(),products:readProducts(),history:getHistory(),changes:getChanges(),adsSnapshots:getAdsSnapshots()};downloadFile('Rede_Achados_BR_Backup_Produtos_Ads.json',JSON.stringify(payload,null,2),'application/json;charset=utf-8');$('dataStatus').textContent='Backup baixado: envie o arquivo JSON para o Google Drive manualmente.'});
@@ -1304,11 +1329,19 @@ function apiFillCampaign(c,start,end){
  $('campaign').value=c.productTitle||c.name||$('campaign').value;
  $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
  const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
- for(const [key,v] of Object.entries(data))if(v!==null&&v!==undefined&&Number.isFinite(Number(v)))$(key).value=String(v).replace('.',',');
+ for(const [key,v] of Object.entries(data)){
+  if(v===null||v===undefined||!Number.isFinite(Number(v)))continue;
+  const n=Number(v);
+  // Evita mostrar valores binários como 6,120000000000001.
+  const precision=key==='spent'||key==='revenue'?2:key==='actual'||key==='ctrReported'?4:0;
+  $(key).value=n.toFixed(precision).replace('.',',');
+ }
  // The API overview endpoint does not expose these 5 fields. Do not invent them.
  // Preserve manual target and desired-spend reference: the Ads overview API does not supply them.
  updateBudgetMode();
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
+ // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
+ const d=getData();if(validate(d).length===0)render(analyze(d));
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
 const API_CHOICE_KEY='redeachados_ads_campaign_choice_v13';
