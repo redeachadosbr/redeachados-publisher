@@ -66,6 +66,7 @@ function isSelected(){return !!current()}
 function resetUi(){
  byId('dateStart').readOnly=false;byId('dateEnd').readOnly=false;
  byId('itemsSold').readOnly=false;
+ byId('apiReadBtn').hidden=false;byId('apiHistoryBtn').hidden=false;
  orderNote.hidden=true;note.hidden=true;
  historyLabel.firstChild.nodeValue=baseLabel;
  salesFlag='manual_or_unknown';lastLoaded=null;pending=null;phaseKey='';
@@ -97,6 +98,7 @@ function applyDates(){
  if(key!==phaseKey){
   phaseKey=key;
   lastLoaded=null;pending=null;salesFlag='xlsx_unconfirmed';
+  hideApiCampaignPicker();
   campaignSelect.disabled=true;campaignSelect.innerHTML='<option value="">Aguardando consulta desta fase</option>';
   for(const k of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','budget'])byId(k).value='';
   byId('budgetStable').checked=false;
@@ -108,6 +110,7 @@ function applyDates(){
  byId('dateStart').value=phase.start;
  byId('dateEnd').value=phase.end;
  byId('dateStart').readOnly=true;byId('dateEnd').readOnly=true;
+ byId('apiReadBtn').hidden=true;byId('apiHistoryBtn').hidden=true;
  byId('periodClosed').checked=phase.eligible;
  syncPeriodClosed();
  byId('itemsSold').readOnly=true;
