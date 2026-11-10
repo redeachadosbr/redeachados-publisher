@@ -128,7 +128,7 @@ async function kitWizardResumeTargetForExecution(){
  if(selectedMain&&[...selectedMain.options].some(x=>x.value===principal))selectedMain.value=principal;
  const notice=$('#kitWizardExecutionDirectStatus');
  const report=text=>{
-  if(notice){notice.hidden=false;notice.textContent=text;}
+  kitWizardExecutionFeedback(text,'info');
   status(text,'info');
  };
  try{
@@ -189,7 +189,7 @@ async function kitWizardResumeTargetForExecution(){
  }catch(error){
   kitWizardExecutionIntent=false;
   const message='Não foi possível recuperar o vínculo: '+String(error.message||error);
-  if(notice){notice.hidden=false;notice.textContent=message;}
+  kitWizardExecutionFeedback(message,'error');
   status(message,'error');
   return false;
  }finally{kitWizardResumingTarget=false;}
@@ -248,6 +248,7 @@ async function kitWizardOpenExecutionFlow(){
   String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||
    $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
  const notes=[];
+ kitWizardExecutionFeedback('Conferindo anúncio principal e componentes WeDrop...','info');
  if(button)button.disabled=true;
  try{
   if(!valid){
@@ -353,13 +354,11 @@ async function kitWizardOpenExecutionFlow(){
   const output=await globalThis.RAKitExecutePendingAllStages?.({
    kitSku,sku:String(handoff.sku),itemId:String(handoff.itemId),modelId:String(handoff.modelId||'0')
   });
-  if(notice){
-   notice.hidden=false;
-   notice.textContent=output?.submitted?
-    '✓ Execução enviada para a SKU principal '+String(handoff.sku)+
-    '. O sistema está conferindo as alterações na Shopee. Os componentes do kit estão no rascunho WeDrop.':
-    output?.error||output?.message||'A execução não teve confirmação. Consulte o resultado antes de tentar novamente.';
-  }
+  kitWizardExecutionFeedback(output?.submitted?
+   '✓ Execução enviada para a SKU principal '+String(handoff.sku)+
+   '. O sistema está conferindo as alterações na Shopee. Os componentes do kit estão no rascunho WeDrop.':
+   output?.error||output?.message||'A execução não teve confirmação. Consulte o resultado antes de tentar novamente.',
+   output?.ok?'success':'error');
   if(!output?.ok){
    status('A execução das 9 etapas não foi iniciada: '+
     String(output?.error||'O motor raiz ainda não está pronto.')+
