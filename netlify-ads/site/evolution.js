@@ -24,16 +24,17 @@ function groupChanges(changes){
  }));
 }
 function phaseLabel(change){
- if(!change)return 'Período inicial';
+ if(!change)return 'Sem alterações registradas';
  const initial=change.notes.some(n=>/campanha\s+(iniciada|criada|ativada)/i.test(n));
  return initial?'Campanha iniciada':(change.labels.join(' + ')||'Alteração registrada');
 }
 function makePhases(sku,from,until,today,changes){
  if(!from||!until||from>until)throw Error('Corrija as datas inicial e final.');
  const lastFull=until>=today?historyMoveDay(today,-1):until;
- const groups=groupChanges(changes).filter(x=>x.date>=from&&x.date<=until);
+ const allGroups=groupChanges(changes);
+ const groups=allGroups.filter(x=>x.date>=from&&x.date<=until);
  const phases=[];
- let cursor=from,prev=null;
+ let cursor=from,prev=allGroups.filter(x=>x.date<from).at(-1)||null;
  for(const group of groups){
   const stop=historyMoveDay(group.date,-1);
   if(cursor<=stop&&cursor<=lastFull){
@@ -65,14 +66,19 @@ function makePhases(sku,from,until,today,changes){
 }
 function requestsFor(model){
  const jobs=[];
- for(const phase of [...model.phases,...(model.current?[model.current]:[])]){
-  // Dias com mudança são consultados, mas mostrados SEPARADAMENTE e nunca usados nas comparações.
-  let day=phase.from;
-  while(day<=phase.to){
-   const endCandidate=historyMoveDay(day,27);
-   const end=endCandidate<phase.to?endCandidate:phase.to;
-   jobs.push({phase,from:day,to:end});
-   day=historyMoveDay(end,1);
+ // Shopee Ads não aceita consultas de um dia isolado. Nunca usar um dia de
+ // alteração como parte de outra fase, nem consultar hoje como dia fechado.
+ for(const phase of model.phases){
+  if(phase.type!=='full')continue;
+  const length=daysInclusive(phase.from,phase.to);
+  if(length<2)continue;
+  const parts=Math.ceil(length/28),base=Math.floor(length/parts),extra=length%parts;
+  let date=phase.from;
+  for(let index=0;index<parts;index++){
+   const size=base+(index<extra?1:0);
+   const end=historyMoveDay(date,size-1);
+   jobs.push({phase,from:date,to:end});
+   date=historyMoveDay(end,1);
   }
  }
  return jobs;
@@ -205,6 +211,14 @@ function render(model,results,chosenId,loaded=false){
  if(loaded)e('evoStatus').textContent='✓ Evolução consultada · '+showDate(model.from)+' a '+showDate(model.until)+
   '. Dias de mudança e o dia atual são separados dos períodos de avaliação.';
 }
+function initialRange(sku,history){
+ if(history.length)return {date:historyBrazilDate(history[0].timestamp),source:'histórico da primeira alteração'};
+ const old=getAdsSnapshots().filter(x=>x.sku===sku&&/^\d{4}-\d{2}-\d{2}$/.test(x.start||''))
+  .map(x=>x.start).sort();
+ if(old.length)return {date:old[0],source:'primeira consulta Ads salva'};
+ const fallback=historyMoveDay(brazilTodayISO(),-179);
+ return {date:fallback,source:'últimos 180 dias pesquisáveis (início real não confirmado)'};
+}
 function populate(preferCurrent=false){
  const select=e('evoSku'),current=select.value,preferred=preferCurrent?current:(e('productSelect')?.value||current||lastSku);
  const products=readProducts();
@@ -214,13 +228,15 @@ function populate(preferCurrent=false){
  select.value=selected;
  if(selected!==lastSku){
   lastSku=selected;cached=null;
-  const history=productChanges(selected);
-  e('evoStart').value=history.length?historyBrazilDate(history[0].timestamp):'';
+  const history=productChanges(selected),range=initialRange(selected,history);
+  const earliest=historyMoveDay(brazilTodayISO(),-179);
+  e('evoStart').value=range.date<earliest?earliest:range.date;
   e('evoEnd').value=brazilTodayISO();
-  e('evoTimeline').innerHTML=history.length?'Clique em <strong>Consultar evolução</strong> para buscar as fases.':'Registre a data de início da campanha no histórico ou informe uma data inicial.';
-  e('evoSummary').hidden=true;e('evoCampaignWrap').hidden=true;e('evoStatus').textContent=history.length?
-   'Histórico encontrado: '+history.length+' registro(s). As fases serão separadas automaticamente.':
-   'Sem histórico de alterações para este SKU.';
+  e('evoTimeline').innerHTML='<p>Períodos definidos automaticamente pelo histórico. Os dias de alterações não se misturam às fases completas.</p>';
+  e('evoSummary').hidden=true;e('evoCampaignWrap').hidden=true;e('evoStatus').textContent=
+   (history.length?'Histórico com '+history.length+' registro(s). ':'Nenhuma alteração conhecida. ')+
+   'Início: '+showDate(e('evoStart').value)+' ('+range.source+').'+
+   (range.date<earliest?' A API Ads permite consultar somente até aproximadamente 6 meses.':'');
  }
 }
 async function fetchAll(force=false){
@@ -229,13 +245,13 @@ async function fetchAll(force=false){
  if(!p){e('evoStatus').textContent='Escolha um produto.';return}
  const from=e('evoStart').value,until=e('evoEnd').value||brazilTodayISO();
  const today=brazilTodayISO();
- if(!from){e('evoStatus').textContent='Informe a data de início da campanha.';return}
+ if(!from){e('evoStatus').textContent='Informe a data inicial da campanha quando não houver histórico conhecido.';return}
  if(until>today||from>until){e('evoStatus').textContent='Confira as datas selecionadas.';return}
- if(daysInclusive(from,until)>366){e('evoStatus').textContent='O limite por consulta é de 12 meses. Selecione um intervalo menor.';return}
+ if(daysInclusive(from,until)>185){e('evoStatus').textContent='O limite aproximado da API Ads é de seis meses. Escolha uma data inicial mais recente.';return}
  const model=makePhases(sku,from,until,today,productChanges(sku));
  const jobs=requestsFor(model);
  if(jobs.length>18){e('evoStatus').textContent='Muitas modificações neste período ('+jobs.length+' consultas). Escolha um intervalo menor.';return}
- if(!jobs.length){e('evoStatus').textContent='Não existem dias para consultar após as alterações neste período.';return}
+ if(!jobs.length){render(model,new Map(),'Não identificado',false);e('evoStatus').textContent='Não existem dois dias completos consecutivos nesta fase para consulta à API. Os pedidos XLSX disponíveis continuam visíveis.';return}
  const id=++requestVersion;
  busy=true;e('evoRefresh').disabled=true;
  e('evoCampaignWrap').hidden=true;e('evoSummary').hidden=true;
@@ -248,6 +264,7 @@ async function fetchAll(force=false){
     ' · '+showDate(job.from)+' a '+showDate(job.to);
    try{
     const response=await apiOverview(job.from,job.to);
+    if(response.dateAdjustment?.shiftedDays)throw Error('A Shopee deslocou as datas do bloco; selecione um período já liberado para não misturar fases.');
     const relevant=apiReportMatches(response.campaigns,sku,p.name,p.linkedCampaignIds)
      .filter(c=>/^[0-9]+$/.test(String(c.campaignId||'')));
     for(const c of relevant)found.set(String(c.campaignId),c);
@@ -336,5 +353,10 @@ e('evoHistoryLink').addEventListener('click',()=>{
  renderChangeHistory();
  e('changeHistoryPanel').scrollIntoView({behavior:'smooth',block:'start'});
 });
-window.RedeEvolution={open,makePhases,requestsFor,aggregate,phaseMessage};
+function ordersUpdated(){
+ if(!cached)return;
+ const choice=e('evoCampaignWrap').hidden?[...cached.found.keys()][0]:e('evoCampaign').value;
+ if(choice)useCampaign(choice);
+}
+window.RedeEvolution={open,makePhases,requestsFor,aggregate,phaseMessage,ordersUpdated};
 })();
