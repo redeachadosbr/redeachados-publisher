@@ -1450,6 +1450,20 @@ function renderOrdersAdsComparison(r){
   details.textContent='O resumo antigo pode ter omitido SKUs de pedidos com várias linhas. Reimporte o XLSX para habilitar a conciliação correta.';
   return;
  }
+ if(r.d.itemsSoldSource==='xlsx_fulfilled'){
+  const rangeLabel=result.rangeCovered?'Período dentro das datas do XLSX':'Datas não cobertas pelo XLSX';
+  small.textContent='Vendas confirmadas no XLSX: '+result.fulfilled+' un. enviadas/entregues · '+result.pending+' pendente(s) · '+result.cancelled+' cancelada(s)/devolvida(s).';
+  details.textContent='SKU '+r.d.sku+' · '+result.source+' · '+rangeLabel+
+   ' · Confirmadas: '+result.fulfilled+' · Pendentes: '+result.pending+
+   ' · Canceladas/devolvidas: '+result.cancelled+
+   ' · Total no arquivo: '+result.total+' unidade(s). Este número NÃO representa atribuição ao Ads.';
+  return;
+ }
+ if(r.d.itemsSoldSource==='xlsx_unconfirmed'){
+  small.textContent='Unidades reais não confirmadas para este SKU/período. Confira a cobertura e a correspondência no XLSX.';
+  details.textContent='Não converter a ausência de pedidos conciliados em zero vendas. Importar XLSX compatível na aba Produtos.';
+  return;
+ }
  const ads=result.adsItems===null?'não informado':String(result.adsItems);
  const rangeLabel=result.rangeCovered?'Arquivo cobre as datas selecionadas':
   'Arquivo não cobre todo o período analisado';
