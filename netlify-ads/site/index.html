@@ -1130,6 +1130,178 @@ function saveCampaignProductPhoto(c,sku,manuallyConfirmed=false){
  if(stored){renderSelectedProductPhoto();renderProductList()}
  return stored;
 }
+// WeDrop: arquivos XLSX lidos somente no navegador, sem expor lista de custos em site público.
+const supplierBySku=new Map(),supplierOrderBySku=new Map();
+const SUP_DB='rede_achados_private_supplier_v1';
+function normalizeSupplierSku(value){return String(value??'').trim().toUpperCase()}
+function supplierHeaderIndex(row){
+ const normalized=(row||[]).map(v=>String(v??'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' '));
+ return key=>normalized.indexOf(key);
+}
+function importSupplierRows(rows){
+ const headers=supplierHeaderIndex(rows[0]),col={sku:headers('sku'),name:headers('nome do produto'),cost:headers('preco'),image:headers('imagem principal'),availability:headers('disponibilidade'),ean:headers('ean'),ncm:headers('ncm')};
+ if(Object.values(col).some(v=>v<0))throw Error('Catálogo incompatível. Campos obrigatórios: SKU, Nome do Produto, Preço, Imagem Principal, Disponibilidade, EAN e NCM.');
+ const result=[];
+ const seen=new Set();
+ for(const row of rows.slice(1)){
+  const sku=normalizeSupplierSku(row?.[col.sku]);
+  if(!sku||seen.has(sku))continue;
+  const name=String(row?.[col.name]||'').trim().slice(0,240);
+  const cost=parseBR(row?.[col.cost]),imageUrl=safeProductPhotoUrl(row?.[col.image]);
+  if(!name||cost===null||cost<0)continue;
+  result.push({sku,name,cost,imageUrl,availability:String(row?.[col.availability]||'').trim(),
+   ean:String(row?.[col.ean]||''),ncm:String(row?.[col.ncm]||'')});
+  seen.add(sku);
+ }
+ if(!result.length)throw Error('Nenhum SKU válido encontrado no catálogo.');
+ return result;
+}
+function summarizeOrderRows(rows){
+ const headers=supplierHeaderIndex(rows[0]),col={status:headers('status'),products:headers('produtos'),order:headers('numero do pedido'),date:headers('data de criacao')};
+ if(Object.values(col).some(v=>v<0))throw Error('Planilha de pedidos incompatível: faltam Status, Produtos, Número do Pedido ou Data de Criação.');
+ const records=new Map(),statusCounts={},usedOrders=new Set();
+ for(const row of rows.slice(1)){
+  const order=String(row?.[col.order]||'').trim(),status=String(row?.[col.status]||'').trim().toLowerCase();
+  const products=String(row?.[col.products]||'');
+  if(!order||usedOrders.has(order))continue;
+  usedOrders.add(order);statusCounts[status]=(statusCounts[status]||0)+1;
+  const matches=[...products.matchAll(/SKU\s*:\s*([A-Za-z0-9._-]+)\s*\(\s*(\d+)\s*x\s*\)/gi)];
+  const present=new Set();
+  for(const match of matches){
+   const sku=normalizeSupplierSku(match[1]),qty=Number(match[2]);
+   if(!sku||!Number.isInteger(qty)||qty<1||qty>9999)continue;
+   const rec=records.get(sku)||{sku,orders:0,units:0,statuses:{}};
+   rec.units+=qty;
+   if(!present.has(sku)){rec.orders++;present.add(sku)}
+   rec.statuses[status]=(rec.statuses[status]||0)+qty;
+   records.set(sku,rec);
+  }
+ }
+ return {orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],importedAt:new Date().toISOString()};
+}
+function supplierDB(){
+ return new Promise((resolve,reject)=>{
+  if(!window.indexedDB){reject(Error('Banco local do navegador indisponível.'));return}
+  const request=indexedDB.open(SUP_DB,1);
+  request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('files'))request.result.createObjectStore('files')};
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error||Error('Falha no armazenamento local.'));
+ });
+}
+async function supplierSave(key,value){
+ const db=await supplierDB();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('files','readwrite');
+  tx.objectStore('files').put(value,key);
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+ })}finally{db.close()}
+}
+async function supplierRead(key){
+ const db=await supplierDB();
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction('files','readonly');
+  const req=tx.objectStore('files').get(key);
+  req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+ })}finally{db.close()}
+}
+function renderSupplierOrdersHint(){
+ const elem=$('supplierOrdersBySkuHint');if(!elem)return;
+ const sku=$('productSelect').value,rec=supplierOrderBySku.get(sku);
+ elem.textContent=rec?'Pedidos gerais do fornecedor: '+rec.orders+' pedido(s), '+rec.units+' unidade(s) com SKU '+sku+'. Status: '+
+  Object.entries(rec.statuses).map(([status,count])=>status+' '+count).join(' · ')+
+  '. NÃO comprova entrega ou que foram vendas de Ads.':
+  'Pedidos gerais: carregue a planilha .xlsx para conferir volumes por SKU. Ela não comprova atribuição aos Ads.';
+}
+function updateExistingSupplierImages(){
+ const products=readProducts();let images=0,costs=0;
+ const updated=products.map(p=>{
+  const v=supplierBySku.get(p.sku);if(!v)return p;
+  const img=!p.imageUrl&&v.imageUrl,cost=p.cost===null&&v.cost>=0;
+  if(!img&&!cost)return p;
+  if(img)images++;if(cost)costs++;
+  return {...p,imageUrl:img?v.imageUrl:p.imageUrl,cost:cost?v.cost:p.cost,
+   updatedAt:new Date().toISOString()};
+ });
+ if(images||costs){
+  if(!persistProducts(updated))throw Error('Não foi possível salvar as imagens; verifique o armazenamento.');
+  renderProductList();refreshProductSelect();showCurveInAds();renderSelectedProductPhoto();
+ }
+ return {images,costs};
+}
+function lookupSupplierSKU(){
+ const sku=normalizeSupplierSku($('pSku').value),found=supplierBySku.get(sku),hint=$('supplierSkuResult');
+ if(!sku){hint.textContent='Digite uma SKU para buscar no catálogo.';return}
+ if(!found){hint.textContent=supplierBySku.size?'SKU '+sku+' não encontrada no catálogo importado.':'Importe o catálogo .xlsx para consultar SKUs.';return}
+ if(editingSku&&editingSku!==sku){hint.textContent='Finalize a edição do produto '+editingSku+' antes de trocar a SKU.';return}
+ const exists=readProducts().find(p=>p.sku===sku);
+ if(exists&&!editingSku){
+  hint.textContent='Este SKU já está cadastrado. Clique em Editar na lista para alterar os dados. Foto sincronizada pelo catálogo quando faltava.';
+  return;
+ }
+ if(!$('pName').value.trim())$('pName').value=found.name;
+ if(!$('pCost').value.trim())$('pCost').value=String(found.cost).replace('.',',');
+ if(!$('pImageUrl').value.trim()&&found.imageUrl){$('pImageUrl').value=found.imageUrl;renderFormProductPhoto()}
+ hint.textContent='✓ '+sku+' encontrado: '+found.availability+' · custo fornecedor '+money(found.cost)+
+  (found.imageUrl?' · foto encontrada.':' · sem foto.')+' Informe o preço de venda na Shopee para finalizar o cadastro.';
+ updatePriceMode();
+}
+async function receiveSupplierFile(file){
+ const btn=$('importSupplierXlsxBtn');btn.disabled=true;
+ $('supplierImportStatus').textContent='Lendo catálogo XLSX no navegador…';
+ try{
+  const book=await window.RedeXlsx.read(file),items=importSupplierRows(book.rows);
+  supplierBySku.clear();
+  for(const p of items)supplierBySku.set(p.sku,p);
+  let persisted=true;
+  try{await supplierSave('catalog',items)}catch(e){persisted=false}
+  const patch=updateExistingSupplierImages();
+  $('supplierImportStatus').textContent='✓ '+items.length+' SKUs no catálogo · '+
+    items.filter(p=>p.imageUrl).length+' com fotos · '+patch.images+
+    ' fotos e '+patch.costs+' custos faltantes preenchidos em produtos já cadastrados. '+
+    (persisted?'Catálogo salvo neste navegador.':'ATENÇÃO: catálogo somente nesta sessão.');
+  if($('pSku').value.trim())lookupSupplierSKU();
+ }catch(e){$('supplierImportStatus').textContent='Erro no catálogo: '+String(e.message||e).slice(0,220)}
+ finally{btn.disabled=false;$('importSupplierXlsxFile').value=''}
+}
+async function receiveOrdersFile(file){
+ const btn=$('importOrdersXlsxBtn');btn.disabled=true;
+ $('ordersImportStatus').textContent='Lendo pedidos no navegador…';
+ try{
+  const book=await window.RedeXlsx.read(file),summary=summarizeOrderRows(book.rows);
+  supplierOrderBySku.clear();
+  for(const rec of summary.bySku)supplierOrderBySku.set(rec.sku,rec);
+  let persisted=true;
+  try{await supplierSave('orders',summary)}catch{persisted=false}
+  $('ordersImportStatus').textContent='✓ '+summary.orderCount+' pedidos no arquivo: '+
+   Object.entries(summary.statusCounts).map(([status,n])=>status+' '+n).join(' · ')+
+   '. NÃO significa venda entregue ou atribuída a Ads. '+(persisted?'Resumo salvo neste navegador.':'Resumo apenas nesta sessão.');
+  renderSupplierOrdersHint();
+ }catch(e){$('ordersImportStatus').textContent='Erro nos pedidos: '+String(e.message||e).slice(0,220)}
+ finally{btn.disabled=false;$('importOrdersXlsxFile').value=''}
+}
+$('importSupplierXlsxBtn').addEventListener('click',()=>$('importSupplierXlsxFile').click());
+$('importOrdersXlsxBtn').addEventListener('click',()=>$('importOrdersXlsxFile').click());
+$('importSupplierXlsxFile').addEventListener('change',e=>{const file=e.target.files?.[0];if(file)receiveSupplierFile(file)});
+$('importOrdersXlsxFile').addEventListener('change',e=>{const file=e.target.files?.[0];if(file)receiveOrdersFile(file)});
+$('supplierSkuLookup').addEventListener('click',lookupSupplierSKU);
+$('pSku').addEventListener('change',lookupSupplierSKU);
+(async()=>{
+ try{
+  const list=await supplierRead('catalog');
+  if(Array.isArray(list)&&list.length){
+   supplierBySku.clear();for(const p of list)supplierBySku.set(p.sku,p);
+   const patch=updateExistingSupplierImages();
+   $('supplierImportStatus').textContent='✓ Catálogo carregado deste navegador: '+list.length+' SKUs. '+patch.images+' novas miniaturas vinculadas.';
+  }
+  const ord=await supplierRead('orders');
+  if(Array.isArray(ord?.bySku)){
+   supplierOrderBySku.clear();
+   for(const rec of ord.bySku)supplierOrderBySku.set(rec.sku,rec);
+   $('ordersImportStatus').textContent='Resumo local de '+ord.orderCount+' pedidos disponível. Não é atribuição de Ads.';
+   renderSupplierOrdersHint();
+  }
+ }catch{/* IndexedDB opcional. Importação manual ainda funciona na sessão atual. */}
+})();
 function pNum(v){return v===null||v===undefined||v===''?null:Number(v)}
 function normalizeProduct(p){return {sku:String(p.sku||'').trim().toUpperCase(),name:String(p.name||'').trim(),linkedCampaignIds:Array.isArray(p.linkedCampaignIds)?[...new Set(p.linkedCampaignIds.map(String).filter(id=>/^\d+$/.test(id)))].slice(0,30):[],adsMinRoas:pNum(p.adsMinRoas),imageUrl:safeProductPhotoUrl(p.imageUrl),curve:CURVE_INFO[p.curve]?p.curve:'',adsStatus:adsStatusOf(p),adsStatusChangedAt:typeof p.adsStatusChangedAt==='string'?p.adsStatusChangedAt:'',isKit:!!p.isKit,kitQuantity:p.isKit?pNum(p.kitQuantity):1,cost:pNum(p.cost),price:pNum(p.price),market:pNum(p.market),target:pNum(p.target),tax:pNum(p.tax)??4,feePct:pNum(p.feePct),feeFixed:pNum(p.feeFixed),extraPct:pNum(p.extraPct)??0,packing:pNum(p.packing)??0,shipping:pNum(p.shipping)??0,coupon:pNum(p.coupon)??0,margin:(p.marginUnified===true?pNum(p.margin):(p.calcMode==='margin'&&pNum(p.goalMargin)!==null?pNum(p.goalMargin):pNum(p.margin)))??5,marginUnified:true,regime:p.regime==='CPF'?'CPF':'CNPJ',feeMode:p.feeMode==='manual'?'manual':'auto',cpfExtra:!!p.cpfExtra,calcMode:['margin','price','profit'].includes(p.calcMode)?p.calcMode:'price',goalProfit:pNum(p.goalProfit)??5,updatedAt:p.updatedAt||new Date().toISOString()}}
 function validateProduct(p){const problems=[];if(!p.sku)problems.push('Informe a SKU.');if(!p.name)problems.push('Informe o nome.');if(!(p.price>0))problems.push('O preço de venda deve ser maior que zero.');if(!(p.cost>=0))problems.push('Informe o custo do produto (zero é válido).');if(!kitQuantityValid(p))problems.push('Informe a quantidade de produtos do kit: número inteiro de 2 a 999.');for(const key of ['market','target','tax','extraPct','packing','shipping','coupon','margin'])if(p[key]!==null&&!(p[key]>=0))problems.push('Verifique o campo '+key+'.');if(p.market!==null&&p.market<=0)problems.push('A média de mercado deve ser positiva ou ficar em branco.');if(p.target!==null&&p.target<0)problems.push('ROAS não pode ser negativo; use 0 para calcular SEM Ads.');if(p.margin===null||p.margin<0||p.margin>=100||p.goalProfit<0)problems.push('Confira a margem ou o lucro desejado.');if(p.tax>100||p.extraPct>100||p.margin>=100)problems.push('Confira percentuais acima do limite.');if(p.feeMode==='manual'&&(p.feePct===null||p.feeFixed===null||p.feePct<0||p.feePct>100||p.feeFixed<0))problems.push('Na taxa manual, informe a comissão (%) e a tarifa fixa (R$).');return [...new Set(problems)]}
