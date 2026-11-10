@@ -107,19 +107,21 @@ function aggregate(phase,chunks,id){
 function phaseMessage(phase,m,previous,p){
  if(m.missing)return {kind:'warn',title:'Dados não disponíveis',text:'A API não retornou todos os blocos desta fase. Não foi feita nenhuma estimativa.'};
  if(phase.type==='partial')return {kind:'neutral',title:'Dia em andamento',text:'Os números de hoje não entram na comparação entre alterações.'};
- if(m.days<7||m.clicks===null||m.clicks<20||m.impressions===null||m.impressions<500){
-  return {kind:'warn',title:'Aguardar mais dados',
-   text:m.days+' dia(s), '+(m.clicks===null?'cliques não informados':formatNumber(m.clicks)+' clique(s)')+
-    '. Ainda não é seguro decidir trocar capa, título ou ROAS.'};
- }
+ const insufficient=m.days<7||m.clicks===null||m.clicks<20||m.impressions===null||m.impressions<500;
  const fin=p?computeProduct(p):null;
  const userFloor=asNumber(p?.adsMinRoas);
  const financial=fin?.minimum??null;
  const floor=Number.isFinite(financial)?Math.max(userFloor||0,financial):financial===Infinity?Infinity:userFloor;
+ const caution=insufficient?' Amostra pequena: é um alerta de margem, não prova de que a alteração causou o resultado.':'';
  if(m.actual!==null&&fin&&m.actual<fin.breakEven)
-  return {kind:'risk',title:'Proteger o lucro',text:'ROAS abaixo do equilíbrio estimado. Revise custos e oferta; não aumente a verba.'};
+  return {kind:'risk',title:'Risco de prejuízo estimado',text:'ROAS abaixo do equilíbrio estimado no cadastro. Confira custo, preço, taxas e atribuição das vendas; não aumente a verba.'+caution};
  if(m.actual!==null&&floor!==null&&m.actual<floor)
-  return {kind:'warn',title:'Margem ainda não protegida',text:'ROAS abaixo do mínimo financeiro ou desejado. Mantenha a meta e revise a conversão.'};
+  return {kind:'warn',title:'Margem desejada ainda não atingida',text:'ROAS abaixo do mínimo financeiro ou desejado. Mantenha cautela no investimento e revise a conversão.'+caution};
+ if(insufficient){
+  return {kind:'warn',title:'Aguardar mais dados',
+   text:m.days+' dia(s), '+(m.clicks===null?'cliques não informados':formatNumber(m.clicks)+' clique(s)')+
+    '. Ainda não é seguro decidir trocar capa, título ou ROAS.'};
+ }
  if(previous&&!previous.missing&&previous.sampleEnough&&m.sampleEnough&&previous.ctr!==null&&m.ctr!==null){
   if(phase.label.includes('Capa')){
    const delta=m.ctr-previous.ctr;
