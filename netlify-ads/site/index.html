@@ -96,6 +96,8 @@
 .change-choice input{accent-color:#d0a954;width:auto;margin:0}
 .history-split{margin-top:18px}.tiny{font-size:12px;color:#abb6c4;line-height:1.5}
 .hist-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.hist-toolbar .field{min-width:200px;flex:1}
+.hist-period-filter{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:12px}.hist-period-filter .field{min-width:150px;max-width:220px;flex:1}
+.hist-range-summary{margin-top:10px;font-size:12px;color:#c9d2de}.hist-range-summary.warn{color:#ffd18a}.hist-action-buttons{display:flex;gap:6px;flex-wrap:wrap}
 .api-actions{border:1px solid #544a34;border-radius:12px;background:#1b1c20;padding:13px;margin:10px 0}
 .api-status{font-size:12px;line-height:1.5;margin-top:9px;color:#cdd4de;white-space:pre-wrap}
 .api-status.error{color:#ffac9a}.api-status.good{color:#98e0aa}
@@ -411,6 +413,12 @@
         <div class="field"><label for="changeFilter">Filtrar histórico por produto</label><select id="changeFilter"><option value="">Todos os produtos</option></select></div>
         <div class="field"><label for="apiHistoryFilter">Origem dos dados</label><select id="apiHistoryFilter"><option value="changes">Modificações manuais</option><option value="ads">Consultas da API (blocos)</option></select></div>
       </div>
+      <div class="hist-period-filter">
+       <div class="field"><label for="historyFromDate">Histórico a partir de</label><input id="historyFromDate" type="date"></div>
+       <div class="field"><label for="historyToDate">Até</label><input id="historyToDate" type="date"></div>
+       <button type="button" id="historyClearDatesBtn" class="btn-secondary mini">Todas as datas</button>
+      </div>
+      <p id="historyRangeSummary" class="hist-range-summary" aria-live="polite">Escolha as datas para filtrar as modificações.</p>
       <p class="tiny">A situação exibida é a atual: prioriza a API desta sessão quando disponível e, caso contrário, usa o status manual. Registros de produtos retirados continuam no histórico.</p>
       <div class="table-scroll" style="margin-top:10px"><table class="history-table"><thead id="changeTableHead"><tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="changeHistoryRows"></tbody></table></div>
       <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
@@ -1618,6 +1626,21 @@ function savedProductName(sku,storedName=''){
  if(name)return name;
  return readProducts().find(p=>p.sku===sku)?.name||'Produto não encontrado no cadastro atual';
 }
+function historyBrazilDate(timestamp){
+ const d=new Date(timestamp);if(!Number.isFinite(d.getTime()))return '';
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+ const obj=Object.fromEntries(parts.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return obj.year+'-'+obj.month+'-'+obj.day;
+}
+function historyMoveDay(iso,delta){
+ const date=dateUTC(iso);if(!date)return '';
+ date.setUTCDate(date.getUTCDate()+delta);return date.toISOString().slice(0,10);
+}
+function historyDateAllowed(timestamp,from,to){
+ const day=historyBrazilDate(timestamp);
+ return !!day&&(!from||day>=from)&&(!to||day<=to);
+}
+function historyDateRange(){return {from:$('historyFromDate').value,to:$('historyToDate').value}}
 function historyAdsStatus(sku,productsBySku){
  const product=productsBySku.get(String(sku||'').trim());
  return product?effectiveAdsStatus(product):'unknown';
@@ -1638,11 +1661,13 @@ function refreshChangeSelects(){
  if([...registration.options].some(x=>x.value===currentRegistration))registration.value=currentRegistration;
  const filter=$('changeFilter'),currentFilter=filter.value;
  const source=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
+ const {from,to}=historyDateRange();
  const rows=source==='ads'?getAdsSnapshots():getChanges();
  const bySku=new Map();
  for(const entry of rows){
   const sku=String(entry.sku||'').trim();
-  if(!sku||!historyStatusMatches(historyAdsStatus(sku,productsBySku),statusFilter))continue;
+  if(!sku||!historyStatusMatches(historyAdsStatus(sku,productsBySku),statusFilter)||
+  !historyDateAllowed(source==='ads'?entry.syncedAt:entry.timestamp,from,to))continue;
   if(!bySku.has(sku))bySku.set(sku,savedProductName(sku,entry.productName||''));
  }
  filter.innerHTML='<option value="">Todos com histórico ('+bySku.size+')</option>'+
@@ -1655,18 +1680,28 @@ function renderChangeHistory(){
  refreshChangeSelects();
  const sku=$('changeFilter').value;
  const type=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
+ const {from,to}=historyDateRange(),badRange=!!(from&&to&&from>to);
+ const summary=$('historyRangeSummary');
+ summary.className='hist-range-summary'+(badRange?' warn':'');
+ if(badRange)summary.textContent='A data inicial é posterior à final. Corrija as datas.';
  const productsBySku=new Map(readProducts().map(p=>[p.sku,p]));
- const keep=x=>(!sku||x.sku===sku)&&historyStatusMatches(historyAdsStatus(x.sku,productsBySku),statusFilter);
+ const keep=x=>!badRange&&(!sku||x.sku===sku)&&
+  historyStatusMatches(historyAdsStatus(x.sku,productsBySku),statusFilter)&&
+  historyDateAllowed(type==='ads'?x.syncedAt:x.timestamp,from,to);
  const statusHtml=x=>'<small> · '+safe(historyStatusText(historyAdsStatus(x.sku,productsBySku)))+'</small>';
  const head=$('changeTableHead'),body=$('changeHistoryRows');
  if(type==='ads'){
   head.innerHTML='<tr><th>Consultado em</th><th>Produto / Campanha</th><th>Período</th><th>Investimento</th><th>ROAS</th></tr>';
   const a=getAdsSnapshots().filter(keep).sort((a,b)=>b.syncedAt.localeCompare(a.syncedAt));
+  if(!badRange)summary.textContent=a.length+' consulta(s) à API'+(from?' desde '+apiDate(from):'')+
+   (to?' até '+apiDate(to):'')+'. Considera a data da consulta.';
   body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.syncedAt))+'</td><td><strong>'+safe(x.sku||'')+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div><small>Campanha '+safe(x.campaignId)+'</small></td><td>'+safe(x.start)+' a '+safe(x.end)+'</td><td>'+money(Number(x.expense||0))+'</td><td>'+safe(x.roas===null||x.roas===undefined?'—':roas(Number(x.roas)))+'</td></tr>').join(''):'<tr><td colspan="5">Nenhuma consulta API salva para este filtro.</td></tr>';
   return;
  }
  head.innerHTML='<tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr>';
- const a=getChanges().filter(keep).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+ const a=getChanges().filter(keep).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
+ if(!badRange)summary.textContent=a.length+' modificação(ões)'+(from?' desde '+apiDate(from):'')+
+  (to?' até '+apiDate(to):'')+'. Exibidas em ordem cronológica.';
  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
  for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
   if(!confirm('Excluir este registro manual?'))return;
@@ -1675,7 +1710,11 @@ function renderChangeHistory(){
  });
 }
 $('saveChangeBtn').addEventListener('click',()=>{const sku=$('changeSku').value;const selected=[...$('changeChoices').querySelectorAll('input:checked')].map(x=>x.value);if(!sku||!readProducts().some(x=>x.sku===sku)){alert('Selecione um produto cadastrado.');return}if(!selected.length){alert('Marque pelo menos uma alteração.');return}const rec={id:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),sku,productName:readProducts().find(p=>p.sku===sku)?.name||'',changes:selected,note:$('changeNote').value.trim().slice(0,300),timestamp:new Date().toISOString()};if(!mergeChanges([rec])){alert('Não foi possível gravar no navegador. Faça backup.');return}const nowText=fmtStamp(rec.timestamp);$('changeStatus').textContent='✓ '+sku+': '+selected.join(' + ')+' · Salvo em '+nowText+' (horário de Brasília).';$('changeChoices').querySelectorAll('input').forEach(x=>x.checked=false);$('changeNote').value='';$('changeFilter').value=sku;$('apiHistoryFilter').value='changes';renderChangeHistory()});
-for(const id of ['changeFilter','apiHistoryFilter','adsHistoryStatusFilter'])$(id).addEventListener('change',renderChangeHistory);
+for(const id of ['changeFilter','apiHistoryFilter','adsHistoryStatusFilter','historyFromDate','historyToDate'])
+ $(id).addEventListener('change',renderChangeHistory);
+$('historyClearDatesBtn').addEventListener('click',()=>{
+ $('historyFromDate').value='';$('historyToDate').value='';renderChangeHistory();
+});
 $('exportChangesBtn').addEventListener('click',()=>{const a=getChanges();if(!a.length){alert('Não há alterações para exportar.');return}const enc=x=>'"'+String(x??'').replace(/"/g,'""')+'"';const csv='\uFEFF'+[['SKU','Nome_produto','Data_hora_UTC','Data_hora_Brasilia','Alteracoes','Observacao'],...a.map(x=>[x.sku,savedProductName(x.sku,x.productName),x.timestamp,fmtStamp(x.timestamp),x.changes.join(' + '),x.note])].map(r=>r.map(enc).join(';')).join('\r\n');downloadFile('Rede_Achados_BR_Alteracoes_Anuncios.csv',csv,'text/csv;charset=utf-8')});
 const oldSwitchTab=switchTab;
 switchTab=function(tab){oldSwitchTab(tab);if(tab==='historico')renderChangeHistory()};
