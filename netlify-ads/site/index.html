@@ -935,15 +935,20 @@ function renderSimpleDecision(r,decision){
   'Seu mínimo: '+(x.personal===null?'não informado':roas(x.personal))+
   ' · Para a margem: '+(x.finance===null?'não validado':Number.isFinite(x.finance)?roas(x.finance):'inviável');
  const outer=$('simpleActionBox');outer.className='ads-simple-call'+(x.tone==='risk'?' risk':x.tone==='healthy'?' healthy':'');
- $('simpleActionTitle').textContent=x.title;
- $('simpleActionText').textContent=x.message;
- const dailyStatus=x.ref===null?'Sem referência de gasto':x.spent===null?'Gasto não confirmado':
-  x.spent>x.ref?'Acima do desejado':x.spent<x.ref*.5?'Gasto abaixo de 50% do desejado':'Dentro da referência';
- $('simpleBasis').textContent=dailyStatus+' · '+(x.enough?'Período fechado com 7+ dias':'Prévia: dados ainda em observação')+
-  (r.fin?' · Custos cadastrados':' · Custos financeiros pendentes')+
-  '. Mais detalhes em “Ver todas as métricas”.';
+ const diagnostic=criticalCampaignDiagnosis(r,readProducts().find(p=>p.sku===r.d.sku),getChanges());
+ const concise=window.RedeAdsShortActions?.summarize?.(r,diagnostic);
+ if(concise?.actions?.length){
+  $('simpleActionTitle').textContent=concise.actions[0].label;
+  const shown=concise.actions.map((a,i)=>i===0?(a.detail||''):a.label+(a.detail?' · '+a.detail:'')).filter(Boolean);
+  $('simpleActionText').textContent=shown.join('  |  ');
+  $('simpleBasis').textContent='Recomendações das regras Ads; alertas financeiros não mudam as ações. Ver detalhes para justificativas.';
+ }else{
+  $('simpleActionTitle').textContent=x.title;
+  $('simpleActionText').textContent=x.message;
+  $('simpleBasis').textContent='Consulte os dados e justificativas em “Ver todas as métricas”.';
+ }
 }
-function render(r){window.RedeAdsQuick?.clearPreview?.();lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent=simpleDecision.title;renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(simpleDecision.tone==='risk'?'red':simpleDecision.tone==='healthy'?'green':'');
+function render(r){window.RedeAdsQuick?.clearPreview?.();lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent='Decisão Ads';renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(simpleDecision.tone==='risk'?'red':simpleDecision.tone==='healthy'?'green':'');
 $('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':r.d.budgetMode==='daily'&&!r.d.budgetStable?'Confirmar histórico':'Dados insuficientes';
 const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
 const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
@@ -2198,7 +2203,8 @@ refreshChangeSelects();renderChangeHistory();
 <script src="/decision-quick.js?v=20261110-6"></script>
 <script src="/campaign-finance-core.js?v=20261110-2"></script>
 <script src="/xlsx-finance.js?v=20261110-1"></script>
-<script src="/decision-finance.js?v=20261110-4"></script>
+<script src="/decision-finance.js?v=20261110-5"></script>
+<script src="/decision-actions.js?v=20261110-1"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
