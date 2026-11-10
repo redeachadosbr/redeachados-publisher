@@ -533,7 +533,7 @@ function brazilTodayISO(now=Date.now()){
  return o.year+'-'+o.month+'-'+o.day;
 }
 function syncPeriodClosed(){
- const end=$('dateEnd').value,checkbox=$('periodClosed'),open=!!end&&end>=brazilTodayISO();
+ const end=window.RedeAdsHistory?.analysisDates?.()?.end||$('dateEnd').value,checkbox=$('periodClosed'),open=!!end&&end>=brazilTodayISO();
  if(open)checkbox.checked=false;
  checkbox.disabled=open;
  checkbox.title=open?'Período parcial: o dia atual ainda está em andamento. Selecione uma data final anterior a hoje para análise fechada.':'Marque somente quando o relatório estiver completo.';
