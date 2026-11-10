@@ -124,8 +124,8 @@
 
 .ads-product-select{display:flex;gap:10px;align-items:stretch;min-width:0}
 .ads-product-select select{min-width:0;flex:1;width:100%}
-.ads-product-photo{height:60px;width:60px;min-width:60px;border-radius:12px;border:1px solid #66543b;background:#201e1b;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#d3b77d}
-.ads-product-photo img{width:100%;height:100%;object-fit:contain;background:#191d22}
+.ads-product-photo{position:relative;height:60px;width:60px;min-width:60px;border-radius:12px;border:1px solid #66543b;background:#201e1b;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#d3b77d}
+.ads-product-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#191d22;transition:opacity .15s ease}
 .ads-product-photo img[hidden],.ads-product-photo span[hidden]{display:none!important}
 .ads-product-photo span{font-size:25px;line-height:1}
 .ads-photo-help{font-size:11px;color:#aeb9c8;margin-top:5px}
@@ -187,7 +187,7 @@
  <p id="supplierSkuResult" class="tip">Carregue o catálogo para preencher foto, custo e nome por SKU.</p></div>
             <div class="field full"><label for="pName">Nome do produto *</label><input id="pName" placeholder="Ex.: Ralador Multiuso 3 em 1" required maxlength="240"></div>
 <div class="field full"><label for="pImageUrl">Foto principal do SKU (link HTTPS) · opcional</label>
-<div class="product-photo-input-row"><div class="ads-product-photo" title="Prévia da foto"><img id="productFormPhoto" alt="Prévia da foto do produto" loading="lazy" referrerpolicy="no-referrer" hidden><span id="productFormPhotoEmpty" aria-hidden="true">▧</span></div>
+<div class="product-photo-input-row"><div class="ads-product-photo" title="Prévia da foto"><img id="productFormPhoto" alt="Prévia da foto do produto" loading="eager" referrerpolicy="no-referrer" hidden><span id="productFormPhotoEmpty" aria-hidden="true">▧</span></div>
 <input type="url" id="pImageUrl" placeholder="https://.../imagem-do-produto.jpg" autocomplete="off" maxlength="2048"></div>
 <p class="tip">A foto real é capturada automaticamente da API Shopee quando o anúncio corresponder a um único item confirmado. Se necessário, informe a URL HTTPS da foto correta.</p></div>
             <div class="field full"><label for="pCurve">Curva de vendas (definida por você)</label><select id="pCurve">
@@ -287,7 +287,7 @@
           <div class="field full"><label for="campaignAdsFilter">Mostrar produtos por situação no Ads</label><select id="campaignAdsFilter"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><span class="tip">Usa status confirmado pela API nesta sessão quando disponível; caso contrário, o status informado manualmente.</span></div>
           <div class="field full"><label for="productSelect">Produto cadastrado</label>
 <div class="ads-product-select"><div class="ads-product-photo" id="selectedProductPhotoHolder" title="Foto do SKU selecionado">
-<img id="selectedProductPhoto" alt="Foto do SKU selecionado" loading="lazy" referrerpolicy="no-referrer" hidden><span id="selectedProductPhotoEmpty" aria-hidden="true">▧</span></div>
+<img id="selectedProductPhoto" alt="Foto do SKU selecionado" loading="eager" referrerpolicy="no-referrer" hidden><span id="selectedProductPhotoEmpty" aria-hidden="true">▧</span></div>
 <select id="productSelect"><option value="">— Selecione um produto —</option></select></div>
 <p class="ads-photo-help" id="selectedProductPhotoNote">Selecione um SKU para visualizar a foto ao lado.</p></div>
           <div class="field full"><label for="campaign">Nome da campanha / SKU</label><input id="campaign" placeholder="Nome do produto ou SKU"></div>
@@ -1113,19 +1113,57 @@ function safeProductPhotoUrl(value){
  catch{return ''}
 }
 function updateProductPhotoElement(imgId,emptyId,value,alt){
- const img=$(imgId),empty=$(emptyId);if(!img||!empty)return false;
+ const img=$(imgId),empty=$(emptyId);
+ if(!img||!empty)return false;
  const link=safeProductPhotoUrl(value);
- img.onload=()=>{if(img.getAttribute('src')===link){img.hidden=false;empty.hidden=true}};
- img.onerror=()=>{
-  img.hidden=true;empty.hidden=false;
+ // Não esconda a tag <img> enquanto aguarda load: imagens lazy+display:none
+ // podem nunca ser carregadas e o onload nunca dispara.
+ if(!link){
+  img.hidden=true;
+  img.style.opacity='0';
+  empty.hidden=false;
+  img.removeAttribute('src');
+  img.dataset.photoSource='';
+  img.dataset.photoState='';
+  return false;
+ }
+ function success(){
+  if(img.dataset.photoSource!==link)return;
+  img.hidden=false;
+  img.style.opacity='1';
+  empty.hidden=true;
+  img.dataset.photoState='loaded';
   if(imgId==='selectedProductPhoto'){
    const note=$('selectedProductPhotoNote');
-   if(note)note.textContent='A foto foi encontrada no cadastro, mas o servidor da imagem não respondeu. Confira o link da foto em Produtos → Editar.';
+   if(note)note.textContent='Foto principal do SKU '+$('productSelect').value+'.';
   }
-};
- if(!link){img.hidden=true;empty.hidden=false;img.removeAttribute('src');return false}
+ }
+ function failure(){
+  if(img.dataset.photoSource!==link)return;
+  img.hidden=true;
+  img.style.opacity='0';
+  empty.hidden=false;
+  img.dataset.photoState='error';
+  if(imgId==='selectedProductPhoto'){
+   const note=$('selectedProductPhotoNote');
+   if(note)note.textContent='Não foi possível abrir a imagem do fornecedor. Confira a URL em Produtos → Editar.';
+  }
+ }
+ img.onload=success;
+ img.onerror=failure;
  img.alt=alt||'Foto do produto';
- if(img.getAttribute('src')!==link){img.hidden=true;empty.hidden=false;img.setAttribute('src',link)}
+ if(img.dataset.photoSource!==link){
+  // O elemento fica VISÍVEL (com opacidade zero) para que o navegador
+  // inicie a requisição. O ícone permanece até o onload.
+  img.dataset.photoSource=link;
+  img.dataset.photoState='loading';
+  img.hidden=false;
+  img.style.opacity='0';
+  empty.hidden=false;
+  img.setAttribute('src',link);
+ }
+ if(img.complete&&img.naturalWidth>0)success();
+ else if(img.complete&&img.naturalWidth===0&&img.dataset.photoState==='loaded')failure();
  return true;
 }
 function renderSelectedProductPhoto(){
