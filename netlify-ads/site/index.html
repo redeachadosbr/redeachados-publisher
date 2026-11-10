@@ -343,10 +343,10 @@
           <div class="field"><label for="dateEnd">Período: fim *</label><input type="date" id="dateEnd" required></div>
         </div>
         <div class="api-actions non-print">
-          <div class="row-between"><strong>🔗 Consultar Ads pela API Shopee</strong><span class="subtle">Somente leitura</span></div>
-          <p class="tiny">Busca os indicadores automaticamente, sem alterar o anúncio. Quando houver mais de uma campanha, confirme o ID correto.</p>
-          <div class="actions"><button type="button" class="btn-secondary mini" id="apiReadBtn">Consultar período selecionado</button><button type="button" class="btn-secondary mini" id="apiHistoryBtn">Consultar até 6 meses em blocos</button></div>
-          <div id="apiStatus" class="api-status" role="status" aria-live="polite">Selecione um produto e consulte suas campanhas. Nenhuma campanha será modificada.</div>
+          <div class="row-between"><strong>Consultar Ads no período escolhido</strong><span class="subtle">Somente leitura</span></div>
+          <p class="tiny">Selecione as datas acima. A campanha será identificada automaticamente; confirme o ID somente se houver mais de uma.</p>
+          <div class="actions"><button type="button" class="btn-primary mini" id="apiReadBtn">Consultar e analisar</button></div>
+          <div id="apiStatus" class="api-status" role="status" aria-live="polite">Escolha as datas inicial e final e clique em Consultar e analisar.</div>
           <div id="apiCampaignPickBox" class="api-campaign-picker" hidden>
             <label for="apiCampaignChoice"><strong id="apiCampaignPickTitle">Campanhas encontradas para o produto</strong></label>
             <p class="tiny" id="apiCandidateHelp">Confira o ID e o nome na Shopee antes de vincular uma campanha.</p>
@@ -1997,11 +1997,11 @@ function apiFillCampaign(c,start,end,options={}){
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
  // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
  if(!options.historical){
-  // A campanha precisa estar vinculada ANTES de renderizar o resultado.
-  // O bloco financeiro usa o ID confirmado; na ordem inversa podia consultar
-  // campanha antiga ou não iniciar quando quickCampaign ainda estava vazio.
-  window.RedeAdsQuick?.campaignFilled?.(c,start,end);
-  const d=getData();if(validate(d).length===0)render(analyze(d));
+  // O ID desta campanha já foi confirmado em lastAdsFilledCampaignKey.
+  // A interface mantém somente datas manuais e a consulta pela API.
+  const d=getData(),issues=validate(d);
+  if(!issues.length)render(analyze(d));
+  else if(!window.RedeAdsQuick?.renderProvisional?.(d,issues))showError(issues.join(' '));
  }
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
@@ -2190,16 +2190,15 @@ async function apiLoadRange(syncMany=false){
  finally{btn.disabled=false}
 }
 $('apiReadBtn').addEventListener('click',()=>apiLoadRange(false));
-$('apiHistoryBtn').addEventListener('click',()=>apiLoadRange(true));
 refreshChangeSelects();renderChangeHistory();
 
 </script>
 <script src="/order-phase-metrics.js?v=20261110-2"></script>
 <script src="/evolution.js?v=20261110-3"></script>
-<script src="/decision-quick.js?v=20261110-5"></script>
+<script src="/decision-quick.js?v=20261110-6"></script>
 <script src="/campaign-finance-core.js?v=20261110-2"></script>
 <script src="/xlsx-finance.js?v=20261110-1"></script>
-<script src="/decision-finance.js?v=20261110-3"></script>
+<script src="/decision-finance.js?v=20261110-4"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
