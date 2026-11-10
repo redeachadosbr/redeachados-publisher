@@ -193,3 +193,88 @@ test('outras SKUs: dimensões físicas continuam legíveis após seção de emba
   ['altura','20 cm'],['largura','16 cm'],['comprimento','22 cm']
  ]);
 });
+
+
+test('subtítulos genéricos não encerram bloco Embalagem antes das medidas',()=>{
+ const nested=[
+  'Embalagem:', 'Dados técnicos:', 'Observações:',
+  'Dimensões:', '14cm altura x 21cm largura x 21cm comprimento'
+ ].join('\n');
+ assert.equal(confirmedProductDimensionsFromWeDrop(nested),null);
+ const numeric='Embalagem:\nDados técnicos:\nDimensões: 14 x 21 x 21';
+ assert.equal(confirmedCatalogCrossCheckedDimensionsFromWeDrop(numeric,{
+  ...exact,catalogMeasurements:{heightCm:14,widthCm:21,lengthCm:21}
+ }),null);
+});
+
+test('seção Produto explícita reabre medidas físicas após embalagem com subtítulos',()=>{
+ const text=[
+  'Embalagem:', 'Dados técnicos:', 'Dimensões:',
+  '14cm altura x 21cm largura x 21cm comprimento',
+  'Produto:', 'Especificações:', 'Dimensões:',
+  '20cm altura x 19cm diamentro'
+ ].join('\n');
+ const spec=confirmedProductDimensionsFromWeDrop(text);
+ assert.deepEqual(spec?.measurements.map(({axis,value})=>[axis,value]),[
+  ['altura','20 cm'],['diametro','19 cm']
+ ]);
+});
+
+test('renderização da arte 03 desenha só 20 cm e 19 cm, sem medidas logísticas',async()=>{
+ const {confirmedSpecCard,addConfirmedSpecificationCard}=
+  await import('../public/specificationCard.js');
+ const spec=confirmedSpecCard({
+  sku:'895332',sourceEvidenceSku:'895332',sourceSaved:true,
+  supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:14,widthCm:21,lengthCm:21},
+  sourceText:[
+   'Fonte Bebedouro 3 Modos para Pets', 'Produto:',
+   'Dimensões:', '20cm altura x 19cm diamentro/',
+   'Embalagem:', 'Dados técnicos:', 'Dimensões:',
+   '14cm altura x 21cm largura x 21cm comprimento'
+  ].join('\n')
+ });
+ assert.deepEqual(spec.measurements.map(({axis,value})=>[axis,value]),[
+  ['altura','20 cm'],['diametro','19 cm']
+ ]);
+ const drawn=[];
+ const ctx={
+  save(){},restore(){},drawImage(){},beginPath(){},roundRect(){},
+  fill(){},stroke(){},moveTo(){},lineTo(){},
+  fillText(value){drawn.push(String(value));},
+  measureText(value){return {width:String(value).length*12}}
+ };
+ const oldDocument=globalThis.document;
+ const oldCreateImageBitmap=globalThis.createImageBitmap;
+ try{
+  globalThis.document={createElement(tag){
+   assert.equal(tag,'canvas');
+   return {getContext:()=>ctx,toBlob:callback=>
+    callback(new Blob([new Uint8Array(2048)],{type:'image/png'}))};
+  }};
+  globalThis.createImageBitmap=async()=>({close(){}});
+  const blob=await addConfirmedSpecificationCard(
+   new Blob(['foto'],{type:'image/jpeg'}),spec);
+  assert.equal(blob.type,'image/png');
+  assert.deepEqual(drawn.filter(x=>/^\d+ cm$/.test(x)),['20 cm','19 cm']);
+  assert.ok(drawn.includes('Altura'));
+  assert.ok(drawn.includes('Diâmetro'));
+  assert.equal(drawn.some(x=>/\b(?:14|21)\s*cm\b/.test(x)),false);
+  drawn.length=0;
+  await addConfirmedSpecificationCard(new Blob(['foto'],{type:'image/jpeg'}),{
+   measurements:[
+    {axis:'altura',label:'ALTURA',value:'40 cm'},
+    {axis:'largura',label:'LARGURA',value:'30 cm'},
+    {axis:'comprimento',label:'COMPRIMENTO',value:'55 cm'}
+   ],facts:[]
+  });
+  assert.ok(drawn.includes('40 cm'));
+  assert.ok(drawn.includes('30 cm'));
+  assert.ok(drawn.some(x=>x.includes('55 cm')));
+ }finally{
+  if(oldDocument===undefined)delete globalThis.document;
+  else globalThis.document=oldDocument;
+  if(oldCreateImageBitmap===undefined)delete globalThis.createImageBitmap;
+  else globalThis.createImageBitmap=oldCreateImageBitmap;
+ }
+});
