@@ -1169,9 +1169,13 @@ function updateProductPhotoElement(imgId,emptyId,value,alt){
 function renderSelectedProductPhoto(){
  const sku=$('productSelect').value,p=readProducts().find(x=>x.sku===sku);
  const has=updateProductPhotoElement('selectedProductPhoto','selectedProductPhotoEmpty',p?.imageUrl,p?'Foto de '+p.name:'Produto sem foto');
+ const photoState=$('selectedProductPhoto').dataset.photoState;
  $('selectedProductPhotoHolder').title=has?'Foto cadastrada para '+sku:'Foto não disponível para este SKU';
  $('selectedProductPhotoNote').textContent=!p?'Selecione um SKU para visualizar a foto ao lado.':
-  has?'Foto principal do SKU '+sku+'.':'Foto indisponível. Consulte a campanha pela API ou cole um link na aba Produtos.';
+  !has?'Foto indisponível. Consulte a campanha pela API ou importe o catálogo WeDrop.':
+  photoState==='error'?'A foto existe no catálogo, mas o servidor não conseguiu carregá-la. Confira a URL em Produtos → Editar.':
+  photoState==='loading'?'Carregando foto do SKU '+sku+'...':
+  'Foto principal do SKU '+sku+'.';
 }
 function renderFormProductPhoto(){
  updateProductPhotoElement('productFormPhoto','productFormPhotoEmpty',$('pImageUrl').value,'Prévia da foto principal');
