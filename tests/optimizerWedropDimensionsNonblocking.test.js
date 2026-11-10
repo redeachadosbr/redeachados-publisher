@@ -124,11 +124,25 @@ test('linha seguinte só pode conter cotas explícitas; não aceita dados do cab
   'Dimensões:\n20cm altura x 19cm diamentro\nDimensões: 25cm altura x 19cm diametro'),null);
 });
 
-test('arte 03 aceita diâmetro e o roteiro não obriga três medidas inexistentes',()=>{
+test('arte 03 aceita duas cotas no bebedouro e preserva três cotas quando existem',async()=>{
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
- const prompts=readFileSync(new URL('../public/chatgptPrompts.js',import.meta.url),'utf8');
+ const {createChatGptPrompts}=await import('../public/chatgptPrompts.js');
  assert.match(card,/diameter=get\('diametro'\)/);
  assert.match(card,/label:'Diâmetro'/);
- assert.match(prompts,/const verifiedAxes=axes\.map\(x=>x\.label\)/);
- assert.doesNotMatch(prompts,/TERÁ AS TRÊS COTAS VISÍVEIS/);
+ const two=createChatGptPrompts({
+  title:'Fonte Bebedouro 3 Modos para Pets 20cm',
+  supplierSourceText:'Dimensões:\\n20cm altura x 19cm diamentro'
+ });
+ assert.match(two.prompts[2],/ALTURA: 20 cm; DIAMETRO: 19 cm/);
+ assert.match(two.prompts[2],/TERÁ APENAS AS COTAS COMPROVADAS/);
+ assert.doesNotMatch(two.prompts[2],/TERÁ AS TRÊS COTAS/);
+ const three=createChatGptPrompts({
+  title:'Produto com três eixos confirmados',
+  confirmedDimensionSpec:{measurements:[
+   {axis:'altura',label:'ALTURA',value:'40 cm'},
+   {axis:'largura',label:'LARGURA',value:'30 cm'},
+   {axis:'comprimento',label:'COMPRIMENTO',value:'55 cm'}
+  ]}
+ });
+ assert.match(three.prompts[2],/TERÁ AS TRÊS COTAS VISÍVEIS/);
 });
