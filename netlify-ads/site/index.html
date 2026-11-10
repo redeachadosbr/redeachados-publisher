@@ -133,13 +133,34 @@
 .product-photo-input-row input{flex:1;min-width:0}
 .product-photo-input-row .ads-product-photo{height:54px;width:54px;min-width:54px}
 @media(max-width:480px){.ads-product-photo{width:54px;height:54px;min-width:54px}}
+
+/* V16.4: decisão rápida por gasto desejado + ROAS mínimo, detalhes recolhidos. */
+.ads-simple{border:1px solid #715936;border-radius:14px;background:#181c22;padding:13px;margin:12px 0}
+.ads-simple-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ads-simple-kpi{background:#10161c;border:1px solid #37414a;border-radius:11px;padding:11px;min-width:0}
+.ads-simple-kpi .title{color:#c1cbd4;font-size:12px}
+.ads-simple-kpi .number{font-size:20px;line-height:1.3;font-weight:750;color:#f3cf8c;overflow-wrap:anywhere}
+.ads-simple-kpi .sub{font-size:12px;color:#acb7c5}
+.ads-simple-call{margin-top:10px;padding:12px;border:1px solid #80683f;background:#2a241c;border-radius:11px}
+.ads-simple-call.risk{border-color:#965460;background:#2d1b23}
+.ads-simple-call.healthy{border-color:#47765d;background:#172b23}
+.ads-simple-call .heading{font-weight:750;font-size:16px;margin-bottom:4px}
+.ads-simple-call .brief{font-size:13px;line-height:1.6}
+.ads-simple-note{color:#abb9c6;font-size:11px;margin:9px 0 0}
+.ads-advanced{margin:12px 0;border:1px solid #35404d;border-radius:11px;padding:12px}
+.ads-advanced>summary{cursor:pointer;color:#efc77e;font-weight:650}
+.ads-advanced[open]>summary{margin-bottom:12px}
+.ads-advanced-input{margin-top:10px}
+.ads-advanced-input .campaign-fields{margin-top:12px}
+.ads-simple-status{font-size:11px;color:#b8c2cd;margin-top:5px}
+@media(max-width:440px){.ads-simple-grid{grid-template-columns:1fr}.ads-simple-kpi .number{font-size:18px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16.3 · Fotos dos SKUs + Drive</span>
+    <span class="pill">V16.4 · Decisão rápida + Drive</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
   <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ 4 regras + ilimitado</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
@@ -274,14 +295,16 @@
             <p class="tiny">O vínculo é salvo no cadastro do SKU e sincronizado pelo Google Drive. Os indicadores permanecem separados por campanha; nenhuma alteração é executada na Shopee.</p>
           </div>
         </div>
-        <div class="campaign-metrics-title">Configuração e desempenho — 11 indicadores</div>
+        <div class="campaign-metrics-title">Sua regra de investimento</div>
         <div class="campaign-fields">
           <div class="field"><label for="budget" id="budgetLabel">1. Orçamento diário (R$) *</label><div class="budget-entry"><input id="budget" inputmode="decimal" placeholder="Ex.: 15,00"><select id="budgetMode" aria-label="Tipo de orçamento"><option value="daily">Diário</option><option value="unlimited">Ilimitado</option></select></div><p class="tip" id="budgetHint">Limite configurado na Shopee. Para orçamento ilimitado, informe o valor que gostaria de gastar por dia; a Shopee continuará sem limite real.</p></div>
           <div class="field"><label for="target">2. Meta de ROAS *</label><input id="target" inputmode="decimal" placeholder="Ex.: 30">
 <label for="minDesiredRoas" style="display:block;margin-top:12px">ROAS mínimo desejado (x) · opcional</label>
 <input id="minDesiredRoas" inputmode="decimal" placeholder="Ex.: 15">
 <p class="tip" id="minDesiredRoasHint">Seu ROAS mínimo aceitável. Ao sair do campo, o valor será salvo no cadastro do SKU e sincronizado pelo Google Drive.</p></div>
-          <div class="field"><label for="rapidBoost">3. Impulsão Rápida</label><select id="rapidBoost"><option value="unknown">Não informado</option><option value="on">Ativada</option><option value="off">Desativada</option></select></div>
+        </div><details class="ads-advanced ads-advanced-input" id="adsExtraFields">
+          <summary>Dados da Shopee · indicadores adicionais (preenchimento manual)</summary>
+          <div class="campaign-fields"><div class="field"><label for="rapidBoost">3. Impulsão Rápida</label><select id="rapidBoost"><option value="unknown">Não informado</option><option value="on">Ativada</option><option value="off">Desativada</option></select></div>
           <div class="field"><label for="impressions">4. Impressões</label><input id="impressions" inputmode="numeric" placeholder="Ex.: 1.674"></div>
           <div class="field"><label for="clicks">5. Cliques</label><input id="clicks" inputmode="numeric" placeholder="Ex.: 32"></div>
           <div class="field"><label for="ctrReported">6. CTR (%)</label><input id="ctrReported" inputmode="decimal" placeholder="Ex.: 1,91"></div>
@@ -291,6 +314,7 @@
           <div class="field"><label for="itemsSold">10. Itens vendidos</label><input id="itemsSold" inputmode="numeric" placeholder="Ex.: 1"></div>
           <div class="field"><label for="revenue">11. Vendas (R$)</label><input id="revenue" inputmode="decimal" placeholder="Ex.: 65,99"></div>
         </div>
+        </details>
         <input type="hidden" id="orders" value="">
         <p class="tip">ROAS real do período = vendas atribuídas ÷ investimento total do mesmo período (não é média simples de ROAS diário). CTR = cliques ÷ impressões. Confirme a campanha, o período e a janela de atribuição. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
         <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — desmarcado automaticamente quando o relatório inclui o dia de hoje em andamento.</span></label>
@@ -306,7 +330,16 @@
       <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha orçamento, período, gasto, meta e ROAS real ou receita. Depois clique em <strong>Analisar campanha</strong>.</p></div>
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
-        <div id="performanceStats" class="ads-kpis"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
+        <section id="essentialDecision" class="ads-simple" aria-live="polite">
+<div class="ads-simple-grid">
+ <div class="ads-simple-kpi"><div class="title">Gasto médio por dia</div><div class="number" id="simpleDailySpent">—</div><div class="sub" id="simpleDailyGoal">Meta: —</div></div>
+ <div class="ads-simple-kpi"><div class="title">ROAS realizado</div><div class="number" id="simpleRoas">—</div><div class="sub" id="simpleRoasGoal">Mínimo: —</div></div>
+</div>
+<div class="ads-simple-call" id="simpleActionBox"><div class="heading" id="simpleActionTitle">Analisando…</div><div class="brief" id="simpleActionText">—</div></div>
+<p class="ads-simple-note" id="simpleBasis">—</p>
+</section>
+<details id="adsDetails" class="ads-advanced"><summary>Ver todas as métricas, regras e justificativas</summary>
+<div id="performanceStats" class="ads-kpis"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
         <section id="criticalAdsDiagnosis" class="critical-ads" hidden aria-live="polite"></section>
         <div id="dailyBudgetSummary" class="notice" style="margin-top:12px" aria-live="polite"></div>
         <div id="resultAlerts"></div>
@@ -318,6 +351,7 @@
         <h3 style="font-size:14px">Conferir antes de alterar</h3>
         <ul class="list-check" id="checkList"></ul>
         <p class="muted-line" id="reviewNote"></p>
+</details>
         <div class="actions non-print"><button type="button" class="btn-primary" id="saveBtn">Salvar no histórico</button><button type="button" class="btn-secondary" id="printBtn">Imprimir / PDF</button><button type="button" class="btn-secondary" id="copyBtn">Copiar decisão</button></div>
       </div>
     </div>
@@ -365,7 +399,7 @@
       <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.3</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.4</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script>
 'use strict';
