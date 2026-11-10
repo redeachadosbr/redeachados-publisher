@@ -57,7 +57,8 @@ test('kit mochila T-Rex usa o Item ID original e falha fechado sem criar duplica
  assert.match(find,/verifiedSavedTarget:verified/);
  const execute=server.slice(server.indexOf("app.post('/api/shopee/optimizer/execution/execute'"),
   server.indexOf("app.get('/api/shopee/optimizer/execution/",server.indexOf("app.post('/api/shopee/optimizer/execution/execute'")));
- assert.match(execute,/linkedKit\?\.kitSku==='KIT-TX24505K-TX24508E'&&String\(itemId\)!=='58222633999'/);
+ assert.match(execute,/linkedKit\?\.kitSku==='KIT-TX24505K-TX24508E'/);
+ assert.match(execute,/String\(itemId\)!=='58222633999'\|\|String\(modelId\)!=='229453873888'/);
  assert.match(service,/if\(kitSku==='KIT-TX24505K-TX24508E'\)/);
  assert.match(service,/Não criar outro anúncio/);
  assert.match(builder,/const kitWizardConfirmedItemId=kitSku=>/);
