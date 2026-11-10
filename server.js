@@ -3726,6 +3726,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   let job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
   const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+  // A autorização do vendedor é para o Item ID original, nunca para o anúncio
+  // duplicado ou para um job antigo ainda salvo no navegador.
+  if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&String(itemId)!=='58222633999')
+   throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999. O anúncio duplicado não será alterado.');
   let verifiedExecutionKit=null;
   if(linkedKit){
    verifiedExecutionKit=await verifiedLinkedKitQuote(auth,linkedKit);
