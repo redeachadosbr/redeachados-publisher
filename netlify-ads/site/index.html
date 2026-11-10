@@ -1855,7 +1855,7 @@ function apiFillCampaign(c,start,end){
  $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
  const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
  for(const [key,v] of Object.entries(data)){
-  if(v===null||v===undefined||!Number.isFinite(Number(v)))continue;
+  if(v===null||v===undefined||!Number.isFinite(Number(v))){$(key).value='';continue;}
   const n=Number(v);
   // Evita mostrar valores binários como 6,120000000000001.
   const precision=key==='spent'||key==='revenue'?2:key==='actual'||key==='ctrReported'?4:0;
@@ -1867,6 +1867,7 @@ function apiFillCampaign(c,start,end){
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
  // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
  const d=getData();if(validate(d).length===0)render(analyze(d));
+ window.RedeAdsQuick?.campaignFilled?.(c,start,end);
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
 const API_CHOICE_KEY='redeachados_ads_campaign_choice_v13';
@@ -1914,6 +1915,7 @@ function showApiCampaignPicker(campaigns,sku,start,end,options={}){
  $('apiApplyCampaignBtn').textContent=options.unmatched?'Vincular ID ao SKU e importar':'Usar campanha selecionada';
  $('apiCampaignPickBox').hidden=false;
  refreshApiCampaignChoices();
+ window.RedeAdsQuick?.showChoices?.(ordered,options);
 }
 $('apiCampaignSearch').addEventListener('input',refreshApiCampaignChoices);
 function saveApiCampaignLink(sku,id){
@@ -1972,7 +1974,7 @@ async function apiLoadRange(syncMany=false){
  const sku=$('productSelect').value,product=readProducts().find(p=>p.sku===sku);
  if(!product){setApiStatus('Selecione um SKU cadastrado antes de consultar.','error');return}
  hideApiCampaignPicker();
- let start=$('dateStart').value,end=$('dateEnd').value;const today=shortISO(Date.now());
+ let start=$('dateStart').value,end=$('dateEnd').value;const today=brazilTodayISO();
  if(syncMany){end=today;start=shortISO(Date.now()-179*86400000)}
  else if(!start||!end){setApiStatus('Escolha as datas inicial e final.','error');return}
  if(start>end||end>today){setApiStatus('Intervalo de datas inválido.','error');return}
@@ -1985,6 +1987,8 @@ async function apiLoadRange(syncMany=false){
   for(const [a,b] of chunks){
    setApiStatus('Consultando '+a+' a '+b+' · '+(count+1)+'/'+chunks.length+'...');
    const result=await apiOverview(a,b);
+   // Evitar que uma resposta atrasada preencha um SKU diferente após troca no seletor.
+   if($('productSelect').value!==sku)return;
    const matching=apiReportMatches(result.campaigns,sku,product.name,product.linkedCampaignIds);
    for(const c of result.campaigns)if(/^\d+$/.test(String(c.campaignId||''))){
      candidates.set(String(c.campaignId),c);
@@ -2034,6 +2038,7 @@ refreshChangeSelects();renderChangeHistory();
 
 </script>
 <script src="/evolution.js"></script>
+<script src="/decision-quick.js?v=20261110-1"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
 </html>
