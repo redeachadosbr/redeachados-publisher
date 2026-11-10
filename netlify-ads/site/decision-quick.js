@@ -55,7 +55,6 @@ const help=(text='')=>{
 const escapeText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const move=(iso,n)=>new Date(Date.parse(iso+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 const setDates=()=>{
- if(window.RedeAdsHistory?.applyDates?.())return;
  const end=move(brazilTodayISO(),-1);
  byId('dateEnd').value=end;byId('dateStart').value=move(end,1-Number(period.value));syncPeriodClosed();
 };
@@ -178,7 +177,6 @@ e('quickComplete').addEventListener('click',()=>{
  byId(key).scrollIntoView({behavior:'smooth',block:'center'});byId(key).focus();
 });
 async function consult(){
- if(window.RedeAdsHistory?.isSelected?.())return window.RedeAdsHistory.consult();
  const sku=byId('productSelect').value;
  if(!sku){status('Selecione um produto primeiro.','warn');return}
  if(active){queued=true;return}
@@ -198,11 +196,10 @@ async function consult(){
   if(queued){queued=false;void consult()}
  }
 }
-button.addEventListener('click',()=>{setDates();void consult()});
-period.addEventListener('change',()=>{if(byId('productSelect').value){setDates();void consult()}});
+button.addEventListener('click',()=>{void consult()});
+period.addEventListener('change',()=>{if(byId('productSelect').value){setDates();status('Datas preenchidas como sugestão. Você pode editá-las manualmente e consultar.')}});
 selected.addEventListener('change',()=>{
  const id=selected.value;
- if(window.RedeAdsHistory?.isSelected?.())return window.RedeAdsHistory.chooseCampaign(id);
  if(!id||!pendingApiCampaigns)return;
  byId('apiCampaignSearch').value=id;refreshApiCampaignChoices();
  byId('apiCampaignChoice').value=id;
@@ -221,13 +218,12 @@ byId('productSelect').addEventListener('change',event=>{
  }
  if(sku===latestProduct)return;
  latestProduct=sku;lastCampaign='';
- window.RedeAdsHistory?.onProductChange?.(sku);
  for(const id of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','budget'])byId(id).value='';
  byId('budgetMode').value='daily';updateBudgetMode();
- setDates();void consult();
+ status('Período manual preservado. Selecione as datas e clique em Consultar e analisar.');
 });
 if(byId('productSelect').value){
- latestProduct=byId('productSelect').value;setDates();
+ latestProduct=byId('productSelect').value;
  status('Produto selecionado. Clique em Consultar e analisar para carregar as campanhas.');
 }
 })();
