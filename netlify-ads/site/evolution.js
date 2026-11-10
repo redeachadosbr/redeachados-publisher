@@ -80,7 +80,7 @@ function requestsFor(model){
 }
 function aggregate(phase,chunks,id){
  const days=daysInclusive(phase.from,phase.to);
- const matching=chunks.filter(c=>c.campaignId===id);
+ const matching=chunks.filter(c=>c&&c.campaignId===id);
  if(matching.length!==chunks.length||!chunks.length)return {days,missing:true};
  const numericFields={spent:'expense',revenue:'broadGmv',impressions:'impressions',clicks:'clicks',orders:'broadOrders'};
  const values={};
@@ -141,7 +141,7 @@ function render(model,results,chosenId,loaded=false){
  const total=model.phases.filter(x=>x.type==='full'),current=model.current;
  const withMetrics=total.map(phase=>{
   const req=requestsFor({phases:[phase],current:null});
-  const chunks=req.map(job=>results.get(job.from+'|'+job.to)).filter(Boolean);
+  const chunks=req.map(job=>results.get(job.from+'|'+job.to));
   return {phase,metrics:aggregate(phase,chunks,chosenId)};
  });
  const latest=withMetrics.at(-1),previous=withMetrics.at(-2);
@@ -191,7 +191,7 @@ function render(model,results,chosenId,loaded=false){
  }
  if(current){
   const chunks=requestsFor({phases:[],current});
-  const m=aggregate(current,chunks.map(job=>results.get(job.from+'|'+job.to)).filter(Boolean),chosenId);
+  const m=aggregate(current,chunks.map(job=>results.get(job.from+'|'+job.to)),chosenId);
   out.push('<article class="evo-change"><div class="evo-marker">◷</div><div><strong>Hoje ('+showDate(current.from)+') · parcial</strong>'+
    '<div class="evo-small">Gasto '+(m.missing||m.spent===null?'—':money(m.spent))+
    ' · ROAS '+(m.missing||m.actual===null?'—':roas(m.actual))+
@@ -201,8 +201,8 @@ function render(model,results,chosenId,loaded=false){
  if(loaded)e('evoStatus').textContent='✓ Evolução consultada · '+showDate(model.from)+' a '+showDate(model.until)+
   '. Dias de mudança e o dia atual são separados dos períodos de avaliação.';
 }
-function populate(){
- const select=e('evoSku'),current=select.value,preferred=e('productSelect')?.value||lastSku||current;
+function populate(preferCurrent=false){
+ const select=e('evoSku'),current=select.value,preferred=preferCurrent?current:(e('productSelect')?.value||current||lastSku);
  const products=readProducts();
  select.innerHTML='<option value="">Selecione um produto</option>'+
   products.map(p=>'<option value="'+safeText(p.sku)+'">'+safeText(p.sku+' · '+p.name)+'</option>').join('');
@@ -239,7 +239,7 @@ async function fetchAll(force=false){
  let ok=0,errors=[],raw=new Map(),found=new Map();
  try{
   for(const job of jobs){
-   if(id!==requestVersion)break;
+   if(id!==requestVersion||e('evoSku').value!==sku)break;
    e('evoStatus').textContent='Consultando histórico Ads: '+(ok+errors.length+1)+' de '+jobs.length+
     ' · '+showDate(job.from)+' a '+showDate(job.to);
    try{
@@ -254,7 +254,8 @@ async function fetchAll(force=false){
     errors.push(showDate(job.from)+': '+String(err?.message||err).slice(0,120));
    }
   }
-  cached={sku,model,jobs,raw,found,errors};
+  if(id!==requestVersion||e('evoSku').value!==sku)return;
+  cached={sku,model,jobs,raw,found,errors,syncedCampaigns:new Set()};
   if(errors.length)e('evoStatus').textContent='Alguns períodos não puderam ser consultados ('+errors.length+
    '). Eles serão marcados como indisponíveis; nenhum dado será inventado.';
   if(found.size>1){
@@ -273,7 +274,10 @@ async function fetchAll(force=false){
    return;
   }
   useCampaign(e('evoCampaignWrap').hidden?[...found.keys()][0]:e('evoCampaign').value);
- }finally{busy=false;e('evoRefresh').disabled=false}
+ }finally{
+  busy=false;e('evoRefresh').disabled=false;
+  if(e('evoSku').value&&e('evoSku').value!==sku&&e('evoStart').value)fetchAll();
+ }
 }
 function useCampaign(campaignId){
  if(!cached||!campaignId)return;
@@ -293,7 +297,10 @@ function useCampaign(campaignId){
    clicks:asNumber(report.clicks),orders:asNumber(report.broadOrders),
    source:'Shopee Ads API · evolução por período fechado'});
  }
- if(snapshots.length)mergeAdsSnapshots(snapshots);
+ if(snapshots.length&&!cached.syncedCampaigns.has(String(campaignId))){
+  mergeAdsSnapshots(snapshots);
+  cached.syncedCampaigns.add(String(campaignId));
+ }
  const missing=cached.jobs.length-map.size;
  render(cached.model,map,String(campaignId),true);
  if(missing)e('evoStatus').textContent+=' '+missing+' bloco(s) sem dados para o ID selecionado; não foram estimados.';
@@ -311,7 +318,7 @@ function open(){
  if(e('evoStart').value&&!busy)fetchAll();
 }
 e('evoSku').addEventListener('change',()=>{
- lastSku='';populate();if(e('evoStart').value)fetchAll();
+ populate(true);if(e('evoStart').value)fetchAll();
 });
 e('evoStart').addEventListener('change',()=>{cached=null});
 e('evoEnd').addEventListener('change',()=>{cached=null});
