@@ -2041,7 +2041,7 @@ function showApiCampaignPicker(campaigns,sku,start,end,options={}){
  const unique=new Map();
  for(const c of campaigns)if(/^\d+$/.test(String(c.campaignId||'')))unique.set(String(c.campaignId),c);
  const ordered=[...unique.values()].sort((a,b)=>(a.statusGroup==='active'?0:1)-(b.statusGroup==='active'?0:1)||Number(b.expense||0)-Number(a.expense||0));
- pendingApiCampaigns={campaigns:ordered,sku,start,end,unmatched:options.unmatched===true,latestWindow:options.latestWindow||null};
+ pendingApiCampaigns={campaigns:ordered,sku,start,end,unmatched:options.unmatched===true,latestWindow:options.latestWindow||null,aggregated:options.aggregated===true};
  $('apiCampaignSearch').value='';
  $('apiCampaignPickTitle').textContent=options.unmatched?'Selecionar campanha da Shopee e vincular ao SKU':'Campanhas identificadas para o produto';
  $('apiApplyCampaignBtn').textContent=options.unmatched?'Vincular ID ao SKU e importar':'Usar campanha selecionada';
@@ -2074,7 +2074,7 @@ $('apiApplyCampaignBtn').addEventListener('click',()=>{
  rememberApiCampaign(context.sku,id);
  const linked=saveApiCampaignLink(context.sku,id);
  saveCampaignProductPhoto(c,context.sku,true);
- const saved=apiStoreOne(c,context.sku,range[0],range[1]);
+ const saved=context.aggregated?true:apiStoreOne(c,context.sku,range[0],range[1]);
  setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.'+(linked?' Vínculo salvo no cadastro e enviado à sincronização do Drive.':' ATENÇÃO: não foi possível salvar o vínculo; faça backup.')+
  '\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico registrado.':' Histórico não foi salvo; faça backup.')+
  '\nOrçamento, meta ROAS, Impulsão Rápida, carrinhos e itens vendidos precisam de conferência quando ausentes na API.','good');
@@ -2112,40 +2112,60 @@ async function apiLoadRange(syncMany=false){
  if(start>end||end>today){setApiStatus('Intervalo de datas inválido.','error');return}
  btn.disabled=true;let count=0,records=0;
  try{
-  const chunks=[];let cursor=new Date(start+'T12:00:00Z'),limit=new Date(end+'T12:00:00Z');
-  while(cursor<=limit){let till=new Date(Math.min(+cursor+28*86400000,+limit));chunks.push([shortISO(cursor),shortISO(till)]);cursor=new Date(+till+86400000)}
+  const chunks=window.RedeCampaignFinance?.makeRanges(start,end,28);
+  if(!chunks)throw Error('Não foi possível preparar blocos de consulta seguros. Recarregue o painel.');
   if(chunks.length>8)throw Error('Período longo demais para consulta: máximo aproximado de 6 meses.');
-  const seen=new Map(),latestWindow=new Map(),candidates=new Map();
+  const seen=new Map(),aggregated=new Map(),partsByCampaign=new Map(),latestWindow=new Map(),candidates=new Map();
   for(const [a,b] of chunks){
    setApiStatus('Consultando '+a+' a '+b+' · '+(count+1)+'/'+chunks.length+'...');
    const result=await apiOverview(a,b);
    // Evitar que uma resposta atrasada preencha um SKU diferente após troca no seletor.
    if($('productSelect').value!==sku||(!syncMany&&($('dateStart').value!==start||$('dateEnd').value!==end)))return;
-   const actualStart=result.dateAdjustment?.shiftedDays&&result.dates?.start?String(result.dates.start).split('-').reverse().join('-'):a;
-   const actualEnd=result.dateAdjustment?.shiftedDays&&result.dates?.end?String(result.dates.end).split('-').reverse().join('-'):b;
+   if(result.dateAdjustment?.shiftedDays){
+    throw Error('A Shopee deslocou as datas consultadas. Seu período manual foi preservado; escolha dias completos ou consulte novamente depois.');
+   }
+   const actualStart=a,actualEnd=b;
    const matching=apiReportMatches(result.campaigns,sku,product.name,product.linkedCampaignIds);
    for(const c of result.campaigns)if(/^\d+$/.test(String(c.campaignId||''))){
      candidates.set(String(c.campaignId),c);
      if(!latestWindow.has(String(c.campaignId))||a>=latestWindow.get(String(c.campaignId))[0])latestWindow.set(String(c.campaignId),[actualStart,actualEnd]);
    }
    for(const c of matching)if(/^\d+$/.test(String(c.campaignId||''))){
-     seen.set(String(c.campaignId),c);latestWindow.set(String(c.campaignId),[actualStart,actualEnd]);
-     if(syncMany){if(apiStoreOne(c,sku,a,b))records++}else if(matching.length===1){
-       apiFillCampaign(c,actualStart,actualEnd);rememberApiCampaign(sku,String(c.campaignId));
-       if(apiStoreOne(c,sku,actualStart,actualEnd))records++;
+     const id=String(c.campaignId);
+     seen.set(id,c);latestWindow.set(id,[actualStart,actualEnd]);
+     if(apiStoreOne(c,sku,a,b))records++;
+     if(!syncMany){
+      const prev=aggregated.get(id)||{...c,expense:0,broadGmv:0,directGmv:0,
+       clicks:0,impressions:0,broadOrders:0,directOrders:0,daysWithData:0};
+      for(const field of ['expense','broadGmv','directGmv','clicks','impressions','broadOrders','directOrders','daysWithData']){
+       const n=Number(c[field]??0);
+       if(!Number.isFinite(n)||n<0)throw Error('A API retornou métrica inválida da campanha '+id+'.');
+       prev[field]+=n;
+      }
+      prev.name=c.name||prev.name;prev.productTitle=c.productTitle||prev.productTitle;
+      prev.campaignBudget=c.campaignBudget;prev.roasTarget=c.roasTarget;
+      aggregated.set(id,prev);partsByCampaign.set(id,(partsByCampaign.get(id)||0)+1);
      }
    }
    count++;
   }
-  const matching=[...seen.values()];
+  const matching=syncMany?[...seen.values()]:[...aggregated.values()].map(c=>({
+   ...c,roas:c.expense>0?c.broadGmv/c.expense:null,
+   ctr:c.impressions>0?100*c.clicks/c.impressions:null
+  }));
+  if(!syncMany&&matching.some(c=>partsByCampaign.get(String(c.campaignId))!==chunks.length))
+   throw Error('A API deixou de retornar uma campanha em parte do intervalo. Não será apresentada uma soma incompleta.');
   if(matching.length)observeApiStatus(sku,matching);
   if(!syncMany&&matching.length>1){
-    showApiCampaignPicker(matching,sku,start,end,{latestWindow});
+    const fullWindow=new Map(matching.map(c=>[String(c.campaignId),[start,end]]));
+    showApiCampaignPicker(matching,sku,start,end,{latestWindow:fullWindow,aggregated:true});
     setApiStatus('✓ Foram encontradas '+matching.length+' campanhas para '+sku+'.\nEscolha o ID da campanha na lista abaixo e clique em “Usar campanha selecionada”. Não faremos soma de campanhas diferentes.','good');
     return;
   }
   if(!syncMany&&matching.length===1){
-    setApiStatus('✓ Campanha '+matching[0].campaignId+' identificada para '+sku+'. Indicadores preenchidos; confira os campos que a API não fornece.\nNenhum anúncio foi alterado.','good');
+    apiFillCampaign(matching[0],start,end);
+    rememberApiCampaign(sku,String(matching[0].campaignId));
+    setApiStatus('✓ Campanha '+matching[0].campaignId+' identificada para '+sku+' em '+chunks.length+' bloco(s). Datas manuais preservadas. Indicadores agregados para o período completo; nenhuma campanha alterada.','good');
     return;
   }
   if(syncMany&&matching.length>1){
