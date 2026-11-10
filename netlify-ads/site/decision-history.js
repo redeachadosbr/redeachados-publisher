@@ -64,6 +64,11 @@ function build(sku){
 function current(){return phases.find(x=>x.id===periodSelect.value&&x.sku===skuSelect.value)||null}
 function isSelected(){return !!current()}
 function resetUi(){
+ if(phaseKey){
+  for(const id of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','budget'])byId(id).value='';
+  window.RedeAdsQuick?.clearPreview?.();
+  byId('resultContent').hidden=true;byId('resultEmpty').style.display='flex';
+ }
  byId('dateStart').readOnly=false;byId('dateEnd').readOnly=false;
  byId('itemsSold').readOnly=false;
  byId('apiReadBtn').hidden=false;byId('apiHistoryBtn').hidden=false;
@@ -89,6 +94,7 @@ function onProductChange(sku,preferId){
   applyDates();
  }else{
   resetUi();periodSelect.innerHTML=originalOptions;periodSelect.value='7';
+  const end=day(brazilTodayISO(),-1);byId('dateEnd').value=end;byId('dateStart').value=day(end,-6);syncPeriodClosed();
  }
 }
 function applyDates(){
