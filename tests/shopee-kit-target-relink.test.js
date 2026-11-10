@@ -19,7 +19,8 @@ test('autoriza somente migração expressa, preservando composição e modelo da
  assert.equal(isAuthorizedKitTargetCorrection({...old,optimization:{...old.optimization,modelId:'0'}},desired),true);
  assert.equal(isAuthorizedKitTargetCorrection({...old,optimization:{...old.optimization,itemId:'987654321'}},desired),false);
  assert.equal(isAuthorizedKitTargetCorrection(old,{...desired,itemId:'58222623880'}),false);
- assert.equal(isAuthorizedKitTargetCorrection(old,{...desired,modelId:'0'}),false);
+ assert.equal(isAuthorizedKitTargetCorrection(old,{...desired,modelId:'0'}),true);
+ assert.equal(isAuthorizedKitTargetCorrection(old,{...desired,modelId:'45678'}),false);
  assert.equal(isAuthorizedKitTargetCorrection({...old,skus:['TX24508E','TX24505K']},desired),false);
  assert.equal(isAuthorizedKitTargetCorrection(old,{...desired,componentSkus:['TX24505K']}),false);
 });
@@ -29,14 +30,14 @@ test('rota confere o anuncio ao vivo antes de migrar e impede execucao no anunci
   server.indexOf("app.get('/api/shopee/kits/optimization/link-status'"));
  assert.ok(prepare.indexOf('auditShopeeItem(')<prepare.indexOf('recordKitOptimization('));
  assert.ok(prepare.indexOf('readShopeeExecution(auth.shopId,old.itemId,old.modelId)')<prepare.indexOf('recordKitOptimization('));
- assert.match(prepare,/itemId\)!=='58222633999'\|\|modelId!=='229453873888'/);
+ assert.match(prepare,/String\(itemId\)!=='58222633999'/);
  const execution=server.slice(server.indexOf("app.post('/api/shopee/optimizer/execution/execute'"));
- assert.match(execution,/String\(itemId\)!=='58222633999'\|\|String\(modelId\)!=='229453873888'/);
+ assert.match(execution,/String\(itemId\)!=='58222633999'/);
 });
 test('a interface recupera o Item ID e modelo oficiais, nao o handoff anterior',()=>{
  const b=source('public/kit-builder.js'),existing=source('public/kit-existing-optimization.js');
  const service=source('shopeeKitPublicationService.js');
- assert.match(b,/kitWizardConfirmedModelId/);
- assert.match(existing,/model_id:'229453873888'/);
+ assert.doesNotMatch(b,/kitWizardConfirmedModelId/);
+ assert.match(existing,/\/api\/shopee\/kits\/optimization\/find/);
  assert.match(service,/if\(kitSku==='KIT-TX24505K-TX24508E'\)/);
 });

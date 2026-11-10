@@ -1041,8 +1041,7 @@ function kitWizardInit(){
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
    /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''))&&
-   (!confirmedId||String(handoff.itemId)===confirmedId)&&
-   true;
+   (!confirmedId||String(handoff.itemId)===confirmedId);
   const workspace=$('#kitOptimizerWorkspace');
   if(valid&&workspace&&!workspace.hidden){
    await kitWizardOpenExecutionFlow();
