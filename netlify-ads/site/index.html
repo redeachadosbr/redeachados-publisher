@@ -1447,7 +1447,7 @@ function renderOrdersAdsComparison(r){
  if(!result)return;
  if(result.needsReimport){
   small.textContent='Importe novamente a planilha .xlsx em Produtos para comparar os pedidos por período.';
-  details.textContent='O resumo de pedidos salvo nesta versão antiga não possui as datas por SKU. Importe o .xlsx novamente para habilitar a conferência.';
+  details.textContent='O resumo antigo pode ter omitido SKUs de pedidos com várias linhas. Reimporte o XLSX para habilitar a conciliação correta.';
   return;
  }
  const ads=result.adsItems===null?'não informado':String(result.adsItems);
