@@ -8,6 +8,7 @@ const safeText=v=>safe(String(v??''));
 const formatNumber=n=>n===null||!Number.isFinite(n)?'—':Number(n).toLocaleString('pt-BR',{maximumFractionDigits:0});
 const showDate=iso=>iso?iso.split('-').reverse().join('/'):'—';
 let lastSku='',cached=null,busy=false,requestVersion=0;
+const changeSignature=sku=>productChanges(sku).map(x=>[x.id,x.timestamp,(x.changes||[]).join('|'),x.note||''].join(':')).join(';;');
 function productChanges(sku){
  return getChanges().filter(x=>x.sku===sku&&historyBrazilDate(x.timestamp))
   .sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));
@@ -308,7 +309,7 @@ async function fetchAll(force=false){
    }
   }
   if(id!==requestVersion||e('evoSku').value!==sku)return;
-  cached={sku,model,jobs,raw,found,errors,syncedCampaigns:new Set()};
+  cached={sku,model,jobs,raw,found,errors,syncedCampaigns:new Set(),changeSignature:changeSignature(sku)};
   if(errors.length)e('evoStatus').textContent='Alguns períodos não puderam ser consultados ('+errors.length+
    '). Eles serão marcados como indisponíveis; nenhum dado será inventado.';
   if(found.size>1){
@@ -358,6 +359,10 @@ function useCampaign(campaignId){
  if(missing)e('evoStatus').textContent+=' '+missing+' bloco(s) sem dados para o ID selecionado; não foram estimados.';
 }
 function open(){
+ const wanted=e('productSelect')?.value||e('evoSku').value;
+ if(cached&&wanted===cached.sku&&cached.changeSignature!==changeSignature(wanted)){
+  cached=null;lastSku='';
+ }
  populate();
  const sku=e('evoSku').value;
  if(!sku)return;
