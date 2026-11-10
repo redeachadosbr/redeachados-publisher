@@ -2107,6 +2107,106 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    message:'Título e descrição do kit reutilizados; apenas os textos validados são marcados como revisados. Não houve publicação na Shopee.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
 });
+// Retomada do kit aprovado que foi vinculada ao anúncio duplicado.
+// Recuperar APENAS fonte privada já autorizada do mesmo kit, nunca copiar
+// confirmações de publicação ou jobs do Item ID anterior. Nenhum POST Shopee.
+app.post('/api/shopee/kits/optimization/recover-pending',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const kitSku=String(req.body?.kitSku||'').trim(),sku=validateSkuLookup(req.body?.sku);
+  const itemId=validItemId(req.body?.itemId),modelId=String(req.body?.modelId??'0');
+  if(kitSku!=='KIT-TX24505K-TX24508E'||sku!=='TX24505K'||
+     itemId!=='58222633999'||modelId!=='0')
+   throw Error('Esta recuperação exige o kit, Item ID e SKU principal originais confirmados.');
+  const saved=await loadKitDraft(auth.shopId,kitSku),link=saved?.optimization;
+  if(!kitOptimizationLinkIsCurrent(saved,link)||String(link.itemId)!==itemId||
+     String(link.modelId||'0')!==modelId||String(link.sku)!==sku||
+     (saved?.skus||[]).map(String).join('|')!=='TX24505K|TX24508E')
+   throw Error('O vínculo e a composição do kit precisam estar confirmados antes de recuperar as pendências.');
+  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  if(String(live.item_sku||'').trim()!==sku||
+     !['NORMAL','UNLIST'].includes(String(live.item_status||'').toUpperCase()))
+   throw Error('A Shopee não confirmou a SKU principal do anúncio original em situação editável.');
+  const oldId='58222623880',oldModel='0';
+  const oldReview=await getWorkflowReview(auth.shopId,oldId,oldModel);
+  const oldKit=oldReview?.review_state?.kitOptimization;
+  if(oldReview?.sku!==sku||String(oldKit?.kitSku)!==kitSku||
+     String(oldKit?.itemId)!==oldId||String(oldKit?.mainSku)!==sku)
+   throw Error('O anúncio anterior não possui revisão autorizada deste mesmo kit.');
+  const oldJob=await readShopeeExecution(auth.shopId,oldId,oldModel);
+  if(['running','uncertain'].includes(oldJob?.state))
+   throw Error('Há uma execução do anúncio antigo sem confirmação. Não recuperar mídias até reconciliar.');
+  const recovered=[],pending=[];
+  let current=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(current?.sku&&current.sku!==sku)
+   throw Error('O anúncio original está vinculado a outra SKU.');
+  if(current?.review_state?.stages?.video?.reviewed!==true){
+   try{
+    const prior=oldReview.review_state||{};
+    const original=await getShopeeManualVideo(auth.shopId,oldId,oldModel,sku);
+    if(prior.stages?.video?.reviewed!==true||!original?.sha256||
+       String(prior.videoSha256||'')!==String(original.sha256))
+     throw Error('Vídeo anterior sem arquivo e revisão correspondente.');
+    let target=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+    if(target&&target.sha256!==original.sha256)
+     throw Error('A SKU original já possui um vídeo diferente: preservar revisão manual.');
+    if(!target){
+     // Integridade SHA-256 verificada antes de criar arquivo privado da SKU correta.
+     const bytes=await downloadShopeeManualVideo(original);
+     await importShopeeManualVideo(auth.shopId,itemId,modelId,sku,bytes,
+      {mime:original.mime_type,filename:original.filename});
+     target=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+    }
+    if(target?.sha256!==original.sha256)
+     throw Error('A cópia privada do vídeo não foi confirmada.');
+    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+     stage:'video',reviewed:true,assetSha256:target.sha256
+    });
+    recovered.push('video');
+   }catch(error){pending.push('Vídeo: '+String(error.message||error).slice(0,175));}
+  }
+  current=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(current?.review_state?.stages?.technical?.reviewed!==true){
+   try{
+    const previous=oldReview.review_state||{};
+    if(previous.stages?.technical?.reviewed!==true||
+       !Array.isArray(previous.attributes)||!previous.attributes.length)
+     throw Error('Ficha anterior sem atributos realmente revisados.');
+    const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
+     {expectedSku:sku,expectedModelId:modelId});
+    const declarations=applySellerDeclarations(previous.attributes,
+     record.attributeAudit?.attributes||[]);
+    const scoped=scopeTechnicalReviewChanges(declarations,
+     {record,live,auditChanges:attributeAuditForChanges});
+    await hydrateCategoryChoices(record,scoped.changes,cfg,auth,live);
+    const classified=selectValidTechnicalChanges(scoped.changes,
+     attributeAuditForChanges(scoped.changes,record,live));
+    // Não promover sugestões não aprovadas de WeDrop nem campos incompatíveis.
+    const usable=classified.valid.length?classified.valid:
+     previous.attributes.filter(x=>scopeTechnicalReviewChanges([x],
+      {record,live,auditChanges:attributeAuditForChanges}).ignoredUnchanged===1);
+    const verified=selectValidTechnicalChanges(usable,
+     attributeAuditForChanges(usable,record,live));
+    if(!verified.valid.length)
+     throw Error('Nenhum atributo compatível da revisão anterior foi confirmado.');
+    const finalAudit=attributeAuditForChanges(verified.valid,record,live);
+    if(Number(finalAudit?.missingMandatory)>0)
+     throw Error('A Shopee exige atributos obrigatórios adicionais.');
+    compileAttributes(verified.valid,record,live);
+    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+     stage:'technical',reviewed:true,attributes:verified.valid,
+     matrixTechnical:technicalMatrixSource({sku,record,attributes:verified.valid})
+    });
+    recovered.push('technical');
+   }catch(error){pending.push('Ficha técnica: '+String(error.message||error).slice(0,175));}
+  }
+  res.json({ok:true,marketplaceUpdated:false,recovered,pending,
+   message:recovered.length?'Mídia e/ou ficha revisada recuperadas no anúncio original. Agora executar somente as diferenças aprovadas.':
+    'Não foi possível recuperar outras etapas automaticamente; as revisões já salvas permanecem intactas.'});
+ }catch(error){res.status(409).json({ok:false,marketplaceUpdated:false,error:String(error.message||error).slice(0,350)});}
+});
 // Retomada barata e somente-leitura apos erro 502/503 na preparacao.
 // Pode comprovar se o primeiro POST terminou antes da queda do proxy.
 // Nunca considera apenas um dos dois vinculos suficiente para executar.

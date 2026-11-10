@@ -7,6 +7,19 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=read('public/app.js');
 const server=read('server.js');
 
+test('retomada prepara escopos isolados sem abandonar vídeo e ficha técnica',()=>{
+ assert.match(app,/\['video','technical','images','seo','description','fiscal','variants','discount'\]/);
+ assert.match(app,/kits\/optimization\/recover-pending/);
+ assert.match(app,/recovered\.recovered\?\.length/);
+ const route=server.slice(server.indexOf("app.post('/api/shopee/kits/optimization/recover-pending'"),
+  server.indexOf("app.get('/api/shopee/kits/optimization/link-status'"));
+ assert.match(route,/mustLogin,requireWeDropAdmin/);
+ assert.match(route,/downloadShopeeManualVideo\(original\)/);
+ assert.match(route,/oldReview\.review_state/);
+ assert.match(route,/compileAttributes\(verified\.valid,record,live\)/);
+ assert.match(route,/marketplaceUpdated:false/);
+ assert.doesNotMatch(route,/update_item|add_discount_item|delete_item/);
+});
 test('um clique autoriza varredura e retomada das nove etapas sem exigir segundo clique',()=>{
  const start=app.indexOf('function kitAutoSweepResume(');
  const end=app.indexOf('let kitAllStagesStarting=false;',start);

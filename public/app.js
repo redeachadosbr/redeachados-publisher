@@ -6294,9 +6294,12 @@ async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
  const stages=(audit?.stages||[]).filter(x=>x.id!=='final'&&
   !['confirmed','not_applicable'].includes(x.status));
  const pending=new Set(stages.map(x=>x.id));
+ // A auditoria pode estar pendente em uma única etapa embora o plano geral
+ // não tenha ações. Procurar cada escopo APROVADO, sem inventar mídia/revisão.
  const candidates=[firstStage,
-  ...(pending.has('fiscal')?['fiscal']:[]),
-  ...(pending.has('discount')?['discount']:[])].filter((stage,i,list)=>list.indexOf(stage)===i);
+  ...['video','technical','images','seo','description','fiscal','variants','discount']
+   .filter(stage=>pending.has(stage))
+ ].filter((stage,i,list)=>list.indexOf(stage)===i);
  const diagnostics=[];
  for(const stage of candidates){
   if(!kitAutoSweepMatches(target))return {plan:null,diagnostics:['O Item ID mudou durante a preparacao.']};
@@ -6434,6 +6437,26 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   if(!scope||![...scope.options].some(x=>x.value==='all'))
    return {ok:false,error:'Modo de execução completa indisponível; atualize a página.'};
   optimizerWorkflowActivateOnly('execution');
+  optimizerExecNotice('Recuperando vídeo e ficha técnica anteriormente aprovados para este kit, sem publicar no anúncio errado.','info');
+  if(kitSku==='KIT-TX24505K-TX24508E'&&String(itemId)==='58222633999'){
+   try{
+    const recovered=await json('/api/shopee/kits/optimization/recover-pending',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({kitSku,sku,itemId,modelId}),
+     signal:AbortSignal.timeout(125000)
+    });
+    if(!kitAutoSweepMatches({kitSku,sku,itemId,modelId}))
+     return {ok:false,error:'O kit mudou durante a recuperação de pendências.'};
+    if(recovered.recovered?.length)optimizerExecNotice(
+     'Revisões recuperadas para o anúncio original: '+recovered.recovered.join(', ')+
+     '. Nenhuma publicação foi presumida.','success');
+    if(recovered.pending?.length)optimizerExecNotice(
+     'Pendências que ainda exigem confirmação: '+recovered.pending.join(' | '),'warning');
+   }catch(error){
+    optimizerExecNotice('Recuperação de fontes anteriores não concluída: '+
+     String(error.message||error)+'. O anúncio original permanece protegido.','warning');
+   }
+  }
   optimizerExecNotice('Conferindo todas as 9 etapas reais da Shopee: imagens, vídeo, título, descrição, ficha técnica, variações, fiscal, desconto e confirmação final.','info');
   await optimizerRootAuditRefresh(true);
   const audit=optimizerRootAuditCache.get([sku,String(itemId),String(modelId||'0')].join('|'))?.audit;
