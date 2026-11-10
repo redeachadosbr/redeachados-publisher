@@ -421,10 +421,10 @@
       <p id="historyRangeSummary" class="hist-range-summary" aria-live="polite">Escolha as datas para filtrar as modificações.</p>
       <p class="tiny">A situação exibida é a atual: prioriza a API desta sessão quando disponível e, caso contrário, usa o status manual. Registros de produtos retirados continuam no histórico.</p>
       <div class="table-scroll" style="margin-top:10px"><table class="history-table"><thead id="changeTableHead"><tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="changeHistoryRows"></tbody></table></div>
-      <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
+      <p class="tiny">Histórico local preservado no backup JSON e sincronizado com o Google Drive quando a conexão estiver disponível.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.5</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.6</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
 <script>
@@ -1641,6 +1641,34 @@ function historyDateAllowed(timestamp,from,to){
  return !!day&&(!from||day>=from)&&(!to||day<=to);
 }
 function historyDateRange(){return {from:$('historyFromDate').value,to:$('historyToDate').value}}
+function historyRunFromChange(change){
+ if(!change||!readProducts().some(p=>p.sku===change.sku)){
+  alert('SKU não encontrada no cadastro. Cadastre o produto antes de analisar os Ads.');return false;
+ }
+ const start=historyMoveDay(historyBrazilDate(change.timestamp),1);
+ const lastComplete=historyMoveDay(brazilTodayISO(),-1);
+ const next=getChanges().filter(x=>x.sku===change.sku&&Date.parse(x.timestamp)>Date.parse(change.timestamp))
+  .sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp))[0];
+ const beforeNext=next?historyMoveDay(historyBrazilDate(next.timestamp),-1):null;
+ const end=beforeNext&&beforeNext<lastComplete?beforeNext:lastComplete;
+ if(!start||!end||start>end){
+  alert('Não há dias completos após essa modificação antes da próxima alteração ou de hoje.');return false;
+ }
+ $('campaignAdsFilter').value='';
+ refreshProductSelect();
+ $('productSelect').value=change.sku;
+ $('productSelect').dispatchEvent(new Event('change',{bubbles:true}));
+ $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
+ for(const id of ['spent','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart'])$(id).value='';
+ $('apiStatus').className='api-status';
+ $('apiStatus').textContent='Após '+(change.changes||[]).join(' + ')+' de '+fmtStamp(change.timestamp)+
+  ': '+apiDate(start)+' até '+apiDate(end)+
+  (next?' · antes da próxima alteração.':'.')+
+  '\nClique em Consultar período selecionado. Indicadores de outro período foram limpos.';
+ switchTab('simulador');
+ $('apiReadBtn').scrollIntoView({behavior:'smooth',block:'center'});
+ return true;
+}
 function historyAdsStatus(sku,productsBySku){
  const product=productsBySku.get(String(sku||'').trim());
  return product?effectiveAdsStatus(product):'unknown';
@@ -1702,7 +1730,11 @@ function renderChangeHistory(){
  const a=getChanges().filter(keep).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
  if(!badRange)summary.textContent=a.length+' modificação(ões)'+(from?' desde '+apiDate(from):'')+
   (to?' até '+apiDate(to):'')+'. Exibidas em ordem cronológica.';
- body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
+ body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><div class="hist-action-buttons"><button class="btn-secondary mini" data-analyze-change="'+safe(x.id)+'" type="button">Analisar após</button><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></div></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
+ for(const btn of body.querySelectorAll('[data-analyze-change]'))btn.addEventListener('click',()=>{
+  const record=getChanges().find(x=>x.id===btn.dataset.analyzeChange);
+  historyRunFromChange(record);
+ });
  for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
   if(!confirm('Excluir este registro manual?'))return;
   setChanges(getChanges().filter(x=>x.id!==btn.dataset.delChange));
