@@ -156,6 +156,7 @@ function renderProvisional(d,errors=[]){
    label('Investimento',brMoney(d.spent))+
    label('ROAS realizado',brRatio(realised))+
    label('Vendas atribuídas',d.revenue===null?'Não informado':brMoney(d.revenue))+
+   label('Itens vendidos (XLSX)',d.itemsSoldSource==='xlsx_fulfilled'?brNum(d.itemsSold):'Não confirmado')+
    label('Cliques / CTR',brNum(d.clicks)+' / '+brPct(ctr))+
    label('Meta de ROAS',d.target>0?brRatio(d.target):'Não confirmada')+
    label('ROAS p/ margem desejada',min===null?(finance?'Inviável':'Não validado'):brRatio(min))+
