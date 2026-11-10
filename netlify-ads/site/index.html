@@ -1386,6 +1386,25 @@ function summarizeOrderRows(rows){
   status:headers('status'),products:headers('produtos'),
   order:headers('numero do pedido'),date:headers('data de criacao')
  };
+ // Lucro líquido genérico não informa se Ads já foram descontados.
+ const profitColumns=['lucro antes de ads','lucro liquido antes de ads',
+  'lucro antes dos ads','saldo antes de ads','resultado antes de ads',
+  'lucro operacional antes de ads','lucro operacional sem ads'];
+ const profitCol=profitColumns.map(headers).find(i=>i>=0)??-1;
+ const ambiguousProfit=profitCol<0&&['lucro liquido','lucro líquido','lucro com ads','lucro depois de ads']
+  .some(key=>headers(key)>=0);
+ const moneyCell=value=>{
+  if(typeof value==='number')return Number.isFinite(value)?Math.round(value*100)/100:null;
+  let valueText=String(value??'').trim().replace(/R\$|\s/g,'');
+  if(!valueText||!/^-?[\d.,]+$/.test(valueText))return null;
+  if(valueText.includes(',')&&valueText.includes('.')){
+   valueText=valueText.lastIndexOf(',')>valueText.lastIndexOf('.')?
+    valueText.replace(/\./g,'').replace(',','.'):valueText.replace(/,/g,'');
+  }else if(valueText.includes(','))valueText=valueText.replace(',','.');
+  const n=Number(valueText);
+  return Number.isFinite(n)?Math.round(n*100)/100:null;
+ };
+ const financialRecords=new Map();
  if(Object.values(col).some(v=>v<0))throw Error('Planilha incompatível: faltam Status, Produtos, Número do Pedido ou Data de Criação.');
  const records=new Map(),statusCounts={},usedOrders=new Set();
  const seenOrderLines=new Set(),seenSkuOrders=new Set(),seenSkuDateOrders=new Set();
@@ -1397,6 +1416,24 @@ function summarizeOrderRows(rows){
   const status=orderStatusGroup(rawStatus),date=orderDateISO(row?.[col.date]);
   const products=String(row?.[col.products]||'');
   if(!order)continue;
+  // Conciliação por pedido: não multiplicar o lucro quando o pedido possui vários SKUs.
+  // Linhas duplicadas ou posteriores cancelamentos ficam identificados e não geram saldo confirmado.
+  const financial=financialRecords.get(order)||{orderSn:order,date,skus:new Set(),statuses:new Set(),
+   beforeAds:null,conflict:false};
+  if(financial.date&&date&&financial.date!==date)financial.conflict=true;
+  if(!financial.date&&date)financial.date=date;
+  financial.statuses.add(status);
+  for(const match of products.matchAll(/SKU\s*:\s*([A-Za-z0-9._-]+)\s*\(\s*(\d+)\s*x\s*\)/gi)){
+   const normalized=normalizeSupplierSku(match[1]);if(normalized)financial.skus.add(normalized);
+  }
+  if(profitCol>=0){
+   const profit=moneyCell(row?.[profitCol]);
+   if(profit!==null){
+    if(financial.beforeAds!==null&&Math.abs(financial.beforeAds-profit)>0.001)financial.conflict=true;
+    financial.beforeAds=profit;
+   }
+  }
+  financialRecords.set(order,financial);
   // Um pedido pode ocupar várias linhas com SKUs diferentes. Não descartar
   // outras linhas do mesmo pedido, mas não contar cópias idênticas duas vezes.
   const signature=JSON.stringify([order,date,products.trim()]);
@@ -1431,7 +1468,15 @@ function summarizeOrderRows(rows){
    records.set(sku,rec);
   }
  }
+ const financialOrders=[...financialRecords.values()].map(x=>({
+  orderSn:x.orderSn,date:x.date,skus:[...x.skus],
+  status:x.statuses.has('cancelled')?'cancelled':x.statuses.has('unknown')?'unknown':
+   x.statuses.has('pending')?'pending':x.statuses.has('shipped')?'shipped':
+   x.statuses.has('delivered')?'delivered':'unknown',
+  beforeAds:x.beforeAds,conflict:x.conflict
+ }));
  return {formatVersion:3,orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
+  financialOrders,financialBasis:profitCol>=0?'before_ads':ambiguousProfit?'ambiguous':'missing',
   firstDate,lastDate,withoutDate:noDateOrders.size,duplicateLines,
   importedAt:new Date().toISOString()};
 }
