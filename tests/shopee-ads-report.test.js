@@ -79,7 +79,7 @@ test('consulta desempenho com lista autodescoberta sem passar de 100 IDs',async(
   assert.equal(req.length,5);
   assert.equal(req.filter(x=>x.path.endsWith('campaign_setting_info')).length,2);
   assert.equal(req.filter(x=>x.path.endsWith('daily_performance')).length,2);
-  assert.equal(req.filter(x=>x.path.endsWith('campaign_setting_info'))[0].query.info_type_list,'1');
+  assert.equal(req.filter(x=>x.path.endsWith('campaign_setting_info'))[0].query.info_type_list,'1,3');
   assert.equal(req.filter(x=>x.path.endsWith('daily_performance'))[0].query.campaign_id_list.split(',').length,100);
   assert.equal(req.filter(x=>x.path.endsWith('daily_performance'))[1].query.campaign_id_list.split(',').length,15);
   assert.equal(result.campaignCount,115);
@@ -168,4 +168,29 @@ test('rotinas financeiras sem fallback não alteram silenciosamente o período',
   if(r.path.endsWith('campaign_setting_info'))return {response:{campaign_list:[]}};
   throw Error('ads.performance.error_date_in_future');
  },{start:'2026-10-11',end:'2026-10-18'}),/error_date_in_future/);
+});
+
+test('configuracoes Ads leem orçamento atual e ROAS alvo sem inventar ausências',()=>{
+ const records=settingsFromShopeeResponse({response:{campaign_list:[
+  {campaign_id:101,common_info:{campaign_status:'ongoing',campaign_budget:15},auto_bidding_info:{roas_target:25}},
+  {campaign_id:102,common_info:{campaign_status:'ongoing',campaign_budget:0},auto_bidding_info:{roas_target:0}},
+  {campaign_id:103,common_info:{campaign_status:'ongoing'}}
+ ]}},['101','102','103']);
+ assert.equal(records.get('101').campaignBudget,15);
+ assert.equal(records.get('101').roasTarget,25);
+ assert.equal(records.get('102').campaignBudget,0);
+ assert.equal(records.get('102').roasTarget,null);
+ assert.equal(records.get('103').campaignBudget,null);
+ assert.equal(records.get('103').roasTarget,null);
+});
+test('Shopee sem suporte a info_type 3 volta com segurança ao tipo 1',async()=>{
+ const called=[];
+ const settings=await fetchShopeeCampaignSettings(cfg,auth,async(_cfg,req)=>{
+  called.push(req.query.info_type_list);
+  if(req.query.info_type_list==='1,3')throw Error('Tipo não suportado');
+  return {response:{campaign_list:[{campaign_id:123,common_info:{campaign_status:'ongoing',campaign_budget:10}}]}};
+ },[{campaignId:'123'}]);
+ assert.deepEqual(called,['1,3','1']);
+ assert.equal(settings.get('123').campaignBudget,10);
+ assert.equal(settings.get('123').roasTarget,null);
 });
