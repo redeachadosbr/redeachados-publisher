@@ -57,8 +57,10 @@ const currentCampaign=sku=>{
 function showFinancialAlert(r,result){
  const candidate=r?.suggestedROAS;
  const floor=r?.fin?.minRoas;
- const below=Number.isFinite(floor)&&candidate!==null&&candidate!==undefined&&candidate<floor;
- const actionReduction=r?.scenario===1||r?.scenario===2;
+ const proposal=candidate??r?.unlimitedRule?.candidate??null;
+ const below=Number.isFinite(floor)&&proposal!==null&&proposal!==undefined&&proposal<floor;
+ const actionReduction=r?.scenario===1||r?.scenario===2||
+  (r?.unlimitedRule?.candidate!==null&&r?.unlimitedRule?.candidate!==undefined&&r.unlimitedRule.candidate<r.d.target);
  let warning='';
  if(actionReduction&&(below||(result.afterAds!==null&&result.afterAds<0))){
   warning='Atenção financeira: reduzir o ROAS-alvo pode aumentar a entrega e o gasto'+
@@ -69,7 +71,6 @@ function showFinancialAlert(r,result){
  get('financeCumulativeAlert').hidden=!warning;
 }
 function show(result,context,r){
- const isFull=!!result.spent;
  setValues(result.spent??result.knownSpend??null,result.operatingBeforeAds,result.afterAds,
   !result.spent&&result.knownSpend!==null);
  if(result.afterAds!==null){
@@ -161,6 +162,7 @@ async function refresh(report,{force=false}={}){
   const orders=core.orderBalance(rows,sku);
   const xlsx=window.RedeAdsFinanceXlsx?.summarize?.(sku,start,end)||null;
   const result=core.reconcile({ads,orders,financialCoverage:financeCoverage,xlsx});
+  if(result.status==='pending'&&xlsx?.reason)result.reasons.push('XLSX: '+xlsx.reason);
   if(!financeCoverage)result.reasons=[...(result.reasons||[]),...financeProblems.slice(0,4)];
   if(signal.aborted||ticket!==token)return;
   lastCache={key:cacheKey,result,context:{orderCount:orders.orderCount}};
