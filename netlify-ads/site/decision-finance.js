@@ -172,8 +172,9 @@ async function refresh(report,{force=false}={}){
   if(result.status==='pending'&&xlsx?.reason)result.reasons.push('XLSX: '+xlsx.reason);
   if(!financeCoverage)result.reasons=[...(result.reasons||[]),...financeProblems.slice(0,4)];
   if(signal.aborted||ticket!==token)return;
-  lastCache={key:cacheKey,result,context:{orderCount:orders.orderCount}};
-  show(result,{orderCount:orders.orderCount},r);
+  const orderCount=result.source==='xlsx_before_ads'?Number(xlsx?.orders||0):orders.orderCount;
+  lastCache={key:cacheKey,result,context:{orderCount}};
+  show(result,{orderCount},r);
  }catch(error){
   if(signal.aborted||ticket!==token)return;
   setValues(null,null,null);setStatus('Cálculo financeiro pendente: '+String(error.message||error)+
