@@ -26,7 +26,8 @@ test('Ponte faz retry não destrutivo e não usa WeDrop de SKU unitária para ki
  assert.match(app,/visualReferenceCandidates\(existingKit\?\(w.imageUrls\|\|\[\]\)/);
  assert.match(app,/isVisualReferenceError\(recovered.error\)/);
  assert.match(app,/isVisualReferenceError\(startResult\?\.error\)/);
- assert.match(app,/completed:stored/);
+ assert.match(app,/const bridgeCompleted=deferredThird\?/);
+ assert.match(app,/completed:bridgeCompleted/);
  assert.match(server,/if\(wedropImage&&!editCurrent&&!listingIsKit\)/);
  assert.match(images,/for\(const u of sources\)\{/);
  assert.match(images,/break; \/\/ Referência boa/);
