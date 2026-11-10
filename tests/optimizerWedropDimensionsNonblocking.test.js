@@ -78,3 +78,19 @@ test('a ponte ignora temporariamente 03 na fila, mas mantém o status real de 8/
  assert.match(bridge,/restart:freshThird\|\|deferredThird/);
  assert.doesNotMatch(bridge,/method:'DELETE'/);
 });
+
+test('falhas de rede não são confundidas com cotas pendentes na Ponte',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const resume=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer()'),
+  app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE',app.indexOf('async function optimizerChatgptContinueFromServer()')));
+ assert.match(resume,/const dimensionPending=\//);
+ assert.match(resume,/if\(!optimizerImagesSameSku\(w\)\|\|!dimensionPending\)throw error;/);
+});
+
+test('a mensagem final do lote parcial mantém a pendência da imagem 03 visível',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const batch=app.slice(app.indexOf("$('#optimizerImagesGenerateAll')?.addEventListener?.('click'"),
+  app.indexOf("$('#optimizerImagesUpload')?.addEventListener?.('click'"));
+ assert.match(batch,/:deferredThird\?'Lote parcial:/);
+ assert.match(batch,/Imagem 03 pendente de dimensões WeDrop confirmadas/);
+});
