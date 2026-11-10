@@ -707,7 +707,98 @@ function renderCriticalCampaignDiagnosis(r){
   $('changeNote').scrollIntoView({behavior:'smooth',block:'center'});
  });
 }
-function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;$('resultScenario').textContent=statusLabel(r);$('resultBadge').className='status '+(r.unlimitedRule?(r.unlimitedRule.stage==='meta atingida'?'green':r.unlimitedRule.risk?'red':''):(r.scenario===4?'green':r.meets===false?'red':''));
+function makeSimpleDecision(r){
+ const d=r.d,p=readProducts().find(x=>x.sku===d.sku);
+ const actual=r.actual,spent=r.dailySpend,ref=r.dailyReference;
+ const personal=d.minDesiredRoas>0?d.minDesiredRoas:null;
+ const finance=r.fin?r.fin.minRoas:null;
+ const financialBreak=r.fin?r.fin.breakeven:null;
+ const minimum=finance!==null&&personal!==null?Math.max(finance,personal):finance??personal;
+ const floorText=minimum===null?'não validado':Number.isFinite(minimum)?roas(minimum):'inviável';
+ const missingRevenue=actual===null;
+ const mismatch=d.actual!==null&&d.revenue!==null&&actual!==null&&Math.abs(d.actual-actual)>.1;
+ const costly=!!r.fin&&(!Number.isFinite(financialBreak)||(actual!==null&&actual<financialBreak));
+ const poorMargin=!!r.fin&&actual!==null&&actual<r.fin.minRoas;
+ const dailyOver=ref!==null&&spent!==null&&spent>ref;
+ const enough=r.days>=7&&d.periodClosed;
+ const diagnosed=criticalCampaignDiagnosis(r,p,getChanges());
+ let title='',message='',tone='neutral',category='';
+ if(mismatch){
+  title='Conferir números da campanha';
+  message='O ROAS informado não corresponde a vendas ÷ investimento. Confira se os dados são da mesma campanha e período antes de alterar preço ou anúncios.';
+  tone='risk';
+ }else if(missingRevenue){
+  title='Confirmar vendas e ROAS';
+  message='Ainda não há ROAS real comparável. Consulte o período pela API ou informe as vendas atribuídas e o investimento corretos.';
+ }else if(costly){
+  title='Proteger margem · possível prejuízo';
+  message='Não reduza o preço nem a meta ROAS para buscar mais cliques. Confira custo do fornecedor, taxas e receita atribuída; se necessário, limite o gasto REAL na Shopee.';
+  tone='risk';
+ }else if(!r.fin){
+  title='Cadastrar custo antes de investir mais';
+  message='Falta validar custo, taxas e preço do SKU. O mínimo de '+floorText+' ainda não prova lucro; complete o cadastro e refaça a análise.';
+ }else if(poorMargin||(minimum!==null&&actual<minimum)){
+  title='Revisar oferta · ROAS mínimo não atingido';
+  message='Não aumente o gasto nem reduza a meta agora. Confira preço final, frete, fotos e conversão; priorize a margem do produto.';
+  tone='risk';
+ }else if(dailyOver){
+  title='Controlar gasto diário';
+  message='A média investida passou dos '+money(ref)+'/dia desejados. Revise a campanha; se o orçamento é ilimitado, só um teto real configurado na Shopee impede gastos adicionais.';
+  tone='risk';
+ }else if(!enough){
+  title='Manter e observar';
+  message='O ROAS alcança o mínimo de proteção, mas a amostra ainda é curta ou inclui hoje. Observe 7 dias completos antes de alterar capa, preço ou ROAS.';
+  tone='healthy';
+ }else{
+  const first=diagnosed.action.find(x=>x.category&&x.tone!=='risk'&&!x.recent);
+  if(first&&first.category==='Capa'){
+   title='Testar nova capa';
+   message='O anúncio recebeu impressões, mas poucos cliques. Compare a foto principal com concorrentes, troque só a capa e acompanhe o CTR.';
+   category='Capa';
+  }else if(first&&first.category==='Título'){
+   title='Revisar título do produto';
+   message='O anúncio tem pouca exposição ou baixo interesse. Revise termos de busca reais, tipo e benefícios comprovados; não mude capa e título juntos.';
+   category='Título';
+  }else if(first&&first.category==='Preço'){
+   title='Avaliar preço com margem protegida';
+   message='Há sinais de dificuldade de conversão. Compare o preço com o mercado e simule lucro antes de aplicar qualquer desconto.';
+   category='Preço';
+  }else if(first&&first.category==='Imagens'){
+   title='Revisar frete e conversão';
+   message='Há cliques sem conversão suficiente. Confira preço final, frete, avaliações, imagens e benefícios antes de mudar o ROAS.';
+   category='Imagens';
+  }else if(r.meets){
+   title='Manter campanha';
+   message='ROAS acima do mínimo e do alvo. Continue acompanhando gasto diário, vendas e margem; não aumente a meta por impulso.';
+   tone='healthy';
+  }else if(ref!==null&&spent!==null&&spent<ref*.5){
+   title='Entrega abaixo do desejado';
+   message='ROAS acima do mínimo, mas gasto baixo. Compare entrega e conversão; após 7 dias completos, avalie um ajuste gradual na meta, nunca automático.';
+  }else{
+   title='Manter e acompanhar';
+   message='O ROAS protege o mínimo. Acompanhe o gasto e a conversão, sem trocar vários elementos do produto ao mesmo tempo.';
+   tone='healthy';
+  }
+ }
+ return {title,message,tone,category,minimum,personal,finance,actual,spent,ref,enough};
+}
+function renderSimpleDecision(r,decision){
+ const x=decision||makeSimpleDecision(r);
+ $('simpleDailySpent').textContent=r.dailySpend===null?'—':money(r.dailySpend)+'/dia';
+ $('simpleDailyGoal').textContent=x.ref===null?'Informe o gasto desejado':
+   'Desejado: '+money(x.ref)+'/dia'+(r.d.budgetMode==='unlimited'?' (referência)':' (teto real)');
+ $('simpleRoas').textContent=x.actual===null?'—':roas(x.actual);
+ $('simpleRoasGoal').textContent='Mínimo de proteção: '+(x.minimum===null?'não validado':Number.isFinite(x.minimum)?roas(x.minimum):'inviável');
+ const outer=$('simpleActionBox');outer.className='ads-simple-call'+(x.tone==='risk'?' risk':x.tone==='healthy'?' healthy':'');
+ $('simpleActionTitle').textContent=x.title;
+ $('simpleActionText').textContent=x.message;
+ const dailyStatus=x.ref===null?'Sem referência de gasto':x.spent===null?'Gasto não confirmado':
+  x.spent>x.ref?'Acima do desejado':x.spent<x.ref*.5?'Gasto abaixo de 50% do desejado':'Dentro da referência';
+ $('simpleBasis').textContent=dailyStatus+' · '+(x.enough?'Período fechado com 7+ dias':'Prévia: dados ainda em observação')+
+  (r.fin?' · Custos cadastrados':' · Custos financeiros pendentes')+
+  '. Mais detalhes em “Ver todas as métricas”.';
+}
+function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent=simpleDecision.title;renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(r.unlimitedRule?(r.unlimitedRule.stage==='meta atingida'?'green':r.unlimitedRule.risk?'red':''):(r.scenario===4?'green':r.meets===false?'red':''));
 $('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
 const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
 const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
