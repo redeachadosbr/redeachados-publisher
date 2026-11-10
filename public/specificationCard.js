@@ -1,7 +1,7 @@
 // Imagem 03: cotas sobre o entorno do produto e dados laterais mínimos.
 // Fonte única: "Informações da WeDrop" SALVAS DA PRÓPRIA SKU.
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop,confirmedCatalogCrossCheckedDimensionsFromWeDrop} from './productDimensions.js?v=20261105-exact-sku-triple';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop,confirmedCatalogCrossCheckedDimensionsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
 
 export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy='',sourceSaved=false,catalogMeasurements=null}={}){
  // O texto salvo manualmente em Informações da WeDrop já é vinculado pelo
