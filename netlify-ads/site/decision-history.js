@@ -27,7 +27,7 @@ const orderNote=document.createElement('div');orderNote.className='ads-history-o
 byId('itemsSold').closest('.field').append(orderNote);
 const historyLabel=periodSelect.closest('label');
 const baseLabel=historyLabel?.firstChild?.nodeValue||'Período';
-let phases=[],selectedSku='',phaseKey='',busy=false,revision=0,pending=null,lastLoaded=null,salesFlag='xlsx_unconfirmed';
+let phases=[],selectedSku='',phaseKey='',historySignature='',busy=false,revision=0,pending=null,lastLoaded=null,salesFlag='xlsx_unconfirmed';
 function changesFor(sku){
  return getChanges().filter(x=>x.sku===sku&&historyBrazilDate(x.timestamp))
   .sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));
@@ -70,9 +70,15 @@ function resetUi(){
  historyLabel.firstChild.nodeValue=baseLabel;
  salesFlag='manual_or_unknown';lastLoaded=null;pending=null;phaseKey='';
 }
+function signature(sku){return changesFor(sku).map(x=>[x.id,x.timestamp,(x.changes||[]).join('/'),x.note||''].join('|')).join(';')}
+function refreshFromHistory(){
+ const sku=skuSelect.value,now=signature(sku);
+ if(!sku||historySignature===now)return false;
+ onProductChange(sku);return true;
+}
 function onProductChange(sku,preferId){
  const currentValue=sku===selectedSku?periodSelect.value:'';
- revision++;selectedSku=sku;
+ revision++;selectedSku=sku;historySignature=signature(sku);
  phases=build(sku);
  if(phases.length){
   historyLabel.firstChild.nodeValue='Período do histórico';
@@ -276,7 +282,7 @@ function openFor(sku,changeId){
  void consult();
  return true;
 }
-const api={isSelected,applyDates,analysisDates,salesSource,consult,onProductChange,chooseCampaign,ordersUpdated,openFor};
+const api={isSelected,applyDates,analysisDates,salesSource,consult,onProductChange,chooseCampaign,ordersUpdated,openFor,refreshFromHistory};
 window.RedeAdsHistory=api;
 byId('adsForm')?.addEventListener('submit',event=>{
  const p=current();
