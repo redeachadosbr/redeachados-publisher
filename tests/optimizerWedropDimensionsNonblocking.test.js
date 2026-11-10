@@ -126,13 +126,13 @@ test('SKU 895332: medidas 14 x 21 x 21 são da embalagem e nunca viram cotas do 
   '20cm altura x 19cm diamentro/',
   'Dimensões da embalagem: 14cm altura x 21cm largura x 21cm comprimento',
   'ALTURA', '14cm', 'LARGURA', '21cm', 'COMPRIMENTO', '21cm'
- ].join('\\n')});
+ ].join('\n')});
  assert.deepEqual(product?.measurements.map(x=>[x.label,x.value]),[
   ['ALTURA','20 cm'],['DIAMETRO','19 cm']
  ]);
  assert.doesNotMatch(JSON.stringify(product),/14 cm|21 cm/);
  assert.equal(confirmedSpecCard({...base,sourceText:
-  'ALTURA\\n14cm\\nLARGURA\\n21cm\\nCOMPRIMENTO\\n21cm'}),null,
+  'ALTURA\n14cm\nLARGURA\n21cm\nCOMPRIMENTO\n21cm'}),null,
   'campos logísticos isolados não validam medidas comerciais');
  assert.equal(confirmedSpecCard({...base,sourceText:
   'Dimensões da embalagem: 14cm altura x 21cm largura x 21cm comprimento'}),null,
