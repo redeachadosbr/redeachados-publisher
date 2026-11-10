@@ -355,7 +355,7 @@
 <input id="minDesiredRoas" inputmode="decimal" placeholder="Ex.: 15">
 <p class="tip" id="minDesiredRoasHint">Seu ROAS mínimo aceitável. Ao sair do campo, o valor será salvo no cadastro do SKU e sincronizado pelo Google Drive.</p></div>
         </div><details class="ads-advanced ads-advanced-input" id="adsExtraFields">
-          <summary>Dados da Shopee · indicadores adicionais (preenchimento manual)</summary>
+          <summary>Indicadores Shopee · preenchidos pela API (toque para conferir)</summary>
           <div class="campaign-fields"><div class="field"><label for="rapidBoost">3. Impulsão Rápida</label><select id="rapidBoost"><option value="unknown">Não informado</option><option value="on">Ativada</option><option value="off">Desativada</option></select></div>
           <div class="field"><label for="impressions">4. Impressões</label><input id="impressions" inputmode="numeric" placeholder="Ex.: 1.674"></div>
           <div class="field"><label for="clicks">5. Cliques</label><input id="clicks" inputmode="numeric" placeholder="Ex.: 32"></div>
@@ -668,7 +668,7 @@ if(d.budgetMode==='unlimited'){
  alerts.push(...unlimitedRule.alerts);
 }
 return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,previewScenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
-function showError(msg){$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
+function showError(msg){window.RedeAdsQuick?.clearPreview?.();$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
 function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(r.previewScenario)return 'Prévia Cenário '+String(r.previewScenario).padStart(2,'0')+' · período em andamento';if(!r.scenario)return 'Indeterminado · confira os dados do período';return 'Cenário '+String(r.scenario).padStart(2,'0')}
 function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
 // Diagnóstico adicional às quatro regras e à Regra 05. Não modifica a Shopee.
@@ -912,8 +912,8 @@ function renderSimpleDecision(r,decision){
   (r.fin?' · Custos cadastrados':' · Custos financeiros pendentes')+
   '. Mais detalhes em “Ver todas as métricas”.';
 }
-function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent=simpleDecision.title;renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(simpleDecision.tone==='risk'?'red':simpleDecision.tone==='healthy'?'green':'');
-$('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
+function render(r){window.RedeAdsQuick?.clearPreview?.();lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent=simpleDecision.title;renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(simpleDecision.tone==='risk'?'red':simpleDecision.tone==='healthy'?'green':'');
+$('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':r.d.budgetMode==='daily'&&!r.d.budgetStable?'Confirmar histórico':'Dados insuficientes';
 const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
 const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
 const performanceItems=[
@@ -994,17 +994,18 @@ const checklist=['Concorrência: preço final e ofertas similares.','Capa, títu
 function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory();if(tab==='evolucao')window.RedeEvolution?.open();}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
 function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
-$('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+$('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){if(window.RedeAdsQuick?.renderProvisional?.(d,errors))return;showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
 // Quando uma regra ou métrica muda, atualiza a recomendação sem exigir outro clique.
 let liveAnalysisTimer=null;
 const quickLiveFields=['budget','budgetMode','minDesiredRoas','target','dateStart','dateEnd',
  'spent','revenue','actual','impressions','clicks','ctrReported','addToCart','itemsSold','rapidBoost',
  'periodClosed','budgetStable'];
 function refreshDecisionIfReady(){
- if(!lastReport||lastReport.d.sku!==$('productSelect').value)return;
+ if((!lastReport||lastReport.d.sku!==$('productSelect').value)&&!window.RedeAdsQuick?.isProvisional?.())return;
  syncPeriodClosed();
- const d=getData();
- if(validate(d).length===0)render(analyze(d));
+ const d=getData(),errors=validate(d);
+ if(!errors.length)render(analyze(d));
+ else window.RedeAdsQuick?.renderProvisional?.(d,errors);
 }
 function scheduleDecisionRefresh(){
  clearTimeout(liveAnalysisTimer);
@@ -1014,7 +1015,7 @@ for(const id of quickLiveFields){
  const node=$(id);
  if(node){node.addEventListener('input',scheduleDecisionRefresh);node.addEventListener('change',scheduleDecisionRefresh)}
 }
-$('resetBtn').addEventListener('click',()=>{$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateMinDesiredRoasHint();updateBudgetMode();syncPeriodClosed();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
+$('resetBtn').addEventListener('click',()=>{window.RedeAdsQuick?.clearPreview?.();$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateMinDesiredRoasHint();updateBudgetMode();syncPeriodClosed();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
 const fieldIds=['campaign','dateStart','dateEnd','budgetMode','budget','minDesiredRoas','rapidBoost','spent','target','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart'];const checks=['periodClosed','budgetStable'];
 function fillData(d){for(const id of fieldIds){if(d[id]!==undefined&&d[id]!==null)$(id).value=d[id];else if(id==='rapidBoost')$(id).value='unknown';else $(id).value='';}for(const id of checks)$(id).checked=!!d[id];$('productSelect').value=d.sku||'';showCurveInAds();updateMinDesiredRoasHint();updateBudgetMode();syncPeriodClosed()}
 const examples={base:{campaign:'Base Sucção Cor Sortida [3] (histórico)',dateStart:'2026-10-15',dateEnd:'2026-10-19',budgetMode:'daily',budget:'10',spent:'23,16',target:'5,6',revenue:'0',impressions:'1400',clicks:'33',ctrReported:'2,39',orders:'0',periodClosed:false,budgetStable:true},ralador:{campaign:'Ralador Multiuso 3 em 1 [4] (histórico)',dateStart:'2026-10-21',dateEnd:'2026-10-26',budgetMode:'unlimited',spent:'8,40',target:'25',revenue:'117,98',impressions:'851',clicks:'15',ctrReported:'1,76',orders:'2',itemsSold:'2',price:'58,99',cost:'34,99',periodClosed:true,budgetStable:true},piso:{campaign:'Piso Estrado Plástico Preto [2] (histórico)',dateStart:'2026-10-22',dateEnd:'2026-10-27',budgetMode:'unlimited',spent:'6,61',target:'30',revenue:'0',impressions:'2300',clicks:'77',ctrReported:'3,30',orders:'0',itemsSold:'0',addToCart:'4',periodClosed:true,budgetStable:true}};
@@ -1670,6 +1671,7 @@ for(const el of $('productForm').querySelectorAll('input,select')){el.addEventLi
 $('productSearch').addEventListener('input',renderProductList);$('curveFilter').addEventListener('change',renderProductList);$('adsStatusFilter').addEventListener('change',renderProductList);
 $('campaignAdsFilter').addEventListener('change',()=>{hideApiCampaignPicker();refreshProductSelect();showCurveInAds()});
 $('productSelect').addEventListener('change',()=>{
+ window.RedeAdsQuick?.clearPreview?.();
  clearTimeout(liveAnalysisTimer);
  lastReport=null;lastData=null;
  $('resultContent').hidden=true;$('resultEmpty').style.display='flex';
@@ -1849,8 +1851,18 @@ async function apiOverview(start,end){
  if(!Array.isArray(data.campaigns))throw Error('A API não retornou uma lista válida de campanhas.');
  return data;
 }
+let lastAdsFilledCampaignKey='';
 function apiFillCampaign(c,start,end){
- saveCampaignProductPhoto(c,$('productSelect').value);
+ const sku=$('productSelect').value;
+ const campaignKey=sku+'|'+String(c.campaignId||'');
+ if(lastAdsFilledCampaignKey!==campaignKey){
+  // Ao alternar campanhas não reutilizar orçamento/meta da campanha anterior.
+  $('budget').value='';
+  const p=readProducts().find(x=>x.sku===sku);
+  $('target').value=p?.target>0?String(p.target).replace('.',','):'';
+ }
+ lastAdsFilledCampaignKey=campaignKey;
+ saveCampaignProductPhoto(c,sku);
  $('campaign').value=c.productTitle||c.name||$('campaign').value;
  $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
  const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
@@ -1861,8 +1873,20 @@ function apiFillCampaign(c,start,end){
   const precision=key==='spent'||key==='revenue'?2:key==='actual'||key==='ctrReported'?4:0;
   $(key).value=n.toFixed(precision).replace('.',',');
  }
- // The API overview endpoint does not expose these 5 fields. Do not invent them.
- // Preserve manual target and desired-spend reference: the Ads overview API does not supply them.
+ // Configuração ATUAL da Shopee: não declarar que permaneceu igual por 7/30 dias.
+ // 0 é orçamento ilimitado; ausente permanece não confirmado.
+ if(c.campaignBudget!==null&&c.campaignBudget!==undefined&&
+    Number.isFinite(Number(c.campaignBudget))&&Number(c.campaignBudget)>=0){
+  const amount=Number(c.campaignBudget);
+  $('budgetMode').value=amount===0?'unlimited':'daily';
+  $('budget').value=amount===0?'':amount.toFixed(2).replace('.',',');
+  $('budgetStable').checked=false;
+ }else if(!($('budget').value.trim())){
+  $('budgetMode').value='daily';
+  $('budgetStable').checked=false;
+ }
+ if(c.roasTarget!==null&&c.roasTarget!==undefined&&Number.isFinite(Number(c.roasTarget))&&Number(c.roasTarget)>0)
+  $('target').value=Number(c.roasTarget).toLocaleString('pt-BR',{useGrouping:false,maximumFractionDigits:2});
  updateBudgetMode();
  $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
  // Mostrar a decisão básica automaticamente após consulta, se os campos obrigatórios existem.
