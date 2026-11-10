@@ -82,13 +82,23 @@ function orderBalance(rows,sku){
   byOrder.set(id,{known,done,amount:known?cents(payout)-cents(cost)+cents(credit)-cents(external):null,
    costSource:r.costSource||'',refundPending:r.refundPending===true});
  }
- let known=0,ready=0,positive=0,negative=0;
+ let known=0,ready=0,positive=0,negative=0,knownOrders=0,refundPending=0;
  for(const row of byOrder.values()){
-  if(row.known){known+=row.amount;row.done?ready++:0;if(row.amount>=0)positive++;else negative++}
+  if(row.refundPending)refundPending++;
+  if(row.known){
+   knownOrders++;known+=row.amount;if(row.done)ready++;
+   if(row.amount>=0)positive++;else negative++;
+  }
  }
- return {beforeAds:byOrder.size&&ready===byOrder.size&&issues.length===0?known/100:null,
-  knownBeforeAds:known/100,orderCount:byOrder.size,ready,issues,
-  incomplete:byOrder.size!==ready||issues.length>0,positive,negative};
+ const completeSet=byOrder.size>0&&knownOrders===byOrder.size&&issues.length===0&&refundPending===0;
+ return {
+  beforeAds:completeSet&&ready===byOrder.size?known/100:null,
+  estimatedBeforeAds:completeSet?known/100:null,
+  knownBeforeAds:knownOrders?known/100:null,knownOrders,
+  orderCount:byOrder.size,ready,issues,refundPending,
+  incomplete:byOrder.size!==ready||issues.length>0||refundPending>0,
+  positive,negative
+ };
 }
 function reconcile({ads,orders,financialCoverage=true,xlsx=null}={}){
  const amount=ads?.spent??null;
@@ -102,13 +112,23 @@ function reconcile({ads,orders,financialCoverage=true,xlsx=null}={}){
   return {status:'xlsx',spent:amount,operatingBeforeAds:xlsx.beforeAds,
     afterAds:money(xlsx.beforeAds-amount),source:'xlsx_before_ads',reasons:[]};
  }
+ // Com custo de catálogo, repasse previsto ou pedido ainda em aberto:
+ // mostrar estimativa com nome correto, nunca lucro realizado.
+ if(orders?.estimatedBeforeAds!==null&&orders?.estimatedBeforeAds!==undefined&&
+    amount!==null&&ads?.complete&&financialCoverage&&!orders.issues?.length){
+  return {status:'estimated',spent:amount,operatingBeforeAds:orders.estimatedBeforeAds,
+   afterAds:money(orders.estimatedBeforeAds-amount),source:'api_estimate',
+   reasons:['Estimativa baseada nos repasses disponíveis e custos registrados ou de catálogo. Valores podem mudar após liquidação ou devolução.']};
+ }
  const reasons=[];
  if(!ads?.complete)reasons.push('investimento Ads incompleto');
  if(!financialCoverage)reasons.push('pedidos, devoluções ou repasses incompletos na API');
  if(orders?.incomplete)reasons.push('custos ou repasses por pedido pendentes');
  if(!orders?.orderCount&&!xlsx?.complete)reasons.push('lucro por SKU não confirmado');
  return {status:'pending',spent:amount,knownSpend:ads?.knownSpend??null,
-  operatingBeforeAds:null,afterAds:null,source:null,reasons:[...new Set(reasons)]};
+  operatingBeforeAds:null,knownBeforeAds:orders?.knownBeforeAds??null,
+  knownOrders:orders?.knownOrders??0,orderCount:orders?.orderCount??0,
+  afterAds:null,source:null,reasons:[...new Set(reasons)]};
 }
 window.RedeCampaignFinance={makeRanges,campaignStart,adSpend,orderBalance,reconcile};
 })();
