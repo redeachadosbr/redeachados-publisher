@@ -267,7 +267,7 @@
   </section>
   <section class="view active" id="simulador"><div class="columns">
     <div class="panel" id="editor">
-      <div class="section-head"><div><div class="overline">01 · Insira os dados</div><h2>Dados da campanha</h2></div><span class="subtle">* campos necessários</span></div>
+      <div class="section-head"><div><div class="overline">01 · Insira os dados</div><h2>Produto, gasto e ROAS</h2></div><span class="subtle">* campos necessários</span></div>
       <form id="adsForm" novalidate>
         <div class="field-grid">
           <div class="field full"><label for="campaignAdsFilter">Mostrar produtos por situação no Ads</label><select id="campaignAdsFilter"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><span class="tip">Usa status confirmado pela API nesta sessão quando disponível; caso contrário, o status informado manualmente.</span></div>
@@ -277,13 +277,13 @@
 <select id="productSelect"><option value="">— Selecione um produto —</option></select></div>
 <p class="ads-photo-help" id="selectedProductPhotoNote">Selecione um SKU para visualizar a foto ao lado.</p></div>
           <div class="field full"><label for="campaign">Nome da campanha / SKU</label><input id="campaign" placeholder="Nome do produto ou SKU"></div>
-          <div class="field full"><div id="curveAdsHint" class="curve-help">Selecione um produto cadastrado para consultar sua curva manual.</div><div id="marketAdsHint" class="curve-help" style="margin-top:8px">A comparação com o mercado virá do cadastro.</div><div id="statusAdsHint" class="curve-help" style="margin-top:8px">Status Ads será confirmado pela API quando a campanha for identificada; sem resposta, usa seu status manual.</div><div id="linkedCampaignHint" class="curve-help" style="margin-top:8px">Nenhum ID de campanha vinculado ainda.</div></div>
+          <div class="field full"><details class="ads-advanced" id="productQuickDetails"><summary>Ver situação, curva e preço de mercado do produto</summary><div id="curveAdsHint" class="curve-help">Selecione um produto cadastrado para consultar sua curva manual.</div><div id="marketAdsHint" class="curve-help" style="margin-top:8px">A comparação com o mercado virá do cadastro.</div><div id="statusAdsHint" class="curve-help" style="margin-top:8px">Status Ads será confirmado pela API quando a campanha for identificada; sem resposta, usa seu status manual.</div><div id="linkedCampaignHint" class="curve-help" style="margin-top:8px">Nenhum ID de campanha vinculado ainda.</div></details></div>
           <div class="field"><label for="dateStart">Período: início *</label><input type="date" id="dateStart" required></div>
           <div class="field"><label for="dateEnd">Período: fim *</label><input type="date" id="dateEnd" required></div>
         </div>
         <div class="api-actions non-print">
           <div class="row-between"><strong>🔗 Consultar Ads pela API Shopee</strong><span class="subtle">Somente leitura</span></div>
-          <p class="tiny">Consulta de campanhas somente leitura pela API Shopee, acessada de forma protegida pelo servidor Netlify e pelo serviço Render. Se a Shopee não vincular o SKU automaticamente, você poderá pesquisar e selecionar o ID da campanha. Confirme o anúncio antes de salvar o vínculo. Campos não fornecidos pela API precisam de conferência.</p>
+          <p class="tiny">Busca os indicadores automaticamente, sem alterar o anúncio. Quando houver mais de uma campanha, confirme o ID correto.</p>
           <div class="actions"><button type="button" class="btn-secondary mini" id="apiReadBtn">Consultar período selecionado</button><button type="button" class="btn-secondary mini" id="apiHistoryBtn">Consultar até 6 meses em blocos</button></div>
           <div id="apiStatus" class="api-status" role="status" aria-live="polite">Selecione um produto e consulte suas campanhas. Nenhuma campanha será modificada.</div>
           <div id="apiCampaignPickBox" class="api-campaign-picker" hidden>
@@ -297,7 +297,7 @@
         </div>
         <div class="campaign-metrics-title">Sua regra de investimento</div>
         <div class="campaign-fields">
-          <div class="field"><label for="budget" id="budgetLabel">1. Orçamento diário (R$) *</label><div class="budget-entry"><input id="budget" inputmode="decimal" placeholder="Ex.: 15,00"><select id="budgetMode" aria-label="Tipo de orçamento"><option value="daily">Diário</option><option value="unlimited">Ilimitado</option></select></div><p class="tip" id="budgetHint">Limite configurado na Shopee. Para orçamento ilimitado, informe o valor que gostaria de gastar por dia; a Shopee continuará sem limite real.</p></div>
+          <div class="field"><label for="budget" id="budgetLabel">1. Orçamento diário (R$) *</label><div class="budget-entry"><input id="budget" inputmode="decimal" placeholder="Ex.: 15,00"><select id="budgetMode" aria-label="Tipo de orçamento"><option value="daily">Diário</option><option value="unlimited">Ilimitado</option></select></div><p class="tip" id="budgetHint">Informe quanto deseja gastar por dia. No modo ilimitado, é apenas uma referência.</p></div>
           <div class="field"><label for="target">2. Meta de ROAS *</label><input id="target" inputmode="decimal" placeholder="Ex.: 30">
 <label for="minDesiredRoas" style="display:block;margin-top:12px">ROAS mínimo desejado (x) · opcional</label>
 <input id="minDesiredRoas" inputmode="decimal" placeholder="Ex.: 15">
@@ -316,7 +316,7 @@
         </div>
         </details>
         <input type="hidden" id="orders" value="">
-        <p class="tip">ROAS real do período = vendas atribuídas ÷ investimento total do mesmo período (não é média simples de ROAS diário). CTR = cliques ÷ impressões. Confirme a campanha, o período e a janela de atribuição. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
+        <p class="tip">A análise usa receita atribuída ÷ investimento do mesmo período. Dados não fornecidos pela API ficam para conferência.</p>
         <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — desmarcado automaticamente quando o relatório inclui o dia de hoje em andamento.</span></label>
         <label class="checkline"><input type="checkbox" id="budgetStable" checked><span><strong>Orçamento constante</strong> — não alterei o limite diário durante as datas selecionadas.</span></label>
         <p class="tip" id="adsFinancialHint">A margem será consultada automaticamente no cadastro do SKU selecionado em Produtos. Não é necessário repetir custos ou taxas aqui.</p>
@@ -326,7 +326,7 @@
       </form>
     </div>
     <div class="panel" id="resultPanel">
-      <div class="section-head"><div><div class="overline">02 · Decisão sugerida / prévia provisória</div><h2>Resultado da análise</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
+      <div class="section-head"><div><div class="overline">02 · O que fazer agora</div><h2>Sua decisão Ads</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
       <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha orçamento, período, gasto, meta e ROAS real ou receita. Depois clique em <strong>Analisar campanha</strong>.</p></div>
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
@@ -878,7 +878,7 @@ $('safeAction').textContent=r.safeAction;
 const checklist=['Concorrência: preço final e ofertas similares.','Capa, título, fotos e benefícios reais do anúncio.','Frete, prazo de entrega, cupons e avaliação do produto.','Custo WeDrop, taxas CNPJ, impostos e margem líquida.','Estoque disponível e possíveis atrasos no relatório de atribuição.'];$('checkList').innerHTML=checklist.map(v=>'<li>'+safe(v)+'</li>').join('');$('reviewNote').textContent='Reavalie diariamente na primeira semana e, depois, semanalmente. Não execute dois ajustes simultâneos sem registrar o resultado anterior.';}
 function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory()}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
-function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Orçamento real na Shopee: ILIMITADO. Informe quanto gostaria de gastar por dia (ex.: R$ 10 ou R$ 15). É um valor de CONTROLE, não um limite aplicado à Shopee. A Regra 05 analisará o ROAS alvo e o desempenho sem fingir que a verba acabou.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
+function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
 $('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
 // Quando uma regra ou métrica muda, atualiza a recomendação sem exigir outro clique.
 let liveAnalysisTimer=null;
