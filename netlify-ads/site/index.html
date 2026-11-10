@@ -106,13 +106,28 @@
 .api-campaign-picker input[type="search"]:focus{outline:0;border-color:#e4b45a;box-shadow:0 0 0 3px #e4b45a20}
 .api-campaign-picker input[type="search"]::placeholder{color:#99a0ae}
 @media(max-width:620px){.change-choice{grid-template-columns:1fr 1fr}}
+
+/* Diagnóstico crítico: compacto, priorizado e legível no celular */
+.critical-ads{margin:14px 0;border:1px solid #5c503a;border-radius:14px;padding:14px;background:#191c21}
+.critical-ads h3{margin:0 0 5px;font-size:15px;color:#f5cc7c}
+.critical-ads .crit-sub{font-size:12px;color:#b8c2cf;line-height:1.55;margin-bottom:10px}
+.critical-list{display:grid;gap:8px}
+.critical-item{border:1px solid #424b57;border-radius:11px;padding:12px;background:#141920}
+.critical-item.priority-risk{border-color:#855057;background:#251b20}
+.critical-item.priority-action{border-color:#6d603c}
+.critical-item h4{font-size:13px;margin:0 0 4px;color:#f2e1c0}
+.critical-item p{font-size:12px;line-height:1.55;margin:4px 0;color:#c3ccd8}
+.critical-item strong{color:#f5e2c7}
+.critical-item .evidence{color:#aebed2;font-size:11px}
+.critical-item button{margin-top:7px}
+.critical-ads .crit-foot{font-size:11px;color:#aeb5c1;margin:10px 0 0;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16.1 · Regra 05 + Drive</span>
+    <span class="pill">V16.2 · Diagnóstico crítico + Drive</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
   <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ 4 regras + ilimitado</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
@@ -272,6 +287,7 @@
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
         <div id="performanceStats" class="ads-kpis"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
+        <section id="criticalAdsDiagnosis" class="critical-ads" hidden aria-live="polite"></section>
         <div id="dailyBudgetSummary" class="notice" style="margin-top:12px" aria-live="polite"></div>
         <div id="resultAlerts"></div>
         <h3 style="font-size:14px;margin:18px 0 6px">Regra do seu caderno</h3>
@@ -329,7 +345,7 @@
       <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.0</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.2</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script>
 'use strict';
@@ -503,6 +519,140 @@ return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed
 function showError(msg){$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
 function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(r.previewScenario)return 'Prévia Cenário '+String(r.previewScenario).padStart(2,'0')+' · período em andamento';if(!r.scenario)return 'Indeterminado · confira os dados do período';return 'Cenário '+String(r.scenario).padStart(2,'0')}
 function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
+// Diagnóstico adicional às quatro regras e à Regra 05. Não modifica a Shopee.
+function criticalCampaignDiagnosis(r,p,history=[]){
+ const d=r.d,clicks=d.clicks,imp=d.impressions,spent=d.spent;
+ const ctr=imp>0&&clicks!==null?clicks/imp*100:d.ctrReported;
+ const cpc=clicks>0?spent/clicks:null;
+ const orders=d.orders,cart=d.addToCart,items=d.itemsSold,actual=r.actual;
+ const close=r.days>=7&&d.periodClosed;
+ const personal=d.minDesiredRoas>0?d.minDesiredRoas:null;
+ const minFinance=r.fin?r.fin.minRoas:null;
+ const floor=personal!==null&&minFinance!==null?Math.max(personal,minFinance):personal??minFinance;
+ const mismatch=d.actual!==null&&d.revenue!==null&&actual!==null&&Math.abs(d.actual-actual)>.1;
+ const confidence=close?'janela de análise fechada':'prévia: período com menos de 7 dias completos ou ainda aberto';
+ const action=[];
+ const push=(priority,title,reason,instruction,category='',tone='action',evidence='')=>
+  action.push({priority,title,reason,instruction,category,tone,evidence});
+ if(mismatch){
+  push(0,'Conferir os dados de ROAS antes de mudar o anúncio',
+   'A Shopee ou o campo manual informa '+roas(d.actual)+', mas '+money(d.revenue)+' ÷ '+money(d.spent)+' resulta em '+roas(actual)+'.',
+   'Verifique se receita e gasto são da MESMA campanha, período e janela de atribuição. Somente após conferir os números, refaça a análise; não ajuste preço, orçamento nem ROAS com essa divergência.','','risk',
+   'ROAS informado '+roas(d.actual)+' · calculado '+roas(actual));
+  return {action,confidence,ctr,cpc,floor,blocked:true};
+ }
+ const losing=!!r.fin&&(!Number.isFinite(r.fin.breakeven)||actual!==null&&actual<r.fin.breakeven);
+ if(losing){
+  push(1,'Proteger o lucro antes de aumentar o tráfego',
+   'O ROAS real '+(actual===null?'não está disponível':roas(actual))+' fica abaixo do equilíbrio financeiro do produto ('+(Number.isFinite(r.fin.breakeven)?roas(r.fin.breakeven):'inviável')+').',
+   'Não baixar o ROAS alvo nem o preço para gerar cliques. Confira custos, comissão, frete e receita atribuída; caso o risco continue, avalie teto diário REAL ou pausa manual.','', 'risk',
+   'ROAS real '+(actual===null?'—':roas(actual))+' · equilíbrio '+(Number.isFinite(r.fin.breakeven)?roas(r.fin.breakeven):'inviável'));
+ }else if(actual!==null&&floor!==null&&actual<floor){
+  push(5,'Priorizar a margem e o ROAS mínimo',
+   'O ROAS real '+roas(actual)+' está abaixo da proteção de '+(Number.isFinite(floor)?roas(floor):'meta inviável')+'.',
+   'Não escale a campanha nem reduza a meta só para obter tráfego. Revise oferta e custos antes de testar qualquer ajuste de ROAS.','', 'risk');
+ }
+ const needsPrice=(p?.market>0&&p?.price>p.market*1.08);
+ const convertingBad=clicks!==null&&clicks>=40&&(
+  (orders===0)||(d.revenue===0)||(items===0));
+ const cartIssue=cart!==null&&cart>=10&&items!==null&&items<=Math.max(1,Math.floor(cart*.15));
+ if(convertingBad||cartIssue){
+  push(22,'Revisar preço final, frete e confiança na oferta',
+   convertingBad
+    ?clicks+' cliques no período com '+(orders!==null?orders+' pedidos atribuídos':'receita/itens insuficientes para confirmar compras')+'. Há interesse inicial, mas a conversão exige investigação.'
+    :cart+' adições ao carrinho e '+items+' item(ns) vendido(s) informado(s). Isso sugere verificar obstáculos no fechamento, mas NÃO comprova abandono.',
+   'Compare preço final com frete, prazo, avaliações, fotos 02–05, descrição, variações e promoções. Faça uma mudança por vez e acompanhe 7–14 dias.','Imagens','action',
+   'Cliques '+clicks+' · carrinhos '+(cart??'—')+' · itens '+(items??'—'));
+ }
+ if(imp!==null&&imp>=1000&&ctr!==null&&ctr<1.5){
+  push(20,'Testar uma capa mais atraente e fiel ao produto',
+   'O CTR de '+pct(ctr)+' ficou abaixo da referência indicativa de 1,5% com '+imp.toLocaleString('pt-BR')+' impressões. O anúncio apareceu, mas gerou poucos cliques.',
+   'Reveja a foto principal: produto inteiro e destacado, boa luz, fidelidade, sem excesso de texto. Compare com capas dos concorrentes. Registre a troca e acompanhe o CTR após um período comparável.','Capa','action',
+   imp.toLocaleString('pt-BR')+' impressões · '+clicks+' cliques · CTR '+pct(ctr));
+ }else if(close&&imp!==null&&imp<500&&!(losing)){
+  push(28,'Revisar exposição e palavras-chave do título',
+   'Foram apenas '+imp.toLocaleString('pt-BR')+' impressões em '+r.days+' dias. Pouca exposição não prova falha da capa.',
+   'Verifique estoque, status da campanha e termos relevantes no início do título. Meta ROAS muito restritiva e demanda também podem reduzir a entrega; não adicione palavras que não descrevam o produto.','Título','action',
+   imp+' impressões / '+r.days+' dias');
+ }
+ if(imp!==null&&imp>=1000&&ctr!==null&&ctr<1.5&&close)
+  push(38,'Conferir o título depois de avaliar a capa',
+   'CTR baixo também pode resultar de título pouco claro, principalmente se não identifica o tipo, material ou benefício comprovado.',
+   'Compare os termos principais de busca com o título atual. Se a capa foi alterada recentemente, aguarde antes de editar o título, para medir cada efeito separadamente.','Título','action');
+ if(needsPrice&&(convertingBad||cartIssue)){
+  const changePct=(p.price/p.market-1)*100;
+  const candidate=Math.round(p.price*.97*100)/100;
+  const newMetrics=p&&candidate>0?computeProduct({...p,price:candidate}):null;
+  const canDecrease=!!(newMetrics&&r.fin&&actual!==null&&actual>=floor&&
+    Number.isFinite(newMetrics.minimum)&&actual>=newMetrics.minimum&&
+    newMetrics.contribution-candidate/actual>=candidate*(p.margin??5)/100-0.00001);
+  if(canDecrease){
+   push(24,'Avaliar pequeno teste de preço, sem comprometer a margem',
+    'O preço está '+pct(changePct)+' acima da média cadastrada, e existem sinais de dificuldade de conversão.',
+    'Simulação: '+money(p.price)+' → '+money(candidate)+' (−3%). No ROAS real atual, a margem desejada continuaria matematicamente protegida. Confirme taxas, custo WeDrop, frete e preço dos concorrentes ANTES de aplicar. Não é garantia de ROAS futuro.','Preço','action',
+    'Mercado '+money(p.market)+' · ROAS mínimo estimado após teste '+roas(newMetrics.minimum));
+  }else{
+   push(12,'Não baixar o preço sem uma simulação lucrativa',
+    'O preço está '+pct(changePct)+' acima da média cadastrada, mas reduzir 3% não foi validado com o ROAS real e a margem desejada.',
+    'Antes de qualquer desconto, revise custo, taxas e frete. Priorize melhorar a apresentação e conversão; se o preço for alterado, recalcule o ROAS de equilíbrio.','','risk',
+    'Preço '+money(p.price)+' · média cadastrada '+money(p.market));
+  }
+ }
+ if(close&&clicks!==null&&clicks>=40&&ctr!==null&&ctr>=1.5&&!convertingBad&&!cartIssue&&r.fin&&actual!==null&&actual>=floor&&actual>=d.target){
+  push(65,'Manter capa e oferta que estão funcionando',
+   'CTR '+pct(ctr)+' e ROAS '+roas(actual)+' não indicam falha evidente de atração ou rentabilidade.',
+   'Evite trocar capa, título e preço sem um problema identificado. Acompanhe volume de vendas e margem antes de escalar; registre métricas de referência.','','ok');
+ }
+ if(!action.length){
+  push(80,'Acompanhar antes de alterar capa, título ou preço',
+   'Os dados disponíveis ainda não indicam com segurança qual elemento está prejudicando a campanha.',
+   'Continue medindo impressões, CTR, cliques, receita e ROAS mínimo. Compare um período fechado de 7–14 dias; não mude vários elementos ao mesmo tempo.','','action',
+   'Impressões '+(imp??'—')+' · cliques '+(clicks??'—')+' · ROAS '+(actual===null?'—':roas(actual)));
+ }
+ const recent=history.filter(h=>h?.sku===d.sku&&
+  Number.isFinite(Date.parse(h.timestamp))&&Date.now()-Date.parse(h.timestamp)>=0&&Date.now()-Date.parse(h.timestamp)<7*86400000);
+ for(const a of action){
+  if(!a.category)continue;
+  const changed=recent.find(h=>Array.isArray(h.changes)&&h.changes.includes(a.category));
+  if(changed){
+   a.priority+=40;
+   a.instruction+=' ATENÇÃO: '+a.category+' já foi alterada há menos de 7 dias ('+fmtStamp(changed.timestamp)+'). Espere e compare o resultado antes de repetir.';
+   a.recent=true;
+  }
+ }
+ action.sort((a,b)=>a.priority-b.priority);
+ if(!close)for(const a of action){
+  if(a.category&&!a.recent)a.instruction+=' Esta análise é provisória; registre a hipótese, mas só faça o teste após dados suficientes, salvo problema factual evidente.';
+ }
+ return {action:action.slice(0,3),confidence,ctr,cpc,floor,blocked:false};
+}
+function renderCriticalCampaignDiagnosis(r){
+ const root=$('criticalAdsDiagnosis'),p=readProducts().find(x=>x.sku===r.d.sku);
+ const result=criticalCampaignDiagnosis(r,p,getChanges());
+ root.hidden=false;
+ root.innerHTML='<h3>🔎 Diagnóstico crítico — o que mudar primeiro</h3>'+
+  '<div class="crit-sub">Análise das métricas, do cadastro e das cinco regras · '+safe(result.confidence)+
+  (result.cpc!==null?' · CPC médio '+safe(money(result.cpc)):'')+
+  '. Referência de CTR de 1,5% é indicativa, não universal.</div>'+
+  '<div class="critical-list">'+result.action.map((a,i)=>
+   '<article class="critical-item priority-'+(a.tone==='risk'?'risk':'action')+'">'+
+   '<h4>'+(i+1)+'. '+safe(a.title)+'</h4><p><strong>Por quê:</strong> '+safe(a.reason)+'</p>'+
+   '<p><strong>O que fazer:</strong> '+safe(a.instruction)+'</p>'+
+   (a.evidence?'<p class="evidence">'+safe(a.evidence)+'</p>':'')+
+   (a.category&&!result.blocked?'<button type="button" class="btn-secondary mini" data-critical-plan="'+i+'">Preparar registro: '+safe(a.category)+'</button>':'')+
+   '</article>').join('')+'</div>'+
+  '<p class="crit-foot">Pedidos e vendas gerais atribuídos pela Shopee podem incluir outros produtos da loja. Os limiares de volume são critérios diagnósticos conservadores, não regras oficiais. Nenhuma alteração é enviada à Shopee. O botão prepara um registro, mas NÃO confirma que a mudança já foi feita.</p>';
+ for(const btn of root.querySelectorAll('[data-critical-plan]'))btn.addEventListener('click',()=>{
+  const a=result.action[Number(btn.dataset.criticalPlan)];
+  if(!a||!a.category||!r.d.sku)return;
+  switchTab('historico');
+  $('changeSku').value=r.d.sku;
+  for(const input of $('changeChoices').querySelectorAll('input'))input.checked=input.value===a.category;
+  $('changeNote').value=('Diagnóstico Ads: '+a.title+'. '+a.reason).slice(0,300);
+  $('changeStatus').textContent='Registro preparado para '+r.d.sku+'. NÃO foi salvo nem executado na Shopee. Após fazer a alteração, confira e clique em Salvar alteração com data e hora.';
+  $('changeNote').scrollIntoView({behavior:'smooth',block:'center'});
+ });
+}
 function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;$('resultScenario').textContent=statusLabel(r);$('resultBadge').className='status '+(r.unlimitedRule?(r.unlimitedRule.stage==='meta atingida'?'green':r.unlimitedRule.risk?'red':''):(r.scenario===4?'green':r.meets===false?'red':''));
 $('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
 const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
@@ -534,6 +684,7 @@ if(decision){
    '. DECISÃO · '+u.stage.toUpperCase()+': '+u.action;
  }
 }
+renderCriticalCampaignDiagnosis(r);
 const dailySummary=$('dailyBudgetSummary');
 if(dailySummary){
  const type=r.d.budgetMode==='daily'?'orçamento real':'valor diário desejado (simulação)';
