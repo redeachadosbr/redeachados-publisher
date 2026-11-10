@@ -11,16 +11,16 @@ const axisFirstPattern=new RegExp('\\b(altura|largura|comprimento|profundidade|d
 // Não classificar como produto um bloco "Dimensões:" que está dentro
 // de uma seção logística separada (ex.: "Embalagem:\nDimensões: ...").
 function isLogisticsSection(lines,index){
- for(let j=index-1,checked=0;j>=0&&checked<5;j--){
+ // O contexto tem escopo até a próxima seção EXPLICITAMENTE de produto.
+ // Títulos genéricos (ex.: "Dados técnicos:" ou "Observações:") dentro de
+ // "Embalagem:" NÃO convertem dados de transporte em medidas físicas.
+ for(let j=index-1;j>=0;j--){
   const prev=String(lines[j]||'').trim();
   if(!prev)continue;
-  checked++;
+  if(/^(?:[-*•]\s*)?(?:(?:especificacoes|caracteristicas|dimensoes|medidas|dados tecnicos|informacoes)\s+(?:do|da|de)\s+(?:produto|item)|produto|item)\s*[:\-]?\s*$/.test(prev))
+   return false;
   if(/^(?:[-*•]\s*)?(?:(?:dados|informacoes)\s+(?:de\s+|da\s+|do\s+)?(?:logisticos|logistica|embalagem|caixa|pacote)|(?:dimensoes|medidas)\s+(?:da|do|de)\s+(?:embalagem|caixa|pacote)|embalagem|caixa|pacote|frete|transporte|logistica|logisticos)\s*[:\-]?\s*$/.test(prev))
    return true;
-  // Um novo bloco de produto encerra o contexto da embalagem.
-  if(/^(?:[-*•]\s*)?(?:(?:especificacoes|caracteristicas|dimensoes|medidas)\s+do\s+)?(?:produto|item)\s*[:\-]?\s*$|^(?:[-*•]\s*)?(?:especificacoes|caracteristicas|dados tecnicos)\s*[:\-]?\s*$/.test(prev))
-   return false;
-  if(/^[a-z ]{3,65}:\s*$/.test(prev))return false;
  }
  return false;
 }
