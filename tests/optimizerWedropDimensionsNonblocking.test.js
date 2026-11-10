@@ -170,3 +170,26 @@ test('arte 03 aceita duas cotas no bebedouro e preserva três cotas quando exist
  });
  assert.match(three.prompts[2],/TERÁ AS TRÊS COTAS VISÍVEIS/);
 });
+
+test('outras SKUs: bloco Embalagem separado não autoriza cotas comerciais',()=>{
+ const fromPackage='Embalagem:\nDimensões:\n20cm altura x 16cm largura x 22cm comprimento';
+ assert.equal(confirmedProductDimensionsFromWeDrop(fromPackage),null);
+ assert.equal(confirmedCatalogCrossCheckedDimensionsFromWeDrop(
+  'Dados logísticos:\nDimensões: 22 x 16 x 20',exact),null);
+ assert.equal(confirmedCatalogCrossCheckedDimensionsFromWeDrop(
+  'Embalagem:\nDimensões: 22 x 16 x 20',exact),null);
+});
+
+test('outras SKUs: dimensões físicas continuam legíveis após seção de embalagem',()=>{
+ const source='Embalagem:\nDimensões: 20cm altura x 16cm largura x 22cm comprimento\n'+
+  'Especificações do produto:\nDimensões:\n18cm altura x 15cm diametro';
+ const spec=confirmedProductDimensionsFromWeDrop(source);
+ assert.deepEqual(spec?.measurements.map(x=>[x.axis,x.value]),[
+  ['altura','18 cm'],['diametro','15 cm']
+ ]);
+ const fallback=confirmedCatalogCrossCheckedDimensionsFromWeDrop(
+  'Embalagem:\nDimensões: 22 x 16 x 20\nProduto:\nDimensões: 22 x 16 x 20',exact);
+ assert.deepEqual(fallback?.measurements.map(x=>[x.axis,x.value]),[
+  ['altura','20 cm'],['largura','16 cm'],['comprimento','22 cm']
+ ]);
+});
