@@ -12934,7 +12934,7 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
-   // Não oferecer pós-processamento, cópia de foto 01/02 nem "Aplicar medidas".
+   // Não oferecer botões de pós-processamento nem cópia de fotos anteriores.
    // A posição 03 deve ser produzida integralmente no ChatGPT.
    let importThirdButton=null,thirdFallbackButton=null,measureButton=null;
    const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
