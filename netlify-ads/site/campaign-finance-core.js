@@ -58,7 +58,9 @@ function adSpend(chunks,campaignId){
   }
   total+=cents(spend);
  }
- return {spent:missing.length?null:total/100,knownSpend:total/100,complete:missing.length===0,missing};
+ return {spent:missing.length?null:total/100,
+  knownSpend:missing.length===chunks.length?null:total/100,
+  complete:missing.length===0,missing};
 }
 function orderBalance(rows,sku){
  const target=cleanSku(sku);
