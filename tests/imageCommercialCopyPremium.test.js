@@ -48,7 +48,7 @@ test('imagem 03 envia valores WeDrop no briefing e termina com renderização ve
  assert.deepEqual(brief.confirmedDimensions.measurements.map(x=>x.value),['40 cm','30 cm','55 cm']);
  assert.match(brief.prompts[2],/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(brief.prompts[2],/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
- assert.match(brief.prompts[2],/PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER/);
+ assert.match(brief.prompts[2],/ARTE FINAL CRIADA NO CHATGPT/);
  const api=imagePrompt({record:{sku:'AAA',title:'Organizador de Roupas'},slot:3,supplierSourceText:src});
  assert.match(api,/ARTE COMERCIAL FINAL PREMIUM/);
  assert.match(api,/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
@@ -84,13 +84,13 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
  }
 });
 
-test('Ponte compõe cotas WeDrop na foto NOVA 03 e evita upload de foto sem medidas',()=>{
+test('Ponte recebe arte final da imagem 03 sem adicionar cotas no Manager',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/if\(Number\(m\.slot\)===3\)\{/);
  const bridgeStart=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
  const bridge=app.slice(bridgeStart,app.indexOf('const existing=await json(',bridgeStart));
- assert.match(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(bridge,/chatgpt-auto-03-cotas-wedrop.png/);
+ assert.doesNotMatch(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(bridge,/chatgpt-auto-03-arte-final.png/);
  assert.match(bridge,/optimizerVerifiedDimensionSpec\(w\)/);
  const apiStart=app.indexOf('async function optimizerImagesGenerateSlot(');
  const apiPath=app.slice(apiStart,app.indexOf("$('#optimizerOpenAiSave')",apiStart));
@@ -103,25 +103,25 @@ test('Ponte compõe cotas WeDrop na foto NOVA 03 e evita upload de foto sem medi
  assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
 });
 
-test('imagem 03 vazia oferece importação da arte pronta ou foto-base limpa com cotas opcionais',()=>{
+test('imagem 03 mantém a arte final e desativa foto-base sem cotas',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
   app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
  assert.match(manual,/if\(slot===3\)/);
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(manual,/if\(optimizerManualThirdBaseMode&&dimensionCount\)/);
- assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
- assert.match(manual,/arte FINAL/);
+ assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
+ assert.doesNotMatch(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
+ assert.match(manual,/criada pelo ChatGPT/);
  assert.match(manual,/X-Expect-Empty-Slot/);
  assert.match(manual,/X-Expected-Sha256/);
  assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
  const ui=app.slice(app.indexOf('const generate=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')),
   app.indexOf('const adjust=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')));
- assert.match(ui,/if\(slot===3&&!image\)/);
- assert.match(ui,/Importar foto-base sem cotas/);
- assert.match(ui,/optimizerImageCorrectionFile/);
- assert.match(ui,/if\(slot===3&&image\)/);
- assert.match(ui,/Aplicar medidas WeDrop/);
+ assert.match(ui,/let importThirdButton=null,thirdFallbackButton=null,measureButton=null/);
+ assert.doesNotMatch(ui,/Importar foto-base sem cotas/);
+ assert.doesNotMatch(ui,/optimizerImageCorrectionFile/);
+ assert.doesNotMatch(ui,/if\(slot===3&&image\)/);
+ assert.doesNotMatch(ui,/Aplicar medidas WeDrop/);
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(server,/x-expect-empty-slot/);
  assert.match(server,/A posição foi preenchida por outra aba/);
@@ -168,7 +168,7 @@ test('WS20357 exibe 183 cm vertical, 69 cm horizontal e selo de cores sortidas n
 });
 
 
-test('WS20357 monta cena nova de três cores e cotas somente no pós-processador',()=>{
+test('WS20357 instrui ChatGPT a criar cena final com três cores e cotas',()=>{
  const evidence=[
   'Colchão Inflável Piscina 183x69cm Verão',
   'ESPECIFICAÇÕES:',
@@ -190,7 +190,7 @@ test('WS20357 monta cena nova de três cores e cotas somente no pós-processador
  }
  assert.match(api,/BORDA AMARELA/);
  assert.match(api,/AZUL-MARINHO/);
- assert.match(chat,/O Manager colocará a cota apenas sobre a peça AZUL/);
+ assert.match(chat,/As cotas confirmadas devem ser desenhadas pelo próprio ChatGPT somente sobre a peça AZUL/);
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const bridge=app.slice(app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;"),
    app.indexOf('const existing=await json(',app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;")));
@@ -198,6 +198,6 @@ test('WS20357 monta cena nova de três cores e cotas somente no pós-processador
  assert.match(bridge,/chatgpt-auto-03-cotas-wedrop.png/);
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
   app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
- assert.match(manual,/if\(optimizerManualThirdBaseMode&&dimensionCount\)/);
+ assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
  assert.match(manual,/imagem-03-arte-pronta-com-medidas/);
 });
