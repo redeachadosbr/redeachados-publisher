@@ -8,6 +8,22 @@ const number='(\\d{1,4}(?:[.,]\\d{1,2})?)';
 const axisPattern=new RegExp(number+'\\s*(cm|mm|m)\\s*(?:de\\s+)?(altura|largura|comprimento|profundidade|diametro|diamentro)\\b','gi');
 // A ficha pode nomear o eixo antes do valor: "Altura: 20 cm × Largura: 15 cm".
 const axisFirstPattern=new RegExp('\\b(altura|largura|comprimento|profundidade|diametro|diamentro)\\s*(?::|=|-|de\\s+)?\\s*'+number+'\\s*(cm|mm|m)\\b','gi');
+// Não classificar como produto um bloco "Dimensões:" que está dentro
+// de uma seção logística separada (ex.: "Embalagem:\nDimensões: ...").
+function isLogisticsSection(lines,index){
+ for(let j=index-1,checked=0;j>=0&&checked<5;j--){
+  const prev=String(lines[j]||'').trim();
+  if(!prev)continue;
+  checked++;
+  if(/^(?:[-*•]\s*)?(?:(?:dados|informacoes)\s+(?:de\s+|da\s+|do\s+)?(?:logisticos|logistica|embalagem|caixa|pacote)|(?:dimensoes|medidas)\s+(?:da|do|de)\s+(?:embalagem|caixa|pacote)|embalagem|caixa|pacote|frete|transporte|logistica|logisticos)\s*[:\-]?\s*$/.test(prev))
+   return true;
+  // Um novo bloco de produto encerra o contexto da embalagem.
+  if(/^(?:[-*•]\s*)?(?:(?:especificacoes|caracteristicas|dimensoes|medidas)\s+do\s+)?(?:produto|item)\s*[:\-]?\s*$|^(?:[-*•]\s*)?(?:especificacoes|caracteristicas|dados tecnicos)\s*[:\-]?\s*$/.test(prev))
+   return false;
+  if(/^[a-z ]{3,65}:\s*$/.test(prev))return false;
+ }
+ return false;
+}
 export function confirmedProductDimensionsFromWeDrop(sourceText){
  const text=normalized(sourceText).replace(/\r/g,'').slice(0,12000);
  if(!text.trim())return null;
@@ -19,7 +35,7 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
   // Aceitar continuação somente com pelo menos DOIS eixos textuais explícitos.
   // Nunca buscar números soltos nem campos de peso/embalagem nas linhas seguintes.
   const label=lineTrim.match(/^(?:[-*•]\s*)?(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.*)$/i);
-  if(!label||/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/.test(lineTrim))continue;
+  if(!label||/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/.test(lineTrim)||isLogisticsSection(lines,i))continue;
   let axisSource=label[2].trim();
   if(!axisSource){
    let j=i+1;
@@ -87,7 +103,10 @@ export function confirmedCatalogCrossCheckedDimensionsFromWeDrop(sourceText,{
  });
  if(values.some(x=>x===null))return null;
  const text=normalized(sourceText).slice(0,12000),matches=[];
- for(const line of text.split('\n')){
+ const lines=text.split('\n');
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i];
+  if(isLogisticsSection(lines,i))continue;
   const match=line.trim().match(/^(?:[-*•]\s*)?(?:dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item))?\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:cm)?\s*[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:cm)?\s*[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:cm)?\s*$/i);
   if(!match||/embalagem|caixa|pacote|frete|transport/.test(line))continue;
   const nums=match.slice(1,4).map(x=>Number(x.replace(',','.')));
