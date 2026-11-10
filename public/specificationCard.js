@@ -1,7 +1,7 @@
 // Imagem 03: cotas sobre o entorno do produto e dados laterais mínimos.
 // Fonte única: "Informações da WeDrop" SALVAS DA PRÓPRIA SKU.
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop,confirmedCatalogCrossCheckedDimensionsFromWeDrop} from './productDimensions.js?v=20261105-exact-sku-triple';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop,confirmedCatalogCrossCheckedDimensionsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
 
 export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy='',sourceSaved=false,catalogMeasurements=null}={}){
  // O texto salvo manualmente em Informações da WeDrop já é vinculado pelo
@@ -115,7 +115,7 @@ export async function addConfirmedSpecificationCard(blob,spec){
   if(!ctx)throw Error('Não foi possível preparar a Imagem 03.');
   ctx.drawImage(bitmap,0,0,SW,SH);
   const get=name=>spec.measurements?.find(x=>x.axis===name);
-  const height=get('altura'),width=get('largura'),length=get('comprimento'),depth=get('profundidade');
+  const height=get('altura'),width=get('largura'),length=get('comprimento'),depth=get('profundidade'),diameter=get('diametro');
   const poolPortrait=!height&&Boolean(length&&width)&&
    /colch[aã]o.*(?:piscina|infl[aá]vel)|(?:boia|colch[aã]o).*infl[aá]vel/i.test(String(spec.productTitle||''))&&
    Number(String(length.value).replace(',','.').split(' ')[0])>
@@ -137,6 +137,14 @@ export async function addConfirmedSpecificationCard(blob,spec){
     dimensionLine(ctx,321,964,862,964);
     sizeChip(ctx,{value:width.value,label:'Largura',x:604,y:1040,width:214});
    }
+   if(diameter){
+    // Produtos circulares (ex.: bebedouro) têm diâmetro, não "largura".
+    if(width)smallFact(ctx,'Diâmetro '+diameter.value,842,1102);
+    else{
+     dimensionLine(ctx,321,964,862,964);
+     sizeChip(ctx,{value:diameter.value,label:'Diâmetro',x:604,y:1040,width:214});
+    }
+   }
    if(length){
     if(height||width)smallFact(ctx,'Comprimento '+length.value,842,1102);
     else{
@@ -152,7 +160,7 @@ export async function addConfirmedSpecificationCard(blob,spec){
     }
    }
    // Apenas um fato secundário quando NÃO há medidas. Nenhum painel grande.
-   if(!(height||width||length||depth)){
+   if(!(height||width||length||depth||diameter)){
     const fact=spec.facts?.[0];
     if(fact)smallFact(ctx,fact.label+': '+fact.value,1000,1030);
    }

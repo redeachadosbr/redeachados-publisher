@@ -3647,7 +3647,7 @@ async function optimizerImageCorrectionImportFile(file){
    dimensionCount=spec?.measurements?.length||0;
    if(optimizerManualThirdBaseMode&&dimensionCount){
     const {addConfirmedSpecificationCard}=
-     await import('/specificationCard.js?v=1.4.3-reference-design');
+     await import('/specificationCard.js?v=20261110-product-package-scope');
     spec.productTitle=w.draftTitle||w.productTitle||'';
     imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
     usedLocalOverlay=true;
@@ -11340,7 +11340,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261105-slot03-ai-photo-v5'),
+  import('/chatgptPrompts.js?v=20261110-product-package-scope'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -11366,7 +11366,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  // Não descartar medidas válidas por falta apenas desse metadado opcional.
  const trustedText=String(evidence?.sku||'').trim()===String(w.sku).trim()
   ?String(evidence.sourceText||''):'';
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
  // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
  // plano aberto antes da importação ainda não tenha o supplierProduct.
  const verifiedCatalog=String(source?.supplierSku||'')===String(w.sku)||
@@ -11379,11 +11379,13 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
    w.supplierProduct?.catalogMeasurements||
    w.supplierProduct?.product_data?.catalogMeasurements||null
  }):null;
- if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
+ // Não paralisar as imagens 01, 02 e 04–09 por uma ambiguidade EXCLUSIVA
+ // da imagem 03. Nunca afirmar um eixo nem desenhar números por inferência.
+ const dimensionWarning=/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
     !confirmedDimensionSpec?.measurements?.length&&
-    !/dimensões da pista montada/i.test(trustedText))
-  throw Error('Há dimensões salvas na WeDrop da SKU '+w.sku+
-   ', mas não foi possível identificar os eixos com segurança. Confira os valores do catálogo. Nenhuma medida será inventada.');
+    !/dimensões da pista montada/i.test(trustedText)
+   ?'Medidas WeDrop cadastradas, mas os eixos ainda não foram confirmados. A imagem 03 exigirá a conferência exata da SKU antes de receber cotas; as demais imagens podem prosseguir.':'';
+
  const linkedSupplierPhoto=!existingKit&&
   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(
@@ -11413,7 +11415,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   supplierMetrics:existingKit?[]:w.sourceFacts?.metrics||[]
  });
  return {...brief,referenceCandidates:bridgeReferences,
-  bridgeOriginal:bridgeReferences[0]||''};
+  bridgeOriginal:bridgeReferences[0]||'',dimensionWarning};
 }
 // O campo "Informações da WeDrop" é salvo por shop + Item ID + modelo + SKU.
 // Antes de importar a fotografia 03, ler novamente do servidor; não depender
@@ -11438,7 +11440,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -12117,7 +12119,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    if((spec?.measurements?.length||0)<2)
     throw Error('Imagem 03 recusada: faltam pelo menos duas dimensões verificadas nas Informações da WeDrop desta SKU.');
    spec.productTitle=w.draftTitle||w.productTitle||'';
-   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
    const final=await addConfirmedSpecificationCard(prepared.blob,spec);
    if(!(final instanceof Blob)||final.type!=='image/png'||final.size<1024)
     throw Error('Imagem 03 recusada: não foi possível compor as cotas WeDrop na foto gerada pelo ChatGPT.');
@@ -12324,13 +12326,39 @@ async function optimizerChatgptContinueFromServer(){
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
-  const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
-  if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
-  if(missing.includes(3)){
-   const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
-   notify('Dimensões da imagem 03 confirmadas na WeDrop antes de enviar o prompt: '+
-    confirmed.map(x=>x.label+' '+x.value).join(' · ')+'. '+stored.length+'/9 imagens preservadas.');
+  const allMissing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
+  if(!allMissing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
+  // A imagem 03 exige cotas verificadas; a falta delas não retém 01/02/04–09.
+  // Nunca declarar 03 salva: somente a fila da extensão a pula temporariamente.
+  let deferredThird=false;
+  if(allMissing.includes(3)){
+   try{
+    if(brief.dimensionWarning||(brief.confirmedDimensions?.measurements?.length||0)<2)
+     throw Error('Os eixos da imagem 03 ainda não estão confirmados para esta SKU.');
+    // As medidas já foram lidas da fonte autenticada na montagem do roteiro.
+    // Revalidar a imagem 03 só quando ela for a primeira pendente; nunca
+    // bloquear a imagem 01 por uma SEGUNDA consulta exclusiva da imagem 03.
+    // O upload da imagem 03 sempre faz uma conferência final independente.
+    const confirmed=allMissing[0]===3
+     ?await optimizerRequireThirdChatgptDimensions(w,brief)
+     :brief.confirmedDimensions.measurements;
+    notify('Dimensões da imagem 03 conferidas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
+   }catch(error){
+    const reason=String(error?.message||error);
+    const dimensionPending=/^(?:Os eixos da imagem 03|Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas|IMAGEM 03 NÃO INICIADA|PROMPT ANTIGO DETECTADO)/i.test(reason);
+    // Falhas de rede, autenticação e API não são ambiguidades de dimensões.
+    // Nesses casos, informar o erro real, em vez de ignorar a posição 03.
+    if(!optimizerImagesSameSku(w)||!dimensionPending)throw error;
+    deferredThird=true;
+    optimizerCommercialActionMessage('Imagem 03 pendente de medidas WeDrop verificadas. As outras posições continuam sem inventar cotas. '+reason.slice(0,220));
+   }
   }
+  const missing=deferredThird?allMissing.filter(slot=>slot!==3):allMissing;
+  if(!missing.length){
+   const msg='Somente a imagem 03 está pendente: conferir os eixos em Informações da WeDrop. As outras imagens permanecem salvas.';
+   notify(msg);return {ok:false,error:msg};
+  }
+  const bridgeCompleted=deferredThird?[...stored,3].sort((a,b)=>a-b):stored;
   const first=String(missing[0]).padStart(2,'0');
   const preparedThirdReference=Number(missing[0])===3?
    await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
@@ -12375,6 +12403,12 @@ async function optimizerChatgptContinueFromServer(){
    await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
    recovered={reason:'NO_RECOVERABLE_JOB'};
    notify('Imagem 03/09: sessão anterior da Ponte reconciliada. Criando NOVO comando com cotas WeDrop verificadas, preservando '+stored.length+'/9 imagens.');
+  }else if(deferredThird){
+   // Não reativar uma sessão antiga que ainda possa gerar a imagem 03 sem cotas.
+   // Encerrar somente a sessão da SKU, preservar tudo que já está no servidor.
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,bridgeCompleted);
+   recovered={reason:'NO_RECOVERABLE_JOB'};
+   notify('Imagem 03 aguardando confirmação. Iniciando somente as posições '+missing.map(x=>String(x).padStart(2,'0')).join(', ')+'.');
   }else{
    // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
    // foto. Repetir somente a leitura da referência, jamais apagar imagens.
@@ -12382,7 +12416,7 @@ async function optimizerChatgptContinueFromServer(){
     referenceIndex=i;referenceUrl=refs[i];
     recovered=await optimizerBridgeRecoverFromExtension({
      sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
-     completed:stored,imageUrl:referenceUrl,prompts:brief.prompts
+     completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief.prompts
     });
     if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
        !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
@@ -12426,8 +12460,8 @@ async function optimizerChatgptContinueFromServer(){
     const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-     imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-     referenceDataUrl:preparedThirdReference,restart:freshThird
+     imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+     referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
     }},location.origin);
     startResult=await startAck;
     if(startResult?.ok)break;
@@ -12442,8 +12476,8 @@ async function optimizerChatgptContinueFromServer(){
      const secondAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-      referenceDataUrl:preparedThirdReference,restart:freshThird
+      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+      referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
      }},location.origin);
      startResult=await secondAck;
      if(startResult?.ok)break;
@@ -12508,7 +12542,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=1.21.83-prompts-hd-wedrop');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261110-product-package-scope');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
@@ -12612,7 +12646,7 @@ async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}=
   if(String(photo.headers.get('X-Image-SHA256')||'')!==String(original.sha256))
    throw Error('A foto-base mudou durante a leitura. Nada foi salvo.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.3-reference-design');
+   await import('/specificationCard.js?v=20261110-product-package-scope');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const output=await addConfirmedSpecificationCard(await photo.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a criação. Nada foi salvo.');
@@ -12669,7 +12703,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.3-reference-design');
+   await import('/specificationCard.js?v=20261110-product-package-scope');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -13075,7 +13109,7 @@ async function optimizerImagesLoad(){
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
  const {addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=1.4.3-reference-design');
+  await import('/specificationCard.js?v=20261110-product-package-scope');
  const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
  spec.productTitle=w.draftTitle||w.productTitle||'';
@@ -13173,12 +13207,26 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
- let count=0,errorMessage='';
+ let count=0,errorMessage='',deferredThird=false;
  try{
   // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
   for(let slot=1;slot<=9;slot++){
    if(optimizerImagesStopRequested||!optimizerImagesSameSku(w))break;
    if(optimizerImagesSavedSlots.has(slot))continue;
+   if(slot===3){
+    try{
+     const verified=await optimizerVerifiedDimensionSpec(w);
+     if((verified?.measurements?.length||0)<2){
+      deferredThird=true;status.textContent='Imagem 03 pendente de medidas confirmadas; gerando as demais sem alterar 03.';
+      continue;
+     }
+    }catch(error){
+     if(!optimizerImagesSameSku(w)||
+        !/Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas/i.test(String(error.message||'')))throw error;
+     deferredThird=true;status.textContent='Imagem 03 pendente de conferência WeDrop; as demais prosseguem.';
+     continue;
+    }
+   }
    status.textContent='OpenAI gerando imagem '+slot+' de 9. '+optimizerImagesSavedSlots.size+'/9 concluídas. Não feche o anúncio.';
    await optimizerImagesGenerateSlot(w,slot,false);
    count++;
@@ -13188,6 +13236,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
    status.textContent=optimizerImagesSavedSlots.size===9
     ?'9/9 imagens prontas e salvas. Confira a galeria e aprove a etapa antes do envio à Shopee.'
     :optimizerImagesStopRequested?'Geração interrompida. '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Clique novamente para continuar.'
+    :deferredThird?'Geração parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas; apenas a imagem 03 aguarda cotas WeDrop confirmadas.'
     :'Geração parcial. '+optimizerImagesSavedSlots.size+'/9 imagens disponíveis.';
  }catch(e){
   errorMessage=e.message;
@@ -13198,6 +13247,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSameSku(w)){
    status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
     :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
+    :deferredThird?'Lote parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Imagem 03 pendente de dimensões WeDrop confirmadas; retome após a conferência.'
     :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
   }
  }

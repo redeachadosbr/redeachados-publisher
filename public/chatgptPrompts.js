@@ -1,6 +1,6 @@
 import {PREMIUM_NINE_IMAGE_TITLES,premiumNineImageRule} from './premiumNineImagePolicy.js';
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261104-bulleted-saved-dimensions';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
 import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-premium-nine-images';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
@@ -74,6 +74,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const poolDisplay=isPoolLounger&&hasLengthWidth&&hasSortedBlueYellowPink;
  const axes=dims?.measurements||[];
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
+ const verifiedAxes=axes.map(x=>x.label).join(', ');
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
   'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. O ChatGPT deve criar uma fotografia NOVA da mesma SKU. NÃO reutilizar nem devolver a imagem 02.',
@@ -83,9 +84,9 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
   poolDisplay?
    'VARIAÇÕES DE COR CONFIRMADAS PELA WEDROP: apresentar as três OPÇÕES de cor do colchão inflável na mesma cena, da esquerda para a direita ROSA, AMARELO e AZUL. O envio contém UMA unidade de cor sortida, NÃO é kit nem três unidades. O Manager colocará a cota apenas sobre a peça AZUL e o selo “Envio em cores sortidas”.':
    '',
-  'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e medidas verificadas (ALTURA, LARGURA, COMPRIMENTO ou PROFUNDIDADE quando aplicável). Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
-  'PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER: a fotografia que você gera é a BASE de uma arte de DIMENSÕES, não o resultado publicado. O Manager acrescentará uma única camada vetorial verificável com ALTURA, LARGURA e COMPRIMENTO EXATOS da WeDrop à imagem recebida e só então salvará a imagem 03. Para impedir duplicação ou erros de números na arte final, NÃO escreva texto, números, etiquetas ou setas na foto-base. As cotas serão aplicadas automaticamente sobre ESTA FOTO NOVA, não sobre a imagem 02.',
-  'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
+  'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e medidas verificadas ('+(verifiedAxes||'ALTURA, LARGURA, COMPRIMENTO ou DIÂMETRO quando comprovados')+'). Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
+  'PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER: a fotografia que você gera é a BASE de uma arte de DIMENSÕES, não o resultado publicado. O Manager acrescentará uma única camada vetorial verificável com as cotas '+(verifiedAxes||'confirmadas')+' EXATAS da WeDrop à imagem recebida e só então salvará a imagem 03. Para impedir duplicação ou erros de números na arte final, NÃO escreva texto, números, etiquetas ou setas na foto-base. As cotas serão aplicadas automaticamente sobre ESTA FOTO NOVA, não sobre a imagem 02.',
+  axes.length===3?'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.':'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
  ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
