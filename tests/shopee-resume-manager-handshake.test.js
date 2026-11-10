@@ -70,5 +70,5 @@ test('não aceitar prompt legado de imagem 03 sem cotas e recarregar versão atu
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/PROMPT ANTIGO DETECTADO/);
  assert.match(app,/SEM texto, setas/);
- assert.match(app,/chatgptPrompts\.js\?v=20261110-product-package-scope/);
+ assert.match(app,/chatgptPrompts\.js\?v=20261110-chatgpt-final-cotas/);
 });
