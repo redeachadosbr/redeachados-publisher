@@ -1352,11 +1352,11 @@ function orderDateISO(raw){
  return Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==iso?'':iso;
 }
 function orderStatusGroup(status){
- const v=String(status||'').toLowerCase().trim();
- if(/cancel|cancell|refund|devol|return|estorn/.test(v))return 'cancelled';
- if(/delivered|completed|complete|entreg|finaliz/.test(v))return 'delivered';
- if(/shipped|transit|enviad|despach/.test(v))return 'shipped';
- if(/picked|ready|separad|processing|pending|created|novo|aguard/.test(v))return 'pending';
+ const v=String(status||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ if(/cancel|cancell|refund|reembols|devol|return|estorn/.test(v))return 'cancelled';
+ if(/delivered|completed|complete|entreg|finaliz|concluid/.test(v))return 'delivered';
+ if(/shipped|transit|enviad|despach|a caminho/.test(v))return 'shipped';
+ if(/picked|ready|separad|processing|pending|pendente|created|novo|aguard|a enviar|a processar|prepar|pago|pagamento/.test(v))return 'pending';
  return 'unknown';
 }
 function summarizeOrderRows(rows){
@@ -1409,13 +1409,13 @@ function summarizeOrderRows(rows){
    records.set(sku,rec);
   }
  }
- return {formatVersion:2,orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
+ return {formatVersion:3,orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
   firstDate,lastDate,withoutDate:noDateOrders.size,duplicateLines,
   importedAt:new Date().toISOString()};
 }
 function compareOrdersToAds(d){
  if(!supplierOrderMeta)return null;
- if(supplierOrderMeta.formatVersion!==2)return {needsReimport:true};
+ if(supplierOrderMeta.formatVersion!==3)return {needsReimport:true};
  const rec=supplierOrderBySku.get(d.sku);
  const from=d.dateStart,to=d.dateEnd;
  const byDate=rec?.byDate||{};
@@ -1596,7 +1596,7 @@ $('pSku').addEventListener('change',lookupSupplierSKU);
    supplierOrderBySku.clear();
    for(const rec of ord.bySku)supplierOrderBySku.set(rec.sku,rec);
    supplierOrderMeta=ord;
-   $('ordersImportStatus').textContent='Resumo local de '+ord.orderCount+' pedidos disponível. Não é atribuição de Ads.';
+   $('ordersImportStatus').textContent='Resumo local de '+ord.orderCount+' pedidos disponível. '+(ord.formatVersion===3?'Quantidade por SKU e fase habilitada.':'Reimporte o XLSX na aba Produtos para atualizar a conciliação por fase.')+' Não é atribuição de Ads.';
    renderSupplierOrdersHint();
    if(lastReport)renderOrdersAdsComparison(lastReport);
    window.RedeEvolution?.ordersUpdated?.();
