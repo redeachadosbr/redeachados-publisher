@@ -1366,42 +1366,52 @@ function summarizeOrderRows(rows){
  };
  if(Object.values(col).some(v=>v<0))throw Error('Planilha incompatível: faltam Status, Produtos, Número do Pedido ou Data de Criação.');
  const records=new Map(),statusCounts={},usedOrders=new Set();
- let firstDate='',lastDate='',withoutDate=0;
+ const seenOrderLines=new Set(),seenSkuOrders=new Set(),seenSkuDateOrders=new Set();
+ const noDateOrders=new Set();
+ let firstDate='',lastDate='',duplicateLines=0;
  for(const row of rows.slice(1)){
   const order=String(row?.[col.order]||'').trim();
   const rawStatus=String(row?.[col.status]||'').trim();
   const status=orderStatusGroup(rawStatus),date=orderDateISO(row?.[col.date]);
   const products=String(row?.[col.products]||'');
-  if(!order||usedOrders.has(order))continue;
-  usedOrders.add(order);
-  statusCounts[status]=(statusCounts[status]||0)+1;
-  if(!date)withoutDate++;else{
+  if(!order)continue;
+  // Um pedido pode ocupar várias linhas com SKUs diferentes. Não descartar
+  // outras linhas do mesmo pedido, mas não contar cópias idênticas duas vezes.
+  const signature=JSON.stringify([order,date,products.trim()]);
+  if(seenOrderLines.has(signature)){duplicateLines++;continue}
+  seenOrderLines.add(signature);
+  if(!usedOrders.has(order)){
+   usedOrders.add(order);
+   statusCounts[status]=(statusCounts[status]||0)+1;
+  }
+  if(!date)noDateOrders.add(order);
+  else {
    if(!firstDate||date<firstDate)firstDate=date;
    if(!lastDate||date>lastDate)lastDate=date;
   }
   const matches=[...products.matchAll(/SKU\s*:\s*([A-Za-z0-9._-]+)\s*\(\s*(\d+)\s*x\s*\)/gi)];
-  const present=new Set();
   for(const match of matches){
    const sku=normalizeSupplierSku(match[1]),qty=Number(match[2]);
    if(!sku||!Number.isInteger(qty)||qty<1||qty>9999)continue;
    const rec=records.get(sku)||{sku,orders:0,units:0,statuses:{},byDate:{}};
    rec.units+=qty;
-   if(!present.has(sku)){rec.orders++;present.add(sku)}
+   const orderSku=JSON.stringify([order,sku]);
+   if(!seenSkuOrders.has(orderSku)){rec.orders++;seenSkuOrders.add(orderSku)}
    rec.statuses[status]=(rec.statuses[status]||0)+qty;
    if(date){
     const day=rec.byDate[date]||{units:0,orders:0,statuses:{}};
     day.units+=qty;
     day.statuses[status]=(day.statuses[status]||0)+qty;
-    // Conta apenas uma vez cada pedido por SKU, inclusive em kits com linhas duplicadas.
-    if(day._lastOrder!==order){day.orders++;day._lastOrder=order}
+    const daySkuOrder=JSON.stringify([date,order,sku]);
+    if(!seenSkuDateOrders.has(daySkuOrder)){day.orders++;seenSkuDateOrders.add(daySkuOrder)}
     rec.byDate[date]=day;
    }
    records.set(sku,rec);
   }
  }
- for(const rec of records.values())for(const day of Object.values(rec.byDate))delete day._lastOrder;
  return {formatVersion:2,orderCount:usedOrders.size,statusCounts,bySku:[...records.values()],
-  firstDate,lastDate,withoutDate,importedAt:new Date().toISOString()};
+  firstDate,lastDate,withoutDate:noDateOrders.size,duplicateLines,
+  importedAt:new Date().toISOString()};
 }
 function compareOrdersToAds(d){
  if(!supplierOrderMeta)return null;
@@ -1558,6 +1568,8 @@ async function receiveOrdersFile(file){
   try{await supplierSave('orders',summary)}catch{persisted=false}
   $('ordersImportStatus').textContent='✓ '+summary.orderCount+' pedidos no arquivo ('+(summary.firstDate||'?')+' a '+(summary.lastDate||'?')+'): '+
    Object.entries(summary.statusCounts).map(([status,n])=>status+' '+n).join(' · ')+
+   (summary.duplicateLines?' · '+summary.duplicateLines+' linha(s) repetida(s) ignorada(s)':'')+
+   (summary.withoutDate?' · ATENÇÃO: '+summary.withoutDate+' pedido(s) sem data':'')+
    '. NÃO significa venda entregue ou atribuída a Ads. '+(persisted?'Resumo salvo neste navegador.':'Resumo apenas nesta sessão.');
   renderSupplierOrdersHint();
   if(lastReport)renderOrdersAdsComparison(lastReport);
