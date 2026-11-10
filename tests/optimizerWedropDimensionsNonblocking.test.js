@@ -94,3 +94,41 @@ test('a mensagem final do lote parcial mantém a pendência da imagem 03 visíve
  assert.match(batch,/:deferredThird\?'Lote parcial:/);
  assert.match(batch,/Imagem 03 pendente de dimensões WeDrop confirmadas/);
 });
+
+test('SKU 895332: texto real multiline confirma apenas altura e diâmetro do produto',async()=>{
+ const {confirmedSpecCard}=await import('../public/specificationCard.js');
+ const sourceText=[
+  'Fonte Bebedouro 3 modos Para Pets 20cm',
+  'Especificações:', 'Dimensões:', '',
+  ' 20cm altura x 19cm diamentro/ ', '',
+  'Comprimento do cabo USB: 1,40m',
+  'ALTURA', '14cm', 'LARGURA', '21cm', 'COMPRIMENTO', '21cm'
+ ].join('\n');
+ const spec=confirmedSpecCard({
+  sourceText,sku:'895332',sourceEvidenceSku:'895332',
+  sourceSaved:true,supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:'14',widthCm:'21',lengthCm:'21'}
+ });
+ assert.deepEqual(spec?.measurements.map(x=>[x.axis,x.value]),[
+  ['altura','20 cm'],['diametro','19 cm']
+ ]);
+ assert.equal(spec.measurements.some(x=>x.value==='14 cm'||x.value==='21 cm'),false);
+});
+
+test('linha seguinte só pode conter cotas explícitas; não aceita dados do cabo ou embalagem',()=>{
+ assert.equal(confirmedProductDimensionsFromWeDrop(
+  'Dimensões:\n\nComprimento do cabo USB: 1,40m'),null);
+ assert.equal(confirmedProductDimensionsFromWeDrop(
+  'Dimensões da embalagem:\n20cm altura x 19cm diamentro'),null);
+ assert.equal(confirmedProductDimensionsFromWeDrop(
+  'Dimensões:\n20cm altura x 19cm diamentro\nDimensões: 25cm altura x 19cm diametro'),null);
+});
+
+test('arte 03 aceita diâmetro e o roteiro não obriga três medidas inexistentes',()=>{
+ const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
+ const prompts=readFileSync(new URL('../public/chatgptPrompts.js',import.meta.url),'utf8');
+ assert.match(card,/diameter=get\('diametro'\)/);
+ assert.match(card,/label:'Diâmetro'/);
+ assert.match(prompts,/const verifiedAxes=axes\.map\(x=>x\.label\)/);
+ assert.doesNotMatch(prompts,/TERÁ AS TRÊS COTAS VISÍVEIS/);
+});
