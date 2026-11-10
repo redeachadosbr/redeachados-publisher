@@ -2006,7 +2006,12 @@ function apiFillCampaign(c,start,end,options={}){
   // A interface mantém somente datas manuais e a consulta pela API.
   const d=getData(),issues=validate(d);
   if(!issues.length)render(analyze(d));
-  else if(!window.RedeAdsQuick?.renderProvisional?.(d,issues))showError(issues.join(' '));
+  else{
+   if(!window.RedeAdsQuick?.renderProvisional?.(d,issues))showError(issues.join(' '));
+   // A conciliação manual é independente do orçamento/meta de ROAS.
+   // Mesmo com diagnóstico Ads provisório, permitir informar o lucro.
+   window.RedeAdsFinance?.refresh?.({d});
+  }
  }
 }
 function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
