@@ -189,6 +189,14 @@
 .evo-change strong{color:#e7c084}
 .evo-marker{font-size:19px;color:#e2bf7e}
 .evo-status{font-size:12px;color:#c7d2df;margin:10px 0}
+.evo-order-bar{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;padding:12px;background:#1b2633;border:1px solid #42566b;border-radius:10px;margin:10px 0}
+.evo-order-bar p{margin:0;flex:1;min-width:175px}
+.evo-sales-line{border:1px solid #3b5b5a;background:#142522;border-radius:9px;padding:10px 12px;margin:10px 0;color:#d7ece5;font-size:12px;line-height:1.55}
+.evo-sales-line strong{color:#adf6ce}
+.evo-sales-line small{display:block;margin-top:5px;color:#b8c9cb}
+.evo-sales-status{display:block;color:#e9cc9c;background:#2d281c;border:1px solid #665536;border-radius:8px;padding:9px;margin:9px 0;font-size:12px}
+.evo-quick{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:720px){.evo-quick{grid-template-columns:1fr}.evo-order-bar{display:grid}}
 @media(max-width:780px){.evo-form{grid-template-columns:1fr 1fr}.evo-form .field:first-child{grid-column:1/-1}.evo-form button{grid-column:1/-1}.evo-mini-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:420px){.evo-quick{grid-template-columns:1fr}}
 </style>
@@ -197,7 +205,7 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16.8 · Diagnóstico automático</span>
+    <span class="pill">V16.9 · Histórico + Pedidos XLSX</span>
   </div>
   <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
   <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Decisão atual</button><button class="tab" data-tab="evolucao">▥ Evolução</button><button class="tab" data-tab="historico">◷ Alterações</button><button class="tab" data-tab="regras">▤ Regras Ads</button></nav>
@@ -425,13 +433,13 @@
   <div class="evo-header">
    <div><div class="overline">Acompanhe a campanha sem misturar mudanças</div>
     <h2>Evolução da campanha</h2>
-    <p class="subtle">A API organiza as métricas por fase. Cada alteração vira um ponto na linha do tempo.</p></div>
+    <p class="subtle">As datas são geradas automaticamente pelo histórico. Cada fase mostra Ads e unidades do relatório de pedidos da mesma SKU.</p></div>
    <button type="button" id="evoHistoryLink" class="btn-secondary mini">Ver histórico de alterações</button>
   </div>
   <div class="evo-form">
    <div class="field"><label for="evoSku">Produto / SKU</label><select id="evoSku"><option value="">Selecione um produto</option></select></div>
-   <div class="field"><label for="evoStart">Desde</label><input id="evoStart" type="date"></div>
-   <div class="field"><label for="evoEnd">Até</label><input id="evoEnd" type="date"></div>
+   <div class="field"><label for="evoStart">Desde (automático · editável)</label><input id="evoStart" type="date"></div>
+   <div class="field"><label for="evoEnd">Até (hoje por padrão)</label><input id="evoEnd" type="date"></div>
    <button type="button" id="evoRefresh" class="btn-primary">Consultar evolução</button>
   </div>
   <div class="field" id="evoCampaignWrap" hidden style="margin-top:12px">
@@ -439,11 +447,13 @@
    <select id="evoCampaign"><option value="">Selecione a campanha</option></select>
   </div>
   <p id="evoStatus" role="status" class="evo-status">Selecione o produto para consultar a evolução.</p>
+  <div class="evo-order-bar"><p id="evoOrderStatus" class="evo-small">As unidades virão do relatório de pedidos da Shopee importado em Produtos.</p><button id="evoOpenOrders" type="button" class="btn-secondary mini">Importar / atualizar XLSX de pedidos</button></div>
   <div id="evoSummary" hidden>
    <div class="evo-small" id="evoCurrentLabel"></div>
    <div class="evo-quick">
     <div><small>Gasto médio diário · última fase</small><b id="evoLatestSpent">—</b></div>
     <div><small>ROAS real · última fase</small><b id="evoLatestRoas">—</b></div>
+    <div><small>Unidades em pedidos não cancelados · última fase</small><b id="evoLatestUnits">—</b><small id="evoLatestUnitsNote">Aguardando XLSX</small></div>
    </div>
    <p class="evo-small" id="evoLatestTarget"></p>
    <div id="evoTopBox" class="evo-decision">
@@ -454,7 +464,7 @@
   </div>
   <h3 style="margin:20px 0 8px">Linha do tempo das modificações</h3>
   <div id="evoTimeline"><p class="subtle">Os períodos aparecerão aqui, do mais antigo para o mais recente.</p></div>
-  <p class="tiny">Os dias das alterações são excluídos das comparações porque podem conter duas configurações. O dia atual é exibido separadamente. Vendas atribuídas à publicidade não equivalem necessariamente aos pedidos totais da loja; períodos diferentes não são comparados usando apenas totais. Nenhuma campanha é modificada.</p>
+  <p class="tiny">O dia da modificação e o dia atual aparecem separadamente: não entram nas comparações de fases fechadas. Unidades em pedidos não cancelados incluem pendentes, enviadas e entregues; cancelamentos/devoluções ficam separados. A abrangência por datas do XLSX é indicativa, não garante exportação completa. Pedidos totais da loja não são vendas atribuídas ao Ads. Nenhum anúncio é alterado.</p>
  </div>
 </section>
   <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Cenário</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
@@ -496,7 +506,7 @@
       <p class="tiny">Histórico local preservado no backup JSON e sincronizado com o Google Drive quando a conexão estiver disponível.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.8</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.9</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
 <script>
@@ -1551,6 +1561,7 @@ async function receiveOrdersFile(file){
    '. NÃO significa venda entregue ou atribuída a Ads. '+(persisted?'Resumo salvo neste navegador.':'Resumo apenas nesta sessão.');
   renderSupplierOrdersHint();
   if(lastReport)renderOrdersAdsComparison(lastReport);
+  window.RedeEvolution?.ordersUpdated?.();
  }catch(e){$('ordersImportStatus').textContent='Erro nos pedidos: '+String(e.message||e).slice(0,220)}
  finally{btn.disabled=false;$('importOrdersXlsxFile').value=''}
 }
@@ -1576,6 +1587,7 @@ $('pSku').addEventListener('change',lookupSupplierSKU);
    $('ordersImportStatus').textContent='Resumo local de '+ord.orderCount+' pedidos disponível. Não é atribuição de Ads.';
    renderSupplierOrdersHint();
    if(lastReport)renderOrdersAdsComparison(lastReport);
+   window.RedeEvolution?.ordersUpdated?.();
   }
  }catch{/* IndexedDB opcional. Importação manual ainda funciona na sessão atual. */}
 })();
@@ -1808,10 +1820,10 @@ function renderChangeHistory(){
  const a=getChanges().filter(keep).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
  if(!badRange)summary.textContent=a.length+' modificação(ões)'+(from?' desde '+apiDate(from):'')+
   (to?' até '+apiDate(to):'')+'. Exibidas em ordem cronológica.';
- body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><div class="hist-action-buttons"><button class="btn-secondary mini" data-analyze-change="'+safe(x.id)+'" type="button">Analisar após</button><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></div></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
+ body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><div class="hist-action-buttons"><button class="btn-secondary mini" data-analyze-change="'+safe(x.id)+'" type="button">Analisar fases</button><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></div></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
  for(const btn of body.querySelectorAll('[data-analyze-change]'))btn.addEventListener('click',()=>{
   const record=getChanges().find(x=>x.id===btn.dataset.analyzeChange);
-  historyRunFromChange(record);
+  if(!window.RedeEvolution?.selectSku?.(record.sku))historyRunFromChange(record);
  });
  for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
   if(!confirm('Excluir este registro manual?'))return;
@@ -2063,7 +2075,8 @@ $('apiHistoryBtn').addEventListener('click',()=>apiLoadRange(true));
 refreshChangeSelects();renderChangeHistory();
 
 </script>
-<script src="/evolution.js"></script>
+<script src="/order-phase-metrics.js?v=20261110-1"></script>
+<script src="/evolution.js?v=20261110-2"></script>
 <script src="/decision-quick.js?v=20261110-2"></script>
 <script src="/cloud-sync.js" defer></script>
 </body>
