@@ -2200,7 +2200,7 @@ function kitCommercialFields(){
    text:node.tagName==='SELECT'?'':node.value.trim(),
    unit:node.closest('[data-kit-commercial-attr-row]')?.querySelector('[data-kit-commercial-unit]')?.value||''
   })).filter(x=>x.valueId>0||x.text);
- return {...kitPublishFields(),mainSku:String(prepared?.kit?.components?.[0]?.sku||''),
+ return {...kitPublishFields(),mainSku:kitCurrentMain(prepared?.kit),
   categoryId:id,categoryReviewed:$('#kitCommercialCategoryApproved')?.checked===true,
   attributes};
 }
@@ -2302,7 +2302,7 @@ async function kitReadinessCheck(){
    for(const [slot,id] of kitShopeePhotoSlots)if(!uploaded.has(id))kitShopeePhotoSlots.delete(slot);
    $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
     ' de 9 imagens confirmadas nesta sessão. As restantes serão reenviadas do rascunho.';
-   const main=String(prepared.kit.components?.[0]?.sku||'');
+   const main=kitCurrentMain(prepared.kit);
    if([...$('#kitMainSku').options].some(o=>o.value===main))$('#kitMainSku').value=main;
    kitCommercialCategoryUi(result);
   }else if($('#kitCommercialForm'))$('#kitCommercialForm').hidden=true;
