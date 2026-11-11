@@ -189,6 +189,7 @@ test('Otimização: com média do mercado, protege piso ou sinaliza inviabilidad
  assert.ok(['COMPETITIVO','MERCADO_ABAIXO_DO_PISO'].includes(q.status));
  assert.ok(q.netMarginPct>=5);
  assert.ok(q.discountPct>0&&q.discountPct<=50);
- for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+ for(const value of [q.grossPrice,q.marketplaceDisplayPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10));
+ assert.equal(q.priceEndingPolicy,'listed_price_coupon_conditional');
 });
