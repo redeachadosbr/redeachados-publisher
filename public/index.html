@@ -117,6 +117,15 @@
 #tab-kits #kitWizardExecutionMount{padding:0!important}
 #tab-kits .kit-wizard-execute-direct{background:linear-gradient(135deg,#1177db,#0752bb)!important;color:white!important;border:0!important;box-shadow:0 8px 18px rgba(0,72,167,.23)!important;border-radius:12px!important;padding:12px 22px!important;font-weight:800!important}
 #tab-kits #kitWizardExecutionDirectStatus:not([hidden]){padding:10px 13px;border-radius:10px;background:#eef5ff;color:#173e72;font-size:13px}
+#tab-kits .kit-wizard-manual-panel{margin-top:16px;padding:16px;border:1px solid #cbd9ed;border-radius:14px;background:#f8faff;box-shadow:0 5px 15px rgba(21,48,95,.06)}
+#tab-kits .kit-wizard-manual-panel strong{display:block;font-size:14px;color:#153760;margin-bottom:4px}
+#tab-kits .kit-wizard-manual-panel p{font-size:12px;color:#41516b;margin:5px 0 10px}
+#tab-kits .kit-wizard-manual-check{display:flex;gap:9px;align-items:flex-start;font-weight:600;font-size:13px;color:#213a59;cursor:pointer}
+#tab-kits .kit-wizard-manual-check input{width:18px;height:18px;flex:0 0 18px;margin-top:1px;accent-color:#1166cb}
+#tab-kits #kitWizardManualComplete{margin-top:12px;white-space:normal}
+#tab-kits #kitWizardManualComplete:disabled{opacity:.5;cursor:not-allowed}
+#tab-kits #kitWizardManualStatus[data-state="error"]{color:#a1272f}
+#tab-kits #kitWizardManualStatus[data-state="success"]{color:#087d4c}
 </style>
   <link rel="stylesheet" href="/finance-premium-3d.css?v=20261107-premium-v1">
 </head>
@@ -1436,6 +1445,14 @@
    <div id="kitWizardExecutionAccess" class="kit-wizard-execution-direct" hidden>
     <p id="kitWizardExecutionDirectStatus" role="status" aria-live="polite" hidden></p>
     <div id="kitWizardExecutionMount" class="kit-wizard-shared-mount"></div>
+    <section id="kitWizardManualPanel" class="kit-wizard-manual-panel" aria-label="Concluir etapa 10 manualmente">
+     <strong>✓ Anúncio já cadastrado? Concluir manualmente</strong>
+     <p id="kitWizardManualItemId">Vincule o Item ID da SKU principal ao rascunho antes de confirmar.</p>
+     <label class="kit-wizard-manual-check"><input type="checkbox" id="kitWizardManualCheck">
+      <span>Confirmo que conferi o anúncio e as etapas necessárias diretamente na Shopee. Quero encerrar apenas o fluxo interno deste kit, sem fazer novos envios.</span></label>
+     <button type="button" id="kitWizardManualComplete" class="kit-secondary" disabled>✓ Concluir manualmente (sem enviar)</button>
+     <p id="kitWizardManualStatus" role="status" aria-live="polite">Esta opção não altera preços, imagens, vídeos ou descontos. A confirmação será registrada como manual, não como auditoria oficial.</p>
+    </section>
    </div>
    <div id="kitWizardFiscalAccess" class="kit-wizard-technical-access" hidden>
     <strong>Dados fiscais padrão já cadastrados</strong>
@@ -1464,7 +1481,7 @@
  <p id="kitDraftDeleteStatus" class="kit-draft-delete-status" role="status" aria-live="polite" hidden></p>
  <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>
   <section class="kit-drafts-panel kit-published-panel" aria-label="Kits publicados na Shopee">
-   <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">✓</span><div class="kit-section-heading-text"><h3>Kits publicados na Shopee</h3><p>Publicações confirmadas, separadas dos rascunhos e preservadas entre importações.</p></div></div>
+   <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">✓</span><div class="kit-section-heading-text"><h3>Kits publicados ou concluídos</h3><p>Publicações verificadas pela Shopee e conclusões manuais claramente identificadas, preservadas entre importações.</p></div></div>
    <div id="kitPublishedList" class="kit-suggestions"><p>Consultando histórico de kits publicados...</p></div>
   </section>
  <span id="kitDetailHome" hidden aria-hidden="true"></span>
@@ -2775,7 +2792,7 @@
 <script src="/curvas-ab.js?v=20261108-strict-curves-ab-v1"></script>
 <script src="/curvas-chrome.js?v=20261109-sku-serial-autocontinue-v1"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
-<script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
+<script type="module" src="/kit-builder.js?v=20261111-kit-manual-stage10"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
