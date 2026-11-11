@@ -397,6 +397,31 @@ function kitWizardExecutionFeedback(message,state='info'){
  node.style.color=state==='error'?'#a1272f':state==='warning'?'#85520d':'#173e72';
  node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
 }
+// A confirmação manual encerra apenas o fluxo interno; não valida ações na Shopee.
+let kitWizardManualSaving=false;
+function kitWizardManualLink(){
+ const kit=prepared?.kit,main=String(kit?.components?.[0]?.sku||'');
+ const stored=prepared?.optimization;
+ const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ const link=stored?.itemId?stored:handoff?.kitSku===kit?.kitSku?handoff:null;
+ if(!kitSaved||!kit||!link||
+    String(link.kitSku)!==String(kit.kitSku)||
+    String(link.sku)!==main||String(link.mainSku||main)!==main||
+    !/^[1-9]\\d{0,17}$/.test(String(link.itemId||'')))return null;
+ return {kitSku:String(kit.kitSku),sku:main,itemId:String(link.itemId),
+  modelId:String(link.modelId||'0')};
+}
+function kitWizardManualSync(){
+ const panel=$('#kitWizardManualPanel'),check=$('#kitWizardManualCheck'),
+  button=$('#kitWizardManualComplete'),label=$('#kitWizardManualItemId');
+ if(panel)panel.hidden=kitWizardStage!==10;
+ const link=kitWizardManualLink();
+ if(label)label.textContent=link?
+  'SKU principal: '+link.sku+' · Item ID vinculado: '+link.itemId:
+  'Vínculo do anúncio não encontrado. Confirme o Item ID existente na etapa 09 e salve o rascunho.';
+ if(check){check.disabled=!link||kitWizardManualSaving;if(!link)check.checked=false;}
+ if(button)button.disabled=!link||!check?.checked||kitWizardManualSaving;
+}
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
  if(panel&&home){if(panel.parentElement!==home)home.append(panel);panel.hidden=true;}
@@ -941,6 +966,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
  const direct=$('#kitWizardOpenExecution');
  if(direct){direct.hidden=kitWizardStage!==10;direct.disabled=!prepared?.kit;}
+ kitWizardManualSync();
  const mark=$('#kitWizardConfirm');if(mark)mark.hidden=kitWizardStage===10;
  const forward=$('#kitWizardNext');if(forward)forward.hidden=kitWizardStage===10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
