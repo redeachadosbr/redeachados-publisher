@@ -66,7 +66,7 @@ export function commercialKitFields(input,kit,allowedChannels=[],uploadedImageId
  const parts=arr(kit?.components),skus=parts.map(p=>str(p.sku));
  if(parts.length<2||parts.length>4||new Set(skus).size!==parts.length)
   throw Error('Kit deve conter de 2 a 4 componentes distintos.');
- if(str(input?.mainSku)!==skus[0])throw Error('A SKU principal deve ser o primeiro componente do kit.');
+ if(!skus.includes(str(input?.mainSku)))throw Error('A SKU principal deve pertencer ao kit salvo.');
  if(input?.categoryReviewed!==true||!positive(input?.categoryId))
   throw Error('Confirme a categoria oficial da Shopee para este kit.');
  const categoryId=Number(input.categoryId),title=str(input.title),description=str(input.description);
@@ -95,7 +95,7 @@ export function commercialKitFields(input,kit,allowedChannels=[],uploadedImageId
   weight,dimensions,images,attributes:arr(input.attributes)};
 }
 export function commercialKitPayload(fields,kit,attributeList=[],videoUploadId=null){
- if(fields.mainSku!==str(kit.components?.[0]?.sku))throw Error('A SKU principal foi alterada.');
+ if(!kit.components?.some(p=>str(p.sku)===fields.mainSku))throw Error('A SKU principal não pertence ao kit.');
  return {
   category_id:fields.categoryId,
   item_name:fields.title,item_sku:fields.mainSku,
