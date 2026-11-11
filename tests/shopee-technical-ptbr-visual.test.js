@@ -17,11 +17,12 @@ test('nomes de atributos oficiais em inglês aparecem em português',()=>{
  assert.equal(pt.attribute('Product Condition',109),'Condição do produto');
  assert.equal(pt.attribute('Battery Capacity',110),'Capacidade da bateria');
 });
-test('rótulo desconhecido não é mostrado em inglês nem inventa tradução',()=>{
+test('rótulo desconhecido preserva a pergunta oficial em vez de esconder atrás do ID',()=>{
  const label=pt.attribute('Operating Temperature Range',12345);
- assert.equal(label,'Atributo da categoria nº 12345');
- assert.doesNotMatch(label,/operating|temperature|range/i);
+ assert.equal(label,'Operating Temperature Range');
+ assert.doesNotMatch(label,/Atributo da categoria nº/);
  assert.equal(pt.attribute('Diâmetro da base',99),'Diâmetro da base');
+ assert.equal(pt.attribute('',99),'Nome do atributo não retornado pela Shopee');
 });
 test('valores e opções comuns em inglês aparecem em português',()=>{
  assert.equal(pt.value('Yes',11),'Sim');
@@ -36,9 +37,9 @@ test('valores e opções comuns em inglês aparecem em português',()=>{
  assert.equal(pt.value('210 g',20),'210 g');
  assert.equal(pt.value('GH643',21),'GH643');
 });
-test('valor oficial com inglês desconhecido exige conferência em vez de tradução inventada',()=>{
+test('opção oficial desconhecida mostra seu texto exato em vez de um número',()=>{
  assert.equal(pt.value('Battery Powered with External Adapter',312),
-  'Opção oficial nº 312 (conferir na Shopee)');
+  'Battery Powered with External Adapter');
 });
 test('tradutor é somente apresentação e submissão mantém nome e ID oficiais',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
