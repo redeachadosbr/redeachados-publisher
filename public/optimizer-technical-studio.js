@@ -23,7 +23,7 @@
  titleWrap.append(
    element('small','ra-tech-kicker','ETAPA 04'),
    element('h2','','Ficha técnica'),
-   element('p','','Confira o que já está na Shopee e as alterações comprovadas pela WeDrop. Opcionais sem dados podem ficar vazios.')
+   element('p','','Perguntas e opções consultadas diretamente da Shopee; informações confirmadas na WeDrop são preparadas automaticamente. Opcionais sem dados ficam recolhidos.')
  );
  const jump=element('button','secondary ra-tech-review-jump','↓ Ver campos da ficha');
  jump.type='button';
@@ -236,7 +236,7 @@
    if(required.length)sections.push(disclosure('Obrigatórios pendentes',required.length,
      'Exigem conferência antes de avançar','required',required,true));
    if(optional.length)sections.push(disclosure('Opcionais dispensáveis',optional.length,
-     'Não precisam de preenchimento para concluir','optional',optional,true));
+     'Não precisam de preenchimento para concluir','optional',optional,false));
    if(conditional.length)sections.push(disclosure('Dependências ativas',conditional.length,
      'Verifique a opção do atributo pai','conditional',conditional,true));
    fields.append(...sections);
