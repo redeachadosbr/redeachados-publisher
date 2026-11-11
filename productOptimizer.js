@@ -6,6 +6,19 @@ import {inspectAnatelCompliance} from './shopeeAnatel.js';
 const moneylessString=value=>String(value??'').trim();
 const array=value=>Array.isArray(value)?value:[];
 const numeric=value=>Number.isSafeInteger(Number(value))&&Number(value)>0;
+// A Shopee pode devolver o nome oficial em campos diferentes, dependendo da
+// versão da árvore. Priorizar pt-BR quando a API fornecer nomes localizados.
+export function officialAttributeName(meta){
+  const list=array(meta?.attribute_name_list);
+  const text=value=>typeof value==='string'?value.trim():'';
+  const entryName=entry=>text(entry?.name)||text(entry?.attribute_name)||text(entry?.value);
+  const localized=list.find(entry=>/^pt(?:[-_](?:br|pt))?$/i.test(
+    text(entry?.language)||text(entry?.language_code)||text(entry?.locale)));
+  const fromObject=meta?.name&&typeof meta.name==='object'?
+    text(meta.name['pt-BR'])||text(meta.name.pt_BR)||text(meta.name.pt):'';
+  return entryName(localized)||fromObject||text(meta?.name)||
+    text(meta?.attribute_name)||entryName(list[0]);
+}
 
 export function validateSkuLookup(input){
   const value=moneylessString(input);
@@ -62,7 +75,8 @@ export function normalizeAttributeAudit(item,attributesResponse){
       name:moneylessString(v.name||v.original_value_name),
       unit:moneylessString(v.value_unit)
     }));
-    const name=moneylessString(meta.name||meta.attribute_name)||'Atributo '+id;
+    const officialName=officialAttributeName(meta);
+    const name=officialName||'Nome do atributo não retornado pela Shopee';
     const info=meta.attribute_info||{};
     const mandatory=Boolean(meta.mandatory??meta.is_mandatory);
     const conditional=Boolean(meta.conditional);
@@ -88,7 +102,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
       ...(usbMismatch?['Tipo de plugue possivelmente incompatível: confirmar se acompanha carregador AC']:[])
     ];
     const state=conditional?'conditional':!complete?'missing':issues.length?'review':'filled';
-    return {id,name,mandatory,conditional,parentId:meta.parentId||null,state,issues,
+    return {id,name,nameMissing:!officialName,mandatory,conditional,parentId:meta.parentId||null,state,issues,
       introduction:moneylessString(info.introduction).slice(0,450),dateFormatType:info.date_format_type??null,
       inputType:info.input_type??null,
       formatType:info.format_type??null,validationType:info.input_validation_type??null,maxValues:info.max_value_count??null,
