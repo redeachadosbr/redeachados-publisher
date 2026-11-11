@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {optimizerCategoryAttributes,normalizeAttributeAudit} from '../productOptimizer.js';
+import {optimizerCategoryAttributes,normalizeAttributeAudit,officialAttributeName} from '../productOptimizer.js';
 import {attributeAuditForChanges,compileAttributes,attributeInputRules} from '../shopeeStructuredFields.js';
 import {searchAttributeRequest,readSearchedAttributeOptions,assertSearchableAttribute,hydrateSearchOptions} from '../shopeeCategorySearch.js';
 
@@ -18,6 +18,20 @@ const tree={response:{list:[{category_id:123,attribute_tree:[parent,custom,searc
  {category_id:999,attribute_tree:[{attribute_id:111,mandatory:true,name:'Campo exclusivo de outra categoria',attribute_info:{input_type:3}}]}]}};
 const base={item_id:100,category_id:123,item_name:'Teste categoria',attribute_list:[]};
 const raw=()=>normalizeAttributeAudit(base,tree);
+test('nomes e perguntas oficiais priorizam pt-BR sem perder o nome original',()=>{
+ const meta={attribute_id:909,name:'Material (EN)',attribute_name_list:[
+  {language:'en-US',name:'Material (EN)'},{language:'pt-BR',name:'Material do produto'}]};
+ assert.equal(officialAttributeName(meta),'Material do produto');
+ assert.equal(officialAttributeName({attribute_name:'Voltagem'}),'Voltagem');
+ const schema={response:{list:[{category_id:123,attribute_tree:[meta,
+  {attribute_id:910,mandatory:true,attribute_info:{input_type:3},attribute_value_list:[]}]}]}};
+ const audit=normalizeAttributeAudit(base,schema);
+ assert.equal(audit.attributes.find(x=>x.id===909)?.name,'Material do produto');
+ const missing=audit.attributes.find(x=>x.id===910);
+ assert.equal(missing.nameMissing,true);
+ assert.equal(missing.name,'Nome do atributo não retornado pela Shopee');
+ assert.equal(audit.missingMandatory,1);
+});
 test('cada categoria recebe apenas sua própria árvore oficial, sem campos de outra categoria',()=>{
  const rows=optimizerCategoryAttributes(base,tree);
  assert.deepEqual(rows.map(x=>x.attribute_id).sort(),[401,402,403,404]);
