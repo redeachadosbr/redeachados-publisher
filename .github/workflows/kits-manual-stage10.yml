@@ -1,0 +1,41 @@
+name: Validar conclusão manual da etapa 10
+
+on:
+  pull_request:
+    branches: [shopee-service]
+    paths:
+      - 'public/index.html'
+      - 'public/kit-builder.js'
+      - 'public/kit-existing-optimization.js'
+      - 'server.js'
+      - 'shopeeKitDraftStore.js'
+      - 'tests/shopee-kit-manual-stage10.test.js'
+      - 'tests/shopee-kit-optimization-finalization.test.js'
+      - '.github/workflows/kits-manual-stage10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manual-stage10:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter código da PR
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Verificar sintaxe dos arquivos alterados
+        run: |
+          node --check server.js
+          node --check shopeeKitDraftStore.js
+          node --check public/kit-builder.js
+          node --check public/kit-existing-optimization.js
+      - name: Testar conclusão manual e finalização oficial
+        run: node --test tests/shopee-kit-manual-stage10.test.js tests/shopee-kit-optimization-finalization.test.js
