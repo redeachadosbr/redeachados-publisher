@@ -50,7 +50,7 @@ test('categoria e atributos oficiais obrigatórios são validados; opcionais nã
 test('dados sem origem comprovada bloqueiam a criação sem inventar categoria ou medidas',()=>{
  assert.throws(()=>commercialKitFields({...input,categoryReviewed:false},kit,channel,input.imageIds),/Confirme a categoria/);
  assert.throws(()=>commercialKitFields({...input,weightKg:0},kit,channel,input.imageIds),/peso/);
- assert.throws(()=>commercialKitFields({...input,mainSku:'894182'},kit,channel,input.imageIds),/principal/);
+ assert.throws(()=>commercialKitFields({...input,mainSku:'SKU-NAO-PERTENCE'},kit,channel,input.imageIds),/principal/);
  assert.throws(()=>commercialKitFields({...input,imageIds:input.imageIds.slice(0,8)},kit,channel,input.imageIds),/nove imagens/);
  assert.throws(()=>commercialKitFields({...input,description:input.description+' SKU 894182'},kit,channel,input.imageIds),/códigos internos/);
  assert.throws(()=>commercialKitFields({...input,logisticId:'199'},kit,channel,input.imageIds),/canal logístico/);
@@ -83,4 +83,14 @@ test('rejeição explícita de validação permite corrigir e tentar novamente; 
  assert.equal(isDefinitiveShopeeRejection(Error('error_param: categoria inválida')),true);
  assert.equal(isDefinitiveShopeeRejection(Error('fetch failed')),false);
  assert.equal(isDefinitiveShopeeRejection(Error('Shopee HTTP 504')),false);
+});
+
+test('ordem canônica do identificador KIT não altera a SKU principal escolhida 894939',()=>{
+ const reversed={...kit,components:[kit.components[1],kit.components[0]]};
+ const fields=commercialKitFields(input,reversed,channel,input.imageIds);
+ const payload=commercialKitPayload(fields,reversed,[]);
+ assert.equal(payload.item_sku,'894939');
+ assert.equal(payload.item_name,input.title);
+ assert.equal(payload.image.image_id_list.length,9);
+ assert.equal(JSON.stringify(payload).includes('894182'),false);
 });
