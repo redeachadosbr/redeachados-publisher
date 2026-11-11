@@ -73,3 +73,19 @@ test('ficha com obrigatórios conferidos e nenhum opcional aprovado pendente fic
  assert.equal(stage(audit).status,'confirmed');
  assert.equal(stage(audit).confirmedBy,'live_shopee_readback');
 });
+
+test('varredura automatica ignora opcionais e reconcilia falha anterior sem repetir escrita',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function kitAutoSweepPreferredStage(');
+ const end=app.indexOf('let kitAllStagesStarting=false;',start);
+ assert.ok(start>0&&end>start);
+ const sweep=app.slice(start,end);
+ assert.match(sweep,/nonBlocking!==true/);
+ assert.match(sweep,/job\.state==='failed'[\s\S]*?optimizerExecNotice\('Falha anterior:/);
+ assert.doesNotMatch(sweep,/if\(job\.state==='failed'[\s\S]{0,150}throw Error/);
+ const controls=app.slice(app.indexOf('function optimizerRootAuditRender('),
+  app.indexOf('async function optimizerKitAutoFinalizeFromAudit('));
+ assert.match(controls,/stage\.nonBlocking!==true&&stage\.id!=='final'/);
+ assert.match(controls,/Opcional não bloqueante/);
+});
