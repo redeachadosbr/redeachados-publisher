@@ -7395,7 +7395,7 @@ function optimizerRootAuditRender(audit){
   row.append(label);
   const state=document.createElement('small');
   state.style.cssText='display:block;margin-top:5px;color:#61748b;line-height:1.4';
-  state.textContent=stage.status==='confirmed'?'Confirmado na Shopee':
+  state.textContent=stage.status==='confirmed'?(stage.id==='technical'?stage.reason:'Confirmado na Shopee'):
    stage.status==='not_applicable'?'Não aplicável':
    stage.status==='uncertain'?'Conferir antes de reenviar: '+stage.reason:stage.reason;
   if(['failed','uncertain'].includes(stage.status))
