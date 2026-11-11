@@ -173,6 +173,7 @@ export function auditRootShopeeExecution({
    }
   }
  }
+ let optionalNonBlocking=false;
  if(officialFields.length&&Number(record.attributeAudit?.missingMandatory)>0){
   technicalOK=false;
   technicalReason='A Shopee ainda exige '+Number(record.attributeAudit.missingMandatory)+
@@ -181,17 +182,28 @@ export function auditRootShopeeExecution({
   technicalOK=false;
   technicalReason='Alteração obrigatória aprovada ainda não confirmada na Shopee (ID '+
    unconfirmedMandatoryWrite.slice(0,5).map(a=>a.attribute_id).join(', ')+')';
+ }else if(mandatoryComplete&&oldReviewDifferences){
+  // Um valor obrigatório aprovado não pode virar "confirmado" apenas
+  // porque há algum outro valor preenchido no Seller Center.
+  technicalOK=false;
+  technicalReason=oldReviewDifferences+
+   ' atributo(s) obrigatório(s) aprovado(s) ainda divergem da Shopee';
  }else if(mandatoryComplete&&
     (reviewed('technical')||(Array.isArray(live.attribute_list)&&live.attribute_list.length>0))){
-  technicalOK=true;
-  technicalReason=optionalDifferences?
-   'Obrigatórios conferidos na Shopee; '+optionalDifferences+
-    ' atributo(s) opcionais da revisão antiga não bloqueiam a execução':
-   oldReviewDifferences?
-   'Obrigatórios preenchidos na Shopee; alterações manuais válidas detectadas, sem reenvio':
-   'Todos os atributos obrigatórios da categoria conferidos na Shopee';
+  if(optionalDifferences){
+   // Divergência opcional não é prova de publicação: deixar explícita,
+   // mas permitir que a varredura avance fiscal, desconto e finalização.
+   technicalOK=false;
+   optionalNonBlocking=true;
+   technicalReason=optionalDifferences+
+    ' atributo(s) opcional(is) da revisão antiga ainda não confirmados; não impedem as demais etapas';
+  }else{
+   technicalOK=true;
+   technicalReason='Todos os atributos obrigatórios da categoria conferidos na Shopee';
+  }
  }
  add('technical',technicalOK,technicalReason);
+ if(optionalNonBlocking)out.at(-1).nonBlocking=true;
  if(optionalDifferences)out.at(-1).optionalDifferences=optionalDifferences;
  if(oldReviewDifferences)out.at(-1).reviewDifferences=oldReviewDifferences;
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
