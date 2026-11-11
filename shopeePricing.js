@@ -250,7 +250,7 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
 /**
  * Exclusivo para Kits WeDrop. O bruto começa em três vezes o custo total,
  * e pode diminuir para respeitar o limite de desconto de 50%.
- * Busca valores reais de promoção e checkout terminados em 0/9.
+ * Exige terminação 0/9 no bruto e na vitrine, mas não no cupom condicional.
  * Falha de modo seguro se margem, limite e finais forem incompatíveis.
  */
 export function quoteShopeeKitPrice({unitCost,settings={}}={}){
@@ -355,7 +355,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
  const validEnding=n=>attractiveCents.has(((n%100)+100)%100);
  if(market!==null&&!marginOverride){
   const target=money(market);
-  if(chosen.financial.saleCents<=Math.round(target*1.02)){
+  if(money(chosen.financial.marketplaceDisplayPrice)<=Math.round(target*1.02)){
    status='COMPETITIVO';
    notice+=' Preço já está próximo da média comparável sem sacrificar margem.';
   }else{
@@ -374,8 +374,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
      const financial=calculateShopeeSale(grossCents,{...c,discountPct},money(cost));
      if(financial.saleCents>target||
        financial.marginPct+1e-8<c.minMarginPct||
-       !validEnding(money(financial.marketplaceDisplayPrice))||
-       !validEnding(financial.saleCents))continue;
+       !validEnding(money(financial.marketplaceDisplayPrice)))continue;
      if(!best||financial.saleCents>best.financial.saleCents||
         (financial.saleCents===best.financial.saleCents&&
          discountPct>best.discountPct))
@@ -405,9 +404,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
    (c.marginPct<c.minMarginPct?'A meta da barra está abaixo do piso mínimo de '+c.minMarginPct+'%. ':'')+
    'Ajustar a meta dentro do mesmo intervalo pode conservar o valor por arredondamento.';
  if(chosen.discountPct<=0||chosen.discountPct>50||
-    f.marginPct+1e-8<desired||
-    !(marginOverride?[chosen.grossCents,money(f.marketplaceDisplayPrice)]:
-      [chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents]).every(validEnding))
+    f.marginPct+1e-8<(market!==null&&!marginOverride&&status==='COMPETITIVO'?c.minMarginPct:desired)||
+    ![chosen.grossCents,money(f.marketplaceDisplayPrice)].every(validEnding))
   throw Error('Desconto variável inviável com a margem e terminações exigidas. Nenhum preço foi alterado.');
  const minGross=minimumGrossForNetMargin(cost,{...c,discountPct:chosen.discountPct},c.minMarginPct);
  const floor=minGross===null?null:
@@ -418,8 +416,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   buyerAfterCoupon:f.finalPrice,customerPrice:f.finalPrice,
   customerPriceBeforeRounding:f.finalPrice,
   attractiveEndingApplied:true,attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
-  priceEndingRuleVersion:marginOverride?6:4,
-  priceEndingPolicy:marginOverride?'listed_price_coupon_conditional':'both_checkout_and_visible',
+  priceEndingRuleVersion:6,
+  priceEndingPolicy:'listed_price_coupon_conditional',
   netProfit:f.profit,netMarginPct:Number(f.marginPct.toFixed(3)),
   minMarginPct:c.minMarginPct,targetMarginPct:c.marginPct,
   marketAverage:market,marketGapPct:market===null?null:
