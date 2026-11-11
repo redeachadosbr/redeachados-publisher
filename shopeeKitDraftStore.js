@@ -1,6 +1,7 @@
 // Rascunhos de kits WeDrop isolados por shop_id. Somente chave privada no servidor.
 import {normalizeKitLogistics} from './shopeeKitLogisticsDraft.js';
 const TABLE='shopee_wedrop_kit_drafts';
+const isFinishedOptimization=f=>['verified','manual_confirmed'].includes(String(f?.status||''));
 // Shopee usa caracteres Unicode e emojis: String.slice pode separar um par
 // substituto UTF-16 ao cortar o texto, gerando JSON rejeitado pelo PostgREST.
 export const kitDraftUnicodeSlice=(value,max)=>Array.from(String(value||'').trim()).slice(0,max).join('');
@@ -58,7 +59,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
  if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
  const previous=await loadKitDraft(id,kit.kitSku);
  const batchId=String(importBatchId||previous?.importBatchId||await latestActiveBatch(id)||'');
- if(previous?.optimizationFinalization?.status==='verified'||previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
+ if(isFinishedOptimization(previous?.optimizationFinalization)||previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
   throw Error('Kit enviado à Shopee ou com publicação incerta; não regrave. Consulte o status primeiro.');
  const seoTitles=Array.isArray(creative?.seoTitles)?creative.seoTitles
   .filter(x=>typeof x==='string'&&x.trim().length>=10&&Array.from(x.trim()).length<=120)
@@ -100,7 +101,7 @@ export async function deleteKitDraft(shopId,kitSku){
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Código de kit inválido.');
  const existing=await loadKitDraft(id,code);
  if(!existing)return {deleted:false,notFound:true,kitSku:code};
- if(existing.optimizationFinalization?.status==='verified'||!mayDeleteKitDraft(existing.publication))
+ if(isFinishedOptimization(existing.optimizationFinalization)||!mayDeleteKitDraft(existing.publication))
   throw Error('Este kit já foi enviado à Shopee ou tem publicação em andamento/incerta. Não é possível excluir.');
  // A condição no DELETE também impede apagar uma publicação que mude de status após a leitura.
  const rows=await request('?shop_id=eq.'+id+
@@ -127,17 +128,17 @@ export async function listKitDrafts(shopId){
    importBatchId:String(x.draft?.importBatchId||''),
    optimization:x.draft?.optimization||null,
    optimizationFinalization:x.draft?.optimizationFinalization||null,
-   deletable:mayDeleteKitDraft(x.draft?.publication)&&x.draft?.optimizationFinalization?.status!=='verified',
+   deletable:mayDeleteKitDraft(x.draft?.publication)&&!isFinishedOptimization(x.draft?.optimizationFinalization),
    updatedAt:x.updated_at}));
  // Lote mais recente por identificador cronológico, não por alteração de cartão antigo.
  const activeBatchId=all.map(x=>x.importBatchId).filter(Boolean).sort().at(-1)||'';
- const isFinished=x=>x.publication==='published'||x.optimizationFinalization?.status==='verified';
+ const isFinished=x=>x.publication==='published'||isFinishedOptimization(x.optimizationFinalization);
  const published=all.filter(isFinished);
  const drafts=all.filter(x=>!isFinished(x)&&(
   !activeBatchId||x.importBatchId===activeBatchId||
   ['publishing','uncertain','published_pending'].includes(x.publication)));
  const linkCandidates=all.filter(x=>x.publication==='local_draft'&&
-   x.optimizationFinalization?.status!=='verified').map(x=>({
+   !isFinishedOptimization(x.optimizationFinalization)).map(x=>({
    kitSku:x.kitSku,skus:x.skus,title:x.title,publication:x.publication,
    itemId:x.itemId,optimization:x.optimization,
    optimizationFinalization:x.optimizationFinalization
@@ -171,6 +172,7 @@ export async function findKitDraftsLinkedToItemId(shopId,itemId){
    title:String(d.creative?.title||'').slice(0,120),
    publication:String(d.publication?.status||'local_draft'),
    optimized:d.optimizationFinalization?.status==='verified',
+   manuallyConfirmed:d.optimizationFinalization?.status==='manual_confirmed',
    components
   });
  }
@@ -195,7 +197,7 @@ export async function loadKitDraft(shopId,kitSku){
 export async function saveKitDraftManualFacts(shopId,kitSku,input){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Rascunho ainda não salvo no servidor.');
- if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||current.publication?.status!=='local_draft')
+ if(isFinishedOptimization(current.optimizationFinalization)||current.publication?.itemId||current.publication?.status!=='local_draft')
   throw Error('Anúncio publicado ou pendente: fichas bloqueadas para alterações.');
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Dados por SKU inválidos.');
  const allowed=new Set(current.skus.map(String));
@@ -216,7 +218,7 @@ export async function saveKitDraftManualFacts(shopId,kitSku,input){
 export async function saveKitDraftCopy(shopId,kitSku,input){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Rascunho ainda não salvo no servidor.');
- if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||String(current.publication?.status||'local_draft')!=='local_draft')
+ if(isFinishedOptimization(current.optimizationFinalization)||current.publication?.itemId||String(current.publication?.status||'local_draft')!=='local_draft')
   throw Error('Kit publicado ou pendente: edição comercial bloqueada.');
  const title=String(input?.title||'').trim().slice(0,120);
  const description=String(input?.description||'').trim().slice(0,2000);
@@ -241,7 +243,7 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
  const current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Salve primeiro o rascunho do kit para sincronizar a logística.');
  const status=String(current.publication?.status||'local_draft');
- if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||status!=='local_draft')
+ if(isFinishedOptimization(current.optimizationFinalization)||current.publication?.itemId||status!=='local_draft')
   throw Error('Kit enviado ou com publicação pendente: os campos de logística não podem mais ser alterados.');
  const logistics=normalizeKitLogistics(input,current.kit);
  if(!logistics)throw Error('Dados de logística inválidos.');
@@ -275,7 +277,7 @@ export async function recordKitPublication(shopId,kitSku,publication){
 export async function saveKitFiscalOrigin(shopId,kitSku,origins){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Rascunho do kit não encontrado.');
- if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||
+ if(isFinishedOptimization(current.optimizationFinalization)||current.publication?.itemId||
     current.publication?.status!=='local_draft')throw Error('Kit já enviado ou finalizado.');
  if(!origins||typeof origins!=='object'||Array.isArray(origins))
   throw Error('Origem fiscal por SKU inválida.');
@@ -329,7 +331,7 @@ export async function recordKitOptimization(shopId,kitSku,link){
  for(let attempt=0;attempt<3;attempt++){
   const current=await loadKitDraft(id,kitSku);
   if(!current?.kit)throw Error('Kit não encontrado.');
-  if(current.optimizationFinalization?.status==='verified'||
+  if(isFinishedOptimization(current.optimizationFinalization)||
     current.publication?.status!=='local_draft'||current.publication?.itemId)
    throw Error('Kit publicado ou com execução incerta; não modificar o vínculo.');
   if(link?.kitSku!==kitSku||
@@ -355,6 +357,60 @@ export async function recordKitOptimization(shopId,kitSku,link){
    return {saved:true,optimization:link,concurrentRetries:attempt};
  }
  throw Error('O rascunho está sendo salvo por outra etapa. Tente novamente sem apagar imagens.');
+}
+
+/**
+ * A confirmação humana não é evidência de leitura oficial da Shopee.
+ * Só é permitida para o anúncio já vinculado à SKU principal do kit.
+ */
+export function buildManualKitFinalization(current,{kitSku,sku,itemId,modelId='0',confirmed}={}){
+ const code=String(kitSku||'').trim(),target=String(itemId||'').trim(),main=String(sku||'').trim();
+ const model=String(modelId??'0');
+ if(confirmed!==true)throw Error('Marque a confirmação manual antes de concluir.');
+ if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code)||!current?.kit||!current.optimization)
+  throw Error('Salve o kit e vincule um anúncio existente antes de concluir manualmente.');
+ if(!/^[1-9]\\d{0,17}$/.test(target)||!/^(0|[1-9]\\d{0,17})$/.test(model))
+  throw Error('Item ID ou modelo inválido.');
+ const link=current.optimization,first=String(current.kit.components?.[0]?.sku||'');
+ if(String(current.kit.kitSku)!==code||String(link.kitSku)!==code||
+    main!==first||String(link.sku)!==main||String(link.mainSku||main)!==main||
+    String(link.itemId)!==target||String(link.modelId||'0')!==model)
+  throw Error('O Item ID não corresponde ao vínculo já confirmado da SKU principal.');
+ if(String(current.publication?.status||'local_draft')!=='local_draft'||current.publication?.itemId)
+  throw Error('Este kit tem uma publicação formal ou incerta. Não usar confirmação manual.');
+ const previous=current.optimizationFinalization;
+ if(previous?.status==='verified')throw Error('Este kit já foi verificado oficialmente na Shopee.');
+ if(previous?.status==='manual_confirmed'){
+  if(String(previous.itemId)===target&&String(previous.sku)===main&&
+     String(previous.modelId||'0')===model)
+   return {finalization:previous,alreadyFinalized:true};
+  throw Error('O kit já foi concluído manualmente com outro Item ID.');
+ }
+ return {alreadyFinalized:false,finalization:{
+  status:'manual_confirmed',kind:'existing_listing_optimization',
+  kitSku:code,sku:main,itemId:target,modelId:model,confirmedAt:new Date().toISOString(),
+  source:'seller_manual_confirmation',marketplaceUpdated:false,
+  officialAuditVerified:false
+ }};
+}
+export async function recordKitManualOptimizationCompletion(shopId,kitSku,input){
+ const id=shop(shopId),code=String(kitSku||'').trim();
+ for(let attempt=0;attempt<3;attempt++){
+  const current=await loadKitDraft(id,code);
+  const {finalization,alreadyFinalized}=buildManualKitFinalization(current,{...input,kitSku:code});
+  if(alreadyFinalized)return {finalized:true,alreadyFinalized:true,finalization};
+  const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+   creative:current.creative,logistics:current.logistics||null,
+   reviewed:true,shopeePublished:false,publication:current.publication,
+   optimization:current.optimization,optimizationFinalization:finalization};
+  const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(code)+
+   '&updated_at=eq.'+encodeURIComponent(current.updatedAt)+
+   '&draft->optimization->>itemId=eq.'+encodeURIComponent(String(finalization.itemId)),{
+    method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+  if(Array.isArray(rows)&&rows.length===1)
+   return {finalized:true,alreadyFinalized:false,finalization};
+ }
+ throw Error('O kit mudou enquanto era confirmado. Atualize e tente novamente.');
 }
 
 /**
