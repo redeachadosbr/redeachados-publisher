@@ -2252,7 +2252,7 @@ function kitCommercialCategoryUi(result){
   field.dataset.kitCommercialAttribute=String(item.id);
   field.style.cssText='display:block;margin:4px 0;width:min(100%,420px);padding:9px;border:1px solid #c7d4e7;border-radius:8px';
   const remembered=oldAttrs.get(item.id);
-  if(remembered&&([...field.options||[]].some?.(o=>o.value===remembered)??true))field.value=remembered;
+  if(remembered&&(field.tagName==='INPUT'||[...field.options].some(o=>o.value===remembered)))field.value=remembered;
   title.append(field);row.append(title);
   if(item.formatType===2&&item.units?.length){
    const unit=document.createElement('select');unit.dataset.kitCommercialUnit='true';
@@ -2602,6 +2602,12 @@ async function kitPublishExecute(){
    ' · Status '+done.status+'. '+done.message;
   kitPublishStatus('✓ Shopee retornou Item ID '+done.itemId+'. O desconto ainda NÃO foi aplicado.','success');
   if(commercial)kitWizardExecutionFeedback('✓ Anúncio comercial criado com Item ID '+done.itemId+'. '+done.message,'success');
+  if(commercial&&done.status==='published'){
+   const checks=new Set(kitWizardChecked());checks.add(10);
+   try{localStorage.setItem(kitWizardStorageKey(name),JSON.stringify([...checks].sort((a,b)=>a-b)));}
+   catch{}
+   kitWizardUpdateProgress();
+  }
   $('#kitPublishCheck').disabled=true;$('#kitSendPhotos').disabled=true;
   $('#kitPublishPreview').disabled=true;
   void loadDrafts();
