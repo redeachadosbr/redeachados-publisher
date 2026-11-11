@@ -91,7 +91,7 @@ export function commercialKitFields(input,kit,allowedChannels=[],uploadedImageId
   throw Error('As nove imagens devem estar confirmadas no MediaSpace Shopee.');
  if(!(money(kit?.quote?.grossPrice)>0))
   throw Error('Preço bruto do kit não confirmado na WeDrop.');
- return {categoryId,mainSku:skus[0],title,description,logistics,
+ return {categoryId,mainSku:str(input.mainSku),title,description,logistics,
   weight,dimensions,images,attributes:arr(input.attributes)};
 }
 export function commercialKitPayload(fields,kit,attributeList=[],videoUploadId=null){
