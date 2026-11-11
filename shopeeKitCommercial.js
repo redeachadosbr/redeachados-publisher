@@ -23,7 +23,7 @@ export function commercialCategoryFields(tree,categoryId,selected=[]){
    units:arr(info.attribute_unit_list).map(str),
    options:arr(x.attribute_value_list).map(o=>({
     id:Number(o.value_id||0),name:officialAttributeName(o)||str(o.name||o.original_value_name),
-    unit:str(o.value_unit)
+    rawName:str(o.name||o.original_value_name),unit:str(o.value_unit)
    })).filter(o=>o.id>0),
    value:values.get(Number(x.attribute_id))||null};
  });
@@ -44,7 +44,7 @@ export function commercialAttributePayload(tree,categoryId,selected=[]){
   if(valueId>0){
    const chosen=meta.options.find(x=>x.id===valueId);
    if(!chosen)throw Error('Opção não pertence ao atributo '+meta.name+'.');
-   value={value_id:valueId,original_value_name:chosen.name};
+   value={value_id:valueId,original_value_name:chosen.rawName||chosen.name};
    if(chosen.unit)value.value_unit=chosen.unit;
   }else{
    if(!text||((meta.options.length>0)&&![2,3,5].includes(meta.inputType)))
