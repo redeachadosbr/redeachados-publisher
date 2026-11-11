@@ -46,6 +46,7 @@ import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPric
 import {classifyPendingImageEditor} from './shopeePendingImageEditor.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
+import {commercialReadiness,commercialPreview,commercialExecute} from './shopeeKitCommercialService.js';
 import {previewKitDiscount,executeKitDiscount,inspectKitDiscountForExecution,validateKitDiscountMarketForExecution} from './shopeeKitDiscountService.js';
 import {discoverKitDiscountCampaigns} from './shopeeKitDiscountDiscovery.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
@@ -620,6 +621,36 @@ app.post('/api/shopee/kits/video/discard',mustLogin,requireWeDropAdmin,async(req
   const {auth}=await getValidAuth(req);
   res.json({ok:true,...kitVideoDiscard(auth.shopId,String(req.body?.kitSku||'')),kitPublished:false});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
+});
+// Anúncio comum: kit comercial da WeDrop com uma SKU principal na Shopee.
+// Não exige anúncios dos complementares, nunca usa add_kit_item.
+app.post('/api/shopee/kits/commercial/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  res.json({ok:true,...await commercialReadiness({cfg,auth,
+   kitSku:String(req.body?.kitSku||''),categoryId:Number(req.body?.categoryId||0)})});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/commercial/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  res.json({ok:true,...await commercialPreview({cfg,auth,
+   kitSku:String(req.body?.kitSku||''),input:req.body?.fields,secret:stateSecret()})});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/commercial/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  res.json({ok:true,...await commercialExecute({cfg,auth,
+   kitSku:String(req.body?.kitSku||''),input:req.body?.fields,
+   token:req.body?.token,secret:stateSecret()})});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,550)});}
 });
 app.post('/api/shopee/kits/publish/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
