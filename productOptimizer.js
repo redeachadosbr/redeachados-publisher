@@ -9,9 +9,11 @@ const numeric=value=>Number.isSafeInteger(Number(value))&&Number(value)>0;
 // A Shopee pode devolver o nome oficial em campos diferentes, dependendo da
 // versão da árvore. Priorizar pt-BR quando a API fornecer nomes localizados.
 export function officialAttributeName(meta){
-  const list=array(meta?.attribute_name_list);
+  // get_attribute_tree uses multi_lang: [{language:'pt-BR',value:'...'}]
+  // on both attribute names and value names. Keep legacy aliases only as fallback.
+  const list=[...array(meta?.multi_lang),...array(meta?.attribute_name_list)];
   const text=value=>typeof value==='string'?value.trim():'';
-  const entryName=entry=>text(entry?.name)||text(entry?.attribute_name)||text(entry?.value);
+  const entryName=entry=>text(entry?.value)||text(entry?.name)||text(entry?.attribute_name);
   const localized=list.find(entry=>/^pt(?:[-_](?:br|pt))?$/i.test(
     text(entry?.language)||text(entry?.language_code)||text(entry?.locale)));
   const fromObject=meta?.name&&typeof meta.name==='object'?
@@ -72,7 +74,9 @@ export function normalizeAttributeAudit(item,attributesResponse){
     const declared=array(meta.attribute_value_list);
     const options=declared.map(v=>({
       id:Number(v.value_id||0),
+      // Preserve the API's unmodified name for original_value_name payload.
       name:moneylessString(v.name||v.original_value_name),
+      displayName:officialAttributeName(v)||moneylessString(v.name||v.original_value_name),
       unit:moneylessString(v.value_unit)
     }));
     const officialName=officialAttributeName(meta);
@@ -111,6 +115,9 @@ export function normalizeAttributeAudit(item,attributesResponse){
         valueId:Number(v.value_id||0),
         name:moneylessString(v.original_value_name)||
           moneylessString(declared.find(x=>Number(x.value_id)===Number(v.value_id))?.name),
+        displayName:officialAttributeName(declared.find(x=>
+          Number(x.value_id)===Number(v.value_id)))||
+          moneylessString(v.original_value_name),
         unit:moneylessString(v.value_unit)
       })),options,optionsTruncated:false};
   }).filter(Boolean);
