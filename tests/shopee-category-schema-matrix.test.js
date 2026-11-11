@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {optimizerCategoryAttributes,normalizeAttributeAudit,officialAttributeName} from '../productOptimizer.js';
-import {attributeAuditForChanges,compileAttributes,attributeInputRules} from '../shopeeStructuredFields.js';
+import {attributeAuditForChanges,compileAttributes,attributeInputRules,validateTechnicalAttributeValues} from '../shopeeStructuredFields.js';
 import {searchAttributeRequest,readSearchedAttributeOptions,assertSearchableAttribute,hydrateSearchOptions} from '../shopeeCategorySearch.js';
 
 const leaf={attribute_id:402,mandatory:true,name:'Certificação condicional',
@@ -31,6 +31,32 @@ test('nomes e perguntas oficiais priorizam pt-BR sem perder o nome original',()=
  assert.equal(missing.nameMissing,true);
  assert.equal(missing.name,'Nome do atributo não retornado pela Shopee');
  assert.equal(audit.missingMandatory,1);
+});
+test('multi_lang da Open Platform prevalece no nome e na opção sem trocar valor original no envio',()=>{
+ const attr={attribute_id:911,mandatory:true,name:'Material',multi_lang:[
+  {language:'en',value:'Material'},{language:'pt-BR',value:'Material do produto'}],
+  attribute_info:{input_type:1},attribute_value_list:[
+   {value_id:1001,name:'Wooden',multi_lang:[{language:'en',value:'Wooden'},
+    {language:'pt-BR',value:'Madeira'}]}]};
+ const item={...base,attribute_list:[]};
+ const audit=normalizeAttributeAudit(item,{response:{list:[{
+  category_id:123,attribute_tree:[attr]}]}});
+ const row=audit.attributes[0];
+ assert.equal(officialAttributeName(attr),'Material do produto');
+ assert.equal(row.name,'Material do produto');
+ assert.equal(row.options[0].displayName,'Madeira');
+ assert.equal(row.options[0].name,'Wooden');
+ assert.deepEqual(validateTechnicalAttributeValues({attributeId:911,values:[{valueId:1001}]},row),[
+  {value_id:1001,original_value_name:'Wooden'}]);
+});
+test('não autoriza envio de campo sem pergunta oficial',()=>{
+ const unknown=normalizeAttributeAudit(base,{response:{list:[{
+  category_id:123,attribute_tree:[{attribute_id:910,mandatory:true,
+   attribute_info:{input_type:3},attribute_value_list:[]}]}]}});
+ const meta=unknown.attributes[0];
+ assert.equal(meta.nameMissing,true);
+ assert.throws(()=>validateTechnicalAttributeValues(
+  {attributeId:910,values:[{valueId:0,valueName:'Hipótese'}]},meta),/pergunta oficial/);
 });
 test('cada categoria recebe apenas sua própria árvore oficial, sem campos de outra categoria',()=>{
  const rows=optimizerCategoryAttributes(base,tree);
