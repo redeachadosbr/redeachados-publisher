@@ -31,8 +31,9 @@ test('ficha 14/24: opcional antigo não confirmado não bloqueia o kit',()=>{
  const job={sku,item_id:itemId,state:'failed',last_error:'mesmo plano não confirmado',
   plan:{actions:['attribute_list'],proposed:{attribute_list:[filled(2,'Sem aroma')]}}};
  const audit=check({job});
- assert.equal(stage(audit).status,'confirmed');
- assert.match(stage(audit).reason,/obrigat[oó]rios conferidos na Shopee/i);
+ assert.equal(stage(audit).status,'pending');
+ assert.equal(stage(audit).nonBlocking,true);
+ assert.match(stage(audit).reason,/opciona/i);
  assert.equal(stage(audit).optionalDifferences,1);
  assert.ok(!audit.pending.includes('technical'));
  assert.equal(audit.complete,false,'outras etapas continuam exigindo prova oficial');
@@ -61,7 +62,14 @@ test('sem auditoria de categoria não infere que a ficha está completa',()=>{
 test('edição manual já publicada pode ser reconciliada sem repetir escrita',()=>{
  const manualLive={...live,attribute_list:[filled(1,'Buddy Pet'),filled(2,'Atualizado no Seller Center')]};
  const audit=check({live:manualLive});
- assert.equal(stage(audit).status,'confirmed');
+ assert.equal(stage(audit).status,'pending');
+ assert.equal(stage(audit).nonBlocking,true);
  assert.equal(stage(audit).optionalDifferences,1);
  assert.ok(!audit.pending.includes('technical'));
+});
+
+test('ficha com obrigatórios conferidos e nenhum opcional aprovado pendente fica verde',()=>{
+ const audit=check({review:{stages:{technical:{reviewed:true}},attributes:[reviewed(1,'Buddy Pet')]}});
+ assert.equal(stage(audit).status,'confirmed');
+ assert.equal(stage(audit).confirmedBy,'live_shopee_readback');
 });
