@@ -174,7 +174,7 @@ test('ficha tecnica do kit usa estilos completos sem blocos colados',()=>{
  assert.match(studio,/if\(regroup\)review\.open=true/);
  assert.match(studio,/filled',saved,true/);
  assert.match(studio,/required',required,true/);
- assert.match(studio,/optional',optional,true/);
+ assert.match(studio,/optional',optional,false/);
  assert.match(studio,/conditional',conditional,true/);
  assert.match(studio,/textLabel\.classList\.add\('ra-tech-source-text'\)/);
  assert.match(studio,/review\.scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
