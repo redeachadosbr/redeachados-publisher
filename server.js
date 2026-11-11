@@ -2027,6 +2027,9 @@ app.post('/api/shopee/kits/optimization/manual-complete',mustLogin,requireWeDrop
   const sku=validateSkuLookup(body.sku),itemId=validItemId(body.itemId);
   const modelId=String(body.modelId??'0');
   if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  const pendingJob=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(['running','uncertain'].includes(String(pendingJob?.state||'')))
+   throw Error('Existe uma execução em andamento ou incerta neste Item ID. Confira o resultado antes de concluir manualmente.');
   const saved=await recordKitManualOptimizationCompletion(auth.shopId,kitSku,{
    sku,itemId,modelId,confirmed:body.confirmed===true
   });
