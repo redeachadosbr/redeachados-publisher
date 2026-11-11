@@ -298,6 +298,55 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
   grossMultiplier:3,maxDiscountPct:50};
 }
 
+// Política antiga exclusiva para anúncios individuais. A mudança de Kits v6
+// não pode alterar preços de anúncios individuais sem homologação própria.
+function quoteShopeeOptimizationLegacyKitPrice({unitCost,settings={}}={}){
+ const c=normalizeShopeePricingSettings(settings);
+ const cost=Number(unitCost);
+ if(!Number.isFinite(cost)||cost<=0)throw Error('Custo do kit inválido.');
+ const desired=Math.max(c.marginPct,c.minMarginPct);
+ const effectiveCost=cost+c.packing+c.shipping;
+ const reference=quoteShopeePrice({unitCost:cost,settings:c,marginOverride:true});
+ const referenceVisible=money(reference.marketplaceDisplayPrice);
+ const initialGross=money(effectiveCost*3);
+ // Se o desconto teórico excederia 50%, reduza a base do bruto.
+ const grossCeiling=Math.min(initialGross,Math.max(referenceVisible,2*referenceVisible));
+ const attractive=n=>attractiveCents.has(((n%100)+100)%100);
+ let best=null;
+ // Testar preços brutos comerciais perto da referência e descontos
+ // incrementais (0,01 ponto percentual) com taxas recalculadas.
+ for(let delta=0;delta<=150;delta++){
+  const gross=grossCeiling-delta;
+  if(gross<=0||!attractive(gross))continue;
+  for(let basis=5000;basis>=0;basis--){
+   const discount=basis/100;
+   const financial=calculateShopeeSale(gross,{...c,discountPct:discount},money(cost));
+   const visible=money(financial.marketplaceDisplayPrice);
+   if(!attractive(visible)||!attractive(financial.saleCents))continue;
+   if(financial.marginPct+1e-8<desired)continue;
+   // Priorizar preço de vitrine mais próximo do mínimo viável;
+   // desconto alto só serve como desempate, não para cobrar além do necessário.
+   const difference=Math.abs(visible-referenceVisible);
+   if(!best||difference<best.difference||
+     (difference===best.difference&&discount>best.discount))
+    best={gross,discount,financial,difference};
+   // Descontos menores elevam o preço, então não melhoram o alvo nesta base.
+   if(visible>referenceVisible+200)break;
+  }
+ }
+ if(!best)throw Error('Sem combinação segura de margem, desconto máximo de 50% e finais 0/9. Revise taxas ou margem; nenhum preço será publicado.');
+ const f=best.financial;
+ return {grossPrice:brl(best.gross),discountPct:best.discount,
+  marketplaceDisplayPrice:f.marketplaceDisplayPrice,customerPrice:f.finalPrice,
+  couponPct:c.couponPct,netProfit:f.profit,
+  netMarginPct:Number(f.marginPct.toFixed(3)),targetMarginPct:desired,
+  priceEndingRuleVersion:5,
+  breakdown:{commission:f.commission,fixedFee:f.fixedFee,tax:f.tax,flash:f.flash,
+   campaignDiscount:f.campaignDiscount,ads:f.ads},
+  grossMultiplier:3,maxDiscountPct:50};
+}
+
+
 // Apenas na margem MANUAL: selecionar o menor preço anunciado que protege a meta.
 // O preço exibido (Minha Promoção) e o bruto continuam com finais comerciais
 // 0/9. O cupom da loja é condicional, portanto seu valor líquido não deve
@@ -345,7 +394,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
  const desired=Math.max(c.marginPct,c.minMarginPct);
  // Mesma regra efetiva dos kits: bruto de ate 3x custos, desconto 0..50%,
  // lucro protegido e terminacoes 0/9 no bruto, vitrine e apos cupom.
- const base=marginOverride?null:quoteShopeeKitPrice({unitCost:cost,settings:c});
+ const base=marginOverride?null:quoteShopeeOptimizationLegacyKitPrice({unitCost:cost,settings:c});
  let chosen=marginOverride?closestManualOptimizationQuote(cost,c,desired):
   {grossCents:money(base.grossPrice),discountPct:base.discountPct,
    financial:calculateShopeeSale(money(base.grossPrice),
@@ -355,7 +404,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
  const validEnding=n=>attractiveCents.has(((n%100)+100)%100);
  if(market!==null&&!marginOverride){
   const target=money(market);
-  if(money(chosen.financial.marketplaceDisplayPrice)<=Math.round(target*1.02)){
+  if(chosen.financial.saleCents<=Math.round(target*1.02)){
    status='COMPETITIVO';
    notice+=' Preço já está próximo da média comparável sem sacrificar margem.';
   }else{
@@ -374,7 +423,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
      const financial=calculateShopeeSale(grossCents,{...c,discountPct},money(cost));
      if(financial.saleCents>target||
        financial.marginPct+1e-8<c.minMarginPct||
-       !validEnding(money(financial.marketplaceDisplayPrice)))continue;
+       !validEnding(money(financial.marketplaceDisplayPrice))||
+       !validEnding(financial.saleCents))continue;
      if(!best||financial.saleCents>best.financial.saleCents||
         (financial.saleCents===best.financial.saleCents&&
          discountPct>best.discountPct))
@@ -404,8 +454,9 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
    (c.marginPct<c.minMarginPct?'A meta da barra está abaixo do piso mínimo de '+c.minMarginPct+'%. ':'')+
    'Ajustar a meta dentro do mesmo intervalo pode conservar o valor por arredondamento.';
  if(chosen.discountPct<=0||chosen.discountPct>50||
-    f.marginPct+1e-8<(market!==null&&!marginOverride&&status==='COMPETITIVO'?c.minMarginPct:desired)||
-    ![chosen.grossCents,money(f.marketplaceDisplayPrice)].every(validEnding))
+    f.marginPct+1e-8<desired||
+    !(marginOverride?[chosen.grossCents,money(f.marketplaceDisplayPrice)]:
+      [chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents]).every(validEnding))
   throw Error('Desconto variável inviável com a margem e terminações exigidas. Nenhum preço foi alterado.');
  const minGross=minimumGrossForNetMargin(cost,{...c,discountPct:chosen.discountPct},c.minMarginPct);
  const floor=minGross===null?null:
@@ -416,8 +467,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   buyerAfterCoupon:f.finalPrice,customerPrice:f.finalPrice,
   customerPriceBeforeRounding:f.finalPrice,
   attractiveEndingApplied:true,attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
-  priceEndingRuleVersion:6,
-  priceEndingPolicy:'listed_price_coupon_conditional',
+  priceEndingRuleVersion:marginOverride?6:4,
+  priceEndingPolicy:marginOverride?'listed_price_coupon_conditional':'both_checkout_and_visible',
   netProfit:f.profit,netMarginPct:Number(f.marginPct.toFixed(3)),
   minMarginPct:c.minMarginPct,targetMarginPct:c.marginPct,
   marketAverage:market,marketGapPct:market===null?null:
