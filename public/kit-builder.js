@@ -407,7 +407,7 @@ function kitWizardManualLink(){
  if(!kitSaved||!kit||!link||
     String(link.kitSku)!==String(kit.kitSku)||
     String(link.sku)!==main||String(link.mainSku||main)!==main||
-    !/^[1-9]\\d{0,17}$/.test(String(link.itemId||'')))return null;
+    !/^[1-9]\d{0,17}$/.test(String(link.itemId||'')))return null;
  return {kitSku:String(kit.kitSku),sku:main,itemId:String(link.itemId),
   modelId:String(link.modelId||'0')};
 }
