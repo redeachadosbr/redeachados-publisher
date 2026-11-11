@@ -1,0 +1,30 @@
+name: Validar criação comercial de Kits WeDrop
+on:
+  pull_request:
+    branches: [shopee-service]
+    paths:
+      - 'shopeeKitCommercial.js'
+      - 'shopeeKitCommercialService.js'
+      - 'shopeeKitDraftStore.js'
+      - 'shopeeKitPublicationService.js'
+      - 'public/kit-builder.js'
+      - 'server.js'
+      - 'tests/shopeeKitCommercial.test.js'
+      - 'tests/shopeeKitPublish.test.js'
+      - 'tests/kitPublicationGuide.test.js'
+      - '.github/workflows/kit-commercial-check.yml'
+  push:
+    branches: [shopee-service]
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - name: Validar sintaxe
+        run: npm run check
+      - name: Regressão criação comercial de kits
+        run: node --test tests/shopeeKitCommercial.test.js tests/shopeeKitPublish.test.js tests/kitPublicationGuide.test.js

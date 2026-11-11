@@ -33,6 +33,7 @@ test('continuação guiada verifica em ordem as condições de segurança e míd
 test('envio de fotos e prévia ainda exigem validação; publicar exige confirmação',()=>{
  assert.match(js,/if\(!kitReadiness\|\|kitReadiness\.blockers\?\.length\)/);
  assert.match(js,/if\(!\$\('#kitPhotosReviewed'\)\.checked\)/);
- assert.match(js,/window\.confirm\('PUBLICAR NOVO KIT FORMAL NA SHOPEE\?/);
+ assert.match(js,/window\.confirm\(\(commercial\?'CRIAR UM ANÚNCIO COMERCIAL NOVO/);
+ assert.match(js,/PUBLICAR NOVO KIT FORMAL NA SHOPEE/);
  assert.match(js,/token:kitPublishToken,confirm:true/);
 });

@@ -255,6 +255,33 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
   throw Error('Não foi possível confirmar a gravação da logística do rascunho.');
  return {saved:true,kitSku,logistics};
 }
+// Claim atomica contra cliques duplicados, duas abas e duas instâncias Render.
+// O estado incerto exige auditoria de catálogo antes de novo POST à Shopee.
+export async function claimKitPublication(shopId,kitSku,publication){
+ const current=await loadKitDraft(shopId,kitSku);
+ if(!current?.kit)throw Error('Kit não está salvo nesta loja.');
+ if(current.optimizationFinalization?.itemId||current.optimization?.itemId||
+    current.publication?.itemId||
+    String(current.publication?.status||'local_draft')!=='local_draft')
+  throw Error('Kit já possui anúncio ou criação em andamento. Verifique o status.');
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+  creative:current.creative,logistics:current.logistics||null,reviewed:true,
+  shopeePublished:false,optimization:current.optimization||null,
+  optimizationFinalization:current.optimizationFinalization||null,
+  publication:{status:'publishing',itemId:null,updatedAt:new Date().toISOString(),
+   message:String(publication?.message||'Publicação autorizada.').slice(0,400)}};
+ const rows=await request('?shop_id=eq.'+shop(shopId)+
+  '&kit_sku=eq.'+encodeURIComponent(kitSku)+
+  '&draft->publication->>status=eq.local_draft'+
+  '&draft->publication->>itemId=is.null',{
+   method:'PATCH',data:{draft,updated_at:new Date().toISOString()},
+   prefer:'return=representation'
+  });
+ if(!Array.isArray(rows)||rows.length!==1)
+  throw Error('Uma publicação já foi iniciada. Atualize o status sem enviar outro anúncio.');
+ return draft.publication;
+}
+
 export async function recordKitPublication(shopId,kitSku,publication){
  const current=await loadKitDraft(shopId,kitSku);
  if(!current)throw Error('Salve o rascunho do kit antes de enviar à Shopee.');
