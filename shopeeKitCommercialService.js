@@ -19,9 +19,10 @@ async function getCurrent(auth,kitSku){
   throw Error('A publicação já foi iniciada ou existe Item ID. Consulte o status antes de tentar novamente.');
  if(saved.optimization?.itemId||saved.optimizationFinalization?.itemId)
   throw Error('O kit já está vinculado a um anúncio: use a otimização, não a criação.');
- const mainSku=str(saved.kit.components?.[0]?.sku);
- if(!mainSku||mainSku!==str(saved.skus[0]))
-  throw Error('SKU principal divergente do primeiro componente WeDrop.');
+ const savedMain=str(saved.logistics?.mainSku);
+ const mainSku=saved.skus.map(str).includes(savedMain)?savedMain:str(saved.kit.components?.[0]?.sku);
+ if(!saved.skus.map(str).includes(mainSku))
+  throw Error('A SKU principal não pertence aos componentes WeDrop.');
  const kit=await composeKit(auth.shopId,saved.skus,{
   marginPct:Number(saved.kit.quote?.targetMarginPct??15),
   packing:Number(saved.kit.packing||0),shipping:Number(saved.kit.shipping||0)
@@ -105,7 +106,7 @@ async function prepared({cfg,auth,kitSku,input}){
  ]);
  if(!tree)throw Error('Categoria da Shopee ausente ou não confirmada.');
  const fields=commercialKitFields(input,kit,allowed,kitUploadedMedia(auth.shopId,kitSku));
- if(fields.mainSku!==mainSku)throw Error('A SKU principal mudou.');
+ if(!saved.skus.map(str).includes(fields.mainSku))throw Error('A SKU principal não pertence ao kit.');
  if(fields.title!==str(saved.creative.title)||fields.description!==str(saved.creative.description))
   throw Error('Título ou descrição divergentes do rascunho. Salve antes de executar.');
  const attributes=commercialAttributePayload(tree,fields.categoryId,fields.attributes);
