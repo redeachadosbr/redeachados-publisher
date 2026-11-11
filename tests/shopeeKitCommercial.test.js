@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {commercialCategoryFields,commercialAttributePayload,commercialKitFields,commercialKitPayload} from '../shopeeKitCommercial.js';
-import {commercialSignPreview,commercialVerifyPreview} from '../shopeeKitCommercialService.js';
+import {commercialSignPreview,commercialVerifyPreview,isDefinitiveShopeeRejection} from '../shopeeKitCommercialService.js';
 
 const kit={kitSku:'KIT-894939-894182',components:[
  {sku:'894939',name:'Bola Interativa para Gatos'},
@@ -76,4 +76,11 @@ test('etapa 10 não manda rascunho novo ao find de otimizador nem ao Kit Formal'
  assert.match(server,/commercialExecute/);
  assert.match(store,/claimKitPublication/);
  assert.match(store,/draft->publication->>status=eq.local_draft/);
+});
+
+test('rejeição explícita de validação permite corrigir e tentar novamente; timeout não permite duplicar',()=>{
+ assert.equal(isDefinitiveShopeeRejection(Error('product.error_busi: marca obrigatória')),true);
+ assert.equal(isDefinitiveShopeeRejection(Error('error_param: categoria inválida')),true);
+ assert.equal(isDefinitiveShopeeRejection(Error('fetch failed')),false);
+ assert.equal(isDefinitiveShopeeRejection(Error('Shopee HTTP 504')),false);
 });
