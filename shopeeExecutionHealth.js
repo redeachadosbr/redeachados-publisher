@@ -1,6 +1,6 @@
 // Auditoria do motor raiz: confirmação exige comparação de dados aprovados com leitura oficial.
 // A falta de um check local não desfaz uma correspondência comprovada na Shopee.
-import {compileAttributes,compileTax,fieldsVerified,sameData} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,fieldsVerified,sameData,validateTechnicalAttributeValues} from './shopeeStructuredFields.js';
 import {videoMatches,videoPublishedAfterPlan} from './shopeeExecutionPlan.js';
 
 export const ROOT_EXECUTION_STAGES=Object.freeze([
@@ -115,41 +115,85 @@ export function auditRootShopeeExecution({
  add('description',Boolean(description)&&
   description===String(live.description||'').replace(/\r\n?/g,'\n').trim(),
   reviewed('description')?'Descrição publicada difere da versão aprovada':'Descrição ainda não aprovada');
- let technicalOK=false,technicalReason='Ficha técnica não aprovada ou divergente';
- if(Array.isArray(review.attributes)&&review.attributes.length){
+ let technicalOK=false,technicalReason='Ficha técnica ainda não confirmada na Shopee';
+ const reviewedAttributes=Array.isArray(review.attributes)?review.attributes:[];
+ if(reviewedAttributes.length){
   try{
-   const compiled=compileAttributes(review.attributes,record,live);
-   const reviewedIds=new Set(review.attributes.map(a=>Number(a.attributeId)));
+   const compiled=compileAttributes(reviewedAttributes,record,live);
+   const reviewedIds=new Set(reviewedAttributes.map(a=>Number(a.attributeId)));
    const reviewedFields=compiled.filter(a=>reviewedIds.has(Number(a.attribute_id)));
    technicalOK=reviewedFields.length===reviewedIds.size&&
     fieldsVerified({attribute_list:reviewedFields},live);
-   technicalReason='Os atributos efetivamente revisados ainda diferem do retorno oficial da Shopee';
+   if(technicalOK)technicalReason='Atributos aprovados conferidos no anúncio pela Shopee';
   }catch(error){technicalReason='Ficha técnica: '+String(error.message||error).slice(0,150);}
  }
- // Se a revisão técnica anterior já foi aplicada, o job aprovado
- // também é prova verificável, desde que os atributos continuem iguais
- // na leitura atual da Shopee. Nunca usar somente o status "verified".
- if(!technicalOK&&job?.sku===sku&&String(job?.item_id)===String(itemId)&&
-   Array.isArray(job?.plan?.proposed?.attribute_list)&&
-   job.plan.proposed.attribute_list.length>0){
-  const reviewedIds=new Set((review.attributes||[]).map(a=>Number(a.attributeId)));
+ // Um job anterior só comprova o que foi realmente publicado nesta mesma
+ // SKU/Item ID. O estado "verified" isolado nunca comprova a ficha técnica.
+ const sameTechnicalJob=job?.sku===sku&&String(job?.item_id)===String(itemId);
+ const approvedWrite=sameTechnicalJob&&Array.isArray(job?.plan?.proposed?.attribute_list)?
+  job.plan.proposed.attribute_list:[];
+ if(!technicalOK&&approvedWrite.length){
+  const reviewedIds=new Set(reviewedAttributes.map(a=>Number(a.attributeId)));
   const effective=reviewedIds.size?
-   job.plan.proposed.attribute_list.filter(a=>reviewedIds.has(Number(a.attribute_id))):
-   job.plan.proposed.attribute_list;
+   approvedWrite.filter(a=>reviewedIds.has(Number(a.attribute_id))):approvedWrite;
   technicalOK=effective.length>0&&fieldsVerified({attribute_list:effective},live);
   if(technicalOK)technicalReason='Atributos revisados conferidos no anúncio pela Shopee';
  }
- const approvedIds=new Set((review.attributes||[]).map(x=>Number(x.attributeId)));
- const optionalUnconfirmed=reviewed('technical')&&!technicalOK&&approvedIds.size>0&&
-  Number(record.attributeAudit?.missingMandatory||0)===0&&
-  [...approvedIds].every(id=>{
-   const meta=(record.attributeAudit?.attributes||[]).find(x=>Number(x.id)===id);
-   return meta?.mandatory===false;
-  });
- add('technical',technicalOK,optionalUnconfirmed?
-  'Atributo opcional revisado não confirmado na Shopee; permanece pendente, sem impedir fiscal ou desconto.':
-  technicalReason);
- if(optionalUnconfirmed)out.at(-1).nonBlocking=true;
+ // A Shopee pode ter 14 de 24 atributos preenchidos: os dez opcionais
+ // restantes NÃO são tarefas de publicação. Somente a árvore oficial,
+ // lida agora para este Item ID, determina os obrigatórios aplicáveis.
+ const officialFields=Array.isArray(record.attributeAudit?.attributes)?
+  record.attributeAudit.attributes:[];
+ const mandatoryFields=officialFields.filter(a=>a?.mandatory===true&&!a?.conditional&&!a?.legacy);
+ const mandatoryComplete=officialFields.length>0&&
+  Number(record.attributeAudit?.missingMandatory)===0&&
+  mandatoryFields.every(a=>!['missing','invalid'].includes(String(a.state||'').toLowerCase()));
+ const mandatoryIds=new Set(mandatoryFields.map(a=>Number(a.id)));
+ const unconfirmedMandatoryWrite=approvedWrite.filter(a=>
+  mandatoryIds.has(Number(a.attribute_id))&&
+  !fieldsVerified({attribute_list:[a]},live));
+ // O rascunho antigo pode conter valores opcionais não publicados ou ter
+ // ficado obsoleto após correção manual no Seller Center. Não reenvie nada:
+ // aceite a situação oficial somente se obrigatórios estiverem completos e
+ // não houver uma escrita obrigatória aprovada ainda sem confirmação.
+ let optionalDifferences=0,oldReviewDifferences=0;
+ if(mandatoryComplete){
+  for(const change of reviewedAttributes){
+   const meta=officialFields.find(a=>Number(a.id)===Number(change?.attributeId));
+   if(!meta||meta.conditional||meta.legacy)continue;
+   try{
+    const values=validateTechnicalAttributeValues(change,meta);
+    if(!fieldsVerified({attribute_list:[{attribute_id:meta.id,attribute_value_list:values}]},live)){
+     if(meta.mandatory)oldReviewDifferences++;
+     else optionalDifferences++;
+    }
+   }catch{
+    if(meta.mandatory)oldReviewDifferences++;
+    else optionalDifferences++;
+   }
+  }
+ }
+ if(officialFields.length&&Number(record.attributeAudit?.missingMandatory)>0){
+  technicalOK=false;
+  technicalReason='A Shopee ainda exige '+Number(record.attributeAudit.missingMandatory)+
+   ' atributo(s) obrigatório(s) desta categoria';
+ }else if(unconfirmedMandatoryWrite.length){
+  technicalOK=false;
+  technicalReason='Alteração obrigatória aprovada ainda não confirmada na Shopee (ID '+
+   unconfirmedMandatoryWrite.slice(0,5).map(a=>a.attribute_id).join(', ')+')';
+ }else if(mandatoryComplete&&
+    (reviewed('technical')||(Array.isArray(live.attribute_list)&&live.attribute_list.length>0))){
+  technicalOK=true;
+  technicalReason=optionalDifferences?
+   'Obrigatórios conferidos na Shopee; '+optionalDifferences+
+    ' atributo(s) opcionais da revisão antiga não bloqueiam a execução':
+   oldReviewDifferences?
+   'Obrigatórios preenchidos na Shopee; alterações manuais válidas detectadas, sem reenvio':
+   'Todos os atributos obrigatórios da categoria conferidos na Shopee';
+ }
+ add('technical',technicalOK,technicalReason);
+ if(optionalDifferences)out.at(-1).optionalDifferences=optionalDifferences;
+ if(oldReviewDifferences)out.at(-1).reviewDifferences=oldReviewDifferences;
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
  if(!hasVariants)add('variants',false,'SKU sem variações', {notApplicable:true});
  else{
