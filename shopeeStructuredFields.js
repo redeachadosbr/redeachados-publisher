@@ -56,6 +56,7 @@ function attributeValue(raw,meta){
 // conferência por uma sugestão opcional incompatível.
 export function validateTechnicalAttributeValues(change,meta){
  if(!meta||meta.conditional||meta.legacy)throw Error('Atributo não disponível nesta categoria.');
+ if(meta.nameMissing)throw Error('Atributo sem pergunta oficial disponível nesta categoria. Atualize a ficha técnica.');
  const values=Array.isArray(change?.values)?change.values:[change];
  if(!values.length||values.length>attributeInputRules(meta).max)
   throw Error('Quantidade de valores não permitida para '+meta.name+'.');
