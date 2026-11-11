@@ -399,7 +399,8 @@ function kitWizardExecutionFeedback(message,state='info'){
 }
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
- if(panel&&home){if(panel.parentElement!==home)home.append(panel);panel.hidden=true;}
+ if(panel&&home){if(panel.parentElement!==home)home.append(panel);
+  panel.hidden=!(kitWizardStage===10&&kitWizardIsNewUnpublished());}
  $('#kitWizardExecutionDiagnostics')?.remove();
  const button=$('#kitWizardOpenExecution');
  if(button)button.textContent='▶ Executar na Shopee';
@@ -1047,8 +1048,16 @@ function kitWizardInit(){
    await kitWizardOpenExecutionFlow();
    return;
   }
-  // Não pedir novo check quando o vínculo existia: recuperar e reauditar
-  // do servidor/Shopee em vez de depender do handoff da sessão.
+  // Um rascunho novo NÃO tem Item ID. Entrar na criação comercial normal,
+  // sem exigir anúncios dos complementares e sem tentar otimizar outra SKU.
+  if(kitWizardIsNewUnpublished()){
+   kitWizardExecutionIntent=false;
+   kitWizardExecutionAudit();
+   kitWizardExecutionFeedback('Anúncio novo: conferindo categoria, imagens, logística e atributos oficiais para publicar apenas a SKU principal.','info');
+   await kitPublishGuideNext();
+   return;
+  }
+  // Atualização: recuperar somente o Item ID verdadeiro já publicado.
   await kitWizardResumeTargetForExecution();
  });
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
@@ -2168,14 +2177,115 @@ function kitPublishFields(){
   includeVideo:$('#kitVideoInclude').checked&&kitVideoRemote?.ready===true
  };
 }
+// Campos oficiais para criar um anúncio COMERCIAL (não Kit Formal).
+// O usuário precisa aprovar categoria e dados que a WeDrop não comprovou.
+function kitCommercialMode(){return kitWizardIsNewUnpublished();}
+function kitCommercialFields(){
+ const id=Number($('#kitCommercialCategoryId')?.value||0);
+ const attributes=[...document.querySelectorAll('#kitCommercialAttributeList [data-kit-commercial-attribute]')]
+  .map(node=>({
+   id:Number(node.dataset.kitCommercialAttribute),
+   valueId:Number(node.tagName==='SELECT'?node.value:0)||0,
+   text:node.tagName==='SELECT'?'':node.value.trim(),
+   unit:node.closest('[data-kit-commercial-attr-row]')?.querySelector('[data-kit-commercial-unit]')?.value||''
+  })).filter(x=>x.valueId>0||x.text);
+ return {...kitPublishFields(),mainSku:String(prepared?.kit?.components?.[0]?.sku||''),
+  categoryId:id,categoryReviewed:$('#kitCommercialCategoryApproved')?.checked===true,
+  attributes};
+}
+function kitCommercialCategoryUi(result){
+ const links=$('#kitPublishLinks');
+ if(!links)return;
+ let wrapper=$('#kitCommercialForm');
+ if(!wrapper){
+  wrapper=document.createElement('section');wrapper.id='kitCommercialForm';
+  wrapper.style.cssText='margin:14px 0;padding:14px;border:1px solid #b9d5f9;border-radius:12px;background:#f7fbff';
+  links.insertAdjacentElement('afterend',wrapper);
+ }
+ wrapper.hidden=false;
+ const oldId=$('#kitCommercialCategoryId')?.value||'';
+ const oldApproved=$('#kitCommercialCategoryApproved')?.checked===true;
+ const oldAttrs=new Map([...document.querySelectorAll('#kitCommercialAttributeList [data-kit-commercial-attribute]')]
+  .map(e=>[Number(e.dataset.kitCommercialAttribute),e.value]));
+ wrapper.replaceChildren();
+ const heading=document.createElement('strong');heading.textContent='Novo anúncio comercial · Categoria e atributos da Shopee';
+ wrapper.append(heading);
+ const hint=document.createElement('p');hint.textContent='A SKU principal será anunciada com um kit completo; as SKUs complementares ficam somente na WeDrop. Estoque inicial: 1 conjunto.';
+ wrapper.append(hint);
+ const catRow=document.createElement('div');catRow.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0';
+ const label=document.createElement('label');label.textContent='Categoria Shopee: ';
+ const input=document.createElement('select');input.id='kitCommercialCategoryId';input.style.cssText='padding:8px;max-width:100%;border-radius:8px';
+ input.append(new Option('Selecione a categoria oficial',''));
+ for(const item of result.categories||[])input.append(new Option(item.name+' ('+item.id+')',String(item.id)));
+ const chosen=String(result.requestedCategoryId||oldId||(result.categories||[])[0]?.id||'');
+ if(chosen&&[...input.options].some(o=>o.value===chosen))input.value=chosen;
+ else if(chosen){input.append(new Option('Categoria '+chosen,chosen));input.value=chosen;}
+ label.append(input);catRow.append(label);
+ const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Atualizar atributos';
+ refresh.className='btn-secondary';
+ refresh.addEventListener('click',()=>void kitReadinessCheck());
+ catRow.append(refresh);wrapper.append(catRow);
+ const checkLabel=document.createElement('label');checkLabel.style.cssText='display:block;margin-bottom:9px';
+ const checkbox=document.createElement('input');checkbox.id='kitCommercialCategoryApproved';checkbox.type='checkbox';
+ checkbox.checked=oldApproved&&oldId===input.value;
+ checkLabel.append(checkbox,document.createTextNode(' Conferi a categoria e a composição do kit.'));wrapper.append(checkLabel);
+ const list=document.createElement('div');list.id='kitCommercialAttributeList';wrapper.append(list);
+ const rows=(result.attributes||[]).filter(row=>row.mandatory);
+ if(rows.length){
+  const caption=document.createElement('p');caption.textContent='Atributos obrigatórios informados pela Shopee (sem valores inventados):';
+  list.append(caption);
+ }
+ for(const item of rows){
+  const row=document.createElement('div');row.dataset.kitCommercialAttrRow='true';row.style.cssText='margin:8px 0';
+  const title=document.createElement('label');title.textContent=item.name+' (obrigatório)';
+  let field;
+  if(item.options?.length){
+   field=document.createElement('select');
+   field.append(new Option('Selecione a resposta oficial',''));
+   for(const opt of item.options)field.append(new Option(opt.name,String(opt.id)));
+  }else{
+   field=document.createElement('input');field.placeholder='Valor comprovado pela ficha do fornecedor';
+  }
+  field.dataset.kitCommercialAttribute=String(item.id);
+  field.style.cssText='display:block;margin:4px 0;width:min(100%,420px);padding:9px;border:1px solid #c7d4e7;border-radius:8px';
+  const remembered=oldAttrs.get(item.id);
+  if(remembered&&([...field.options||[]].some?.(o=>o.value===remembered)??true))field.value=remembered;
+  title.append(field);row.append(title);
+  if(item.formatType===2&&item.units?.length){
+   const unit=document.createElement('select');unit.dataset.kitCommercialUnit='true';
+   unit.append(new Option('Unidade',''));
+   for(const name of item.units)unit.append(new Option(name,name));
+   row.append(unit);
+  }
+  list.append(row);
+ }
+ const end=document.createElement('p');end.style.cssText='font-size:12px;color:#536a83';
+ end.textContent='Campos opcionais não impedem a criação. Caso a Shopee exija novos campos, o motivo aparecerá aqui, sem apagar o rascunho.';
+ wrapper.append(end);
+ input.addEventListener('change',()=>{
+  checkbox.checked=false;
+  // Não interpretar atributos de outra categoria; recarregar árvore oficial.
+  void kitReadinessCheck();
+ });
+}
+
 async function kitReadinessCheck(){
  if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit antes de consultar a Shopee.','error');
  if(kitPublishBusy)return;
  kitPublishBusy=true;$('#kitPublishCheck').disabled=true;clearKitPublishApproval();
  kitPublishStatus('Validando itens, variações, canais e limites do Kit Formal na Shopee...');
  try{
-  const result=await api('/api/shopee/kits/publish/readiness',{body:{kitSku:prepared.kit.kitSku}});
+  const commercial=kitCommercialMode();
+  const result=await api(commercial?'/api/shopee/kits/commercial/readiness':'/api/shopee/kits/publish/readiness',{body:{
+   kitSku:prepared.kit.kitSku,
+   ...(commercial?{categoryId:Number($('#kitCommercialCategoryId')?.value||0)}:{})
+  }});
   kitReadiness=result;
+  if(commercial){
+   const main=String(prepared.kit.components?.[0]?.sku||'');
+   if([...$('#kitMainSku').options].some(o=>o.value===main))$('#kitMainSku').value=main;
+   kitCommercialCategoryUi(result);
+  }else if($('#kitCommercialForm'))$('#kitCommercialForm').hidden=true;
   const components=$('#kitPublishLinks');components.replaceChildren();
   for(const x of result.linked){
    const line=elt('div','kit-component');
@@ -2191,6 +2301,7 @@ async function kitReadinessCheck(){
   kitApplyPendingLogisticName();
   kitPublishStatus(result.blockers?.length?
    'Não foi possível publicar: '+result.blockers.join(' | '):
+   commercial?'Anúncio novo: verifique categoria, atributos e logística; imagens 1–9 serão enviadas apenas após aprovação.':
    (result.autoRecovered?.length?
     '✓ Identifiquei e vinculei automaticamente '+result.autoRecovered.map(x=>x.product).join(' e ')+'. ': '')+
     'Produtos da Shopee conferidos. Preparando a publicação do kit.',
@@ -2234,12 +2345,27 @@ async function kitPreparePublishPreview(){
   return kitPublishStatus('Resolva todos os vínculos de SKU e logística antes da prévia.','error');
  kitPublishBusy=true;$('#kitPublishPreview').disabled=true;clearKitPublishApproval();
  try{
-  const result=await api('/api/shopee/kits/publish/preview',{body:{
-   kitSku:prepared.kit.kitSku,fields:kitPublishFields()
+  const commercial=kitCommercialMode();
+  const result=await api(commercial?'/api/shopee/kits/commercial/preview':'/api/shopee/kits/publish/preview',{body:{
+   kitSku:prepared.kit.kitSku,fields:commercial?kitCommercialFields():kitPublishFields()
   }});
   kitPublishToken=result.token;
   const x=result.payloadSummary;
-  $('#kitPublishSummary').textContent=[
+  if(commercial){
+   const s=result.summary;
+   $('#kitPublishSummary').textContent=[
+    'ANÚNCIO COMERCIAL NOVO (não Kit Formal)',
+    'SKU principal: '+s.mainSku,
+    'Nome: '+s.title,
+    'Categoria oficial: '+s.categoryId,
+    'Preço bruto: '+money(s.price),
+    'Fotos: '+s.images+' de 9',
+    'Estoque inicial: 1 kit completo',
+    'Vídeo: '+(s.videoIncluded?'incluído':'não incluído'),
+    'Atenção: serão vendidos juntos todos os componentes WeDrop.',
+    'A criação exige uma última confirmação no botão abaixo.'
+   ].join('\n');
+  }else $('#kitPublishSummary').textContent=[
    'KIT '+result.kitSku,
    'Componentes: '+x.skus.join(' + '),
    'Nome: '+x.title,
@@ -2401,6 +2527,10 @@ async function kitPublishGuideNext(){
    kitPublishGuideNotice('Etapa 02/05: selecione qual SKU será o componente principal do kit.','info');
    kitPublishGuideFocus('#kitMainSku');return;
   }
+  if(kitCommercialMode()&&(!Number($('#kitCommercialCategoryId')?.value||0)||!$('#kitCommercialCategoryApproved')?.checked)){
+   kitPublishGuideNotice('Confirme a categoria oficial sugerida pela Shopee antes de publicar o anúncio novo.','info');
+   kitPublishGuideFocus('#kitCommercialCategoryId');return;
+  }
   if(!$('#kitLogisticId').value){
    kitPublishGuideNotice('Etapa 02/05: selecione um canal de envio habilitado na Shopee. Os canais disponíveis estão no campo abaixo.','info');
    kitPublishGuideFocus('#kitLogisticId');return;
@@ -2451,16 +2581,17 @@ async function kitPublishGuideNext(){
 }
 async function kitPublishExecute(){
  if(!prepared||!kitPublishToken||kitPublishBusy)return;
+ const commercial=kitCommercialMode();
  const name=prepared.kit.kitSku;
- const confirmed=window.confirm('PUBLICAR NOVO KIT FORMAL NA SHOPEE?\n'+
+ const confirmed=window.confirm((commercial?'CRIAR UM ANÚNCIO COMERCIAL NOVO?\n':'PUBLICAR NOVO KIT FORMAL NA SHOPEE?\n')+
   name+'\nPreço bruto: '+money(prepared.kit.quote.grossPrice)+
   '\nA promoção não será aplicada agora. Esta criação pode gerar um anúncio real. Confirma?');
  if(!confirmed)return;
  kitPublishBusy=true;$('#kitPublishExecute').disabled=true;
- kitPublishStatus('Shopee recebendo criação do Kit Formal. Não repita o envio se houver erro ou tempo esgotado...');
+ kitPublishStatus(commercial?'Criando anúncio comercial da SKU principal, com proteção contra duplicações...':'Shopee recebendo criação do Kit Formal. Não repita o envio se houver erro ou tempo esgotado...');
  try{
-  const done=await api('/api/shopee/kits/publish/execute',{body:{
-   kitSku:name,fields:kitPublishFields(),token:kitPublishToken,confirm:true
+  const done=await api(commercial?'/api/shopee/kits/commercial/execute':'/api/shopee/kits/publish/execute',{body:{
+   kitSku:name,fields:commercial?kitCommercialFields():kitPublishFields(),token:kitPublishToken,confirm:true
   }});
   kitItemId=done.itemId;clearKitPublishApproval();
   $('#kitDiscountNext').hidden=false;
