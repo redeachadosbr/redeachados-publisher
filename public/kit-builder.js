@@ -2219,6 +2219,9 @@ function kitCommercialCategoryUi(result){
  for(const item of result.categories||[])input.append(new Option(item.name+' ('+item.id+')',String(item.id)));
  const chosen=String(result.requestedCategoryId||oldId||(result.categories||[])[0]?.id||'');
  if(chosen&&[...input.options].some(o=>o.value===chosen))input.value=chosen;
+ // Recarregar automaticamente a árvore oficial após receber a primeira sugestão.
+ if(chosen&&!result.requestedCategoryId)
+  setTimeout(()=>{if(kitCommercialMode()&&kitWizardStage===10&&!kitPublishBusy)void kitReadinessCheck();},100);
  else if(chosen){input.append(new Option('Categoria '+chosen,chosen));input.value=chosen;}
  label.append(input);catRow.append(label);
  const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Atualizar atributos';
@@ -2287,7 +2290,7 @@ async function kitReadinessCheck(){
    kitCommercialCategoryUi(result);
   }else if($('#kitCommercialForm'))$('#kitCommercialForm').hidden=true;
   const components=$('#kitPublishLinks');components.replaceChildren();
-  for(const x of result.linked){
+  for(const x of result.linked||[]){
    const line=elt('div','kit-component');
    line.textContent='WeDrop '+x.supplierSku+' → Shopee Item ID '+x.itemId+
     (Number(x.modelId)>0?' · Modelo '+x.modelId:'')+
@@ -2598,6 +2601,7 @@ async function kitPublishExecute(){
   $('#kitPublishedMessage').textContent='Kit '+name+' · Item ID '+done.itemId+
    ' · Status '+done.status+'. '+done.message;
   kitPublishStatus('✓ Shopee retornou Item ID '+done.itemId+'. O desconto ainda NÃO foi aplicado.','success');
+  if(commercial)kitWizardExecutionFeedback('✓ Anúncio comercial criado com Item ID '+done.itemId+'. '+done.message,'success');
   $('#kitPublishCheck').disabled=true;$('#kitSendPhotos').disabled=true;
   $('#kitPublishPreview').disabled=true;
   void loadDrafts();
