@@ -72,4 +72,20 @@ test('interface expõe checkbox, ação manual e tratamento visual distinto',()=
  assert.match(server,/marketplaceUpdated:false/);
  assert.match(server,/officialAuditVerified:false/);
  assert.match(server,/pendingJob\?\.state/);
+ assert.match(server,/authStore\.load\(\)/);
+});
+
+test('opção manual aceita apenas vínculo persistido e recente do kit, nunca handoff temporário',()=>{
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const optimizer=readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ assert.match(ui,/const link=prepared\?\.optimization\?\.itemId\?prepared\.optimization:null/);
+ assert.match(ui,/prepared\.optimization=result\.link/);
+ assert.match(optimizer,/link:\{\.\.\.identity,mainSku:sku\}/);
+});
+
+test('consentimento não passa entre kits e check local indisponível não invalida conclusão durável',()=>{
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(ui,/if\(manualCheck\)manualCheck\.checked=false/);
+ assert.match(ui,/let localCheckSaved=true/);
+ assert.match(ui,/catch\{localCheckSaved=false;\}/);
 });
