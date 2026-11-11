@@ -369,7 +369,7 @@ export function buildManualKitFinalization(current,{kitSku,sku,itemId,modelId='0
  if(confirmed!==true)throw Error('Marque a confirmação manual antes de concluir.');
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code)||!current?.kit||!current.optimization)
   throw Error('Salve o kit e vincule um anúncio existente antes de concluir manualmente.');
- if(!/^[1-9]\\d{0,17}$/.test(target)||!/^(0|[1-9]\\d{0,17})$/.test(model))
+ if(!/^[1-9]\d{0,17}$/.test(target)||!/^(0|[1-9]\d{0,17})$/.test(model))
   throw Error('Item ID ou modelo inválido.');
  const link=current.optimization,first=String(current.kit.components?.[0]?.sku||'');
  if(String(current.kit.kitSku)!==code||String(link.kitSku)!==code||
