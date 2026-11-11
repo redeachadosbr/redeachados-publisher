@@ -2782,6 +2782,7 @@ async function loadDrafts({restoreCurrent=true}={}){
    publishedRoot.replaceChildren();
    for(const published of result.published||[]){
     const optimized=published.optimizationFinalization?.status==='verified';
+    const manual=published.optimizationFinalization?.status==='manual_confirmed';
     const card=elt('article','kit-card kit-published-card'),pic=elt('div','kit-draft-images');
     for(const url of (published.images||[]).slice(0,3)){
      const img=elt('img');img.src=url;img.alt='Produto publicado '+published.kitSku;
@@ -2790,10 +2791,13 @@ async function loadDrafts({restoreCurrent=true}={}){
     if(!pic.children.length)pic.append(elt('span','','▧'));
     const info=elt('div','kit-draft-description');
     info.append(elt('span','kit-draft-state kit-draft-state-confirmed',
-      optimized?'✓ ANÚNCIO OTIMIZADO NA SHOPEE':'✓ PUBLICADO NA SHOPEE'),
+      optimized?'✓ ANÚNCIO OTIMIZADO NA SHOPEE':
+      manual?'✓ CONCLUÍDO MANUALMENTE · SEM AUDITORIA SHOPEE':'✓ PUBLICADO NA SHOPEE'),
      elt('strong','',published.title||published.kitSku),
      elt('small','',(published.skus||[]).join(' + ')),
      elt('small','',published.itemId?'Item ID Shopee: '+published.itemId:'Publicação confirmada'));
+    if(manual)info.append(elt('small','',
+     'Conferência declarada pelo vendedor. Não significa que todas as etapas foram verificadas pela Shopee.'));
     const metrics=elt('div','kit-draft-metrics');
     if(published.quote)for(const [label,value] of [
      ['Custo',money(published.kitCost)],
