@@ -13,21 +13,21 @@ const locks=new Set(),validId=n=>/^[1-9]\d{0,17}$/.test(String(n))&&Number.isSaf
 const goodEnd=x=>[0,9].includes(Math.round(Number(x)*100)%10);
 const money=x=>Math.round(Number(x)*100)/100;
 
-// A cotação dos Kits usa a política v5, distinta da cotação individual (v4).
-// Validar valores reais, não apenas a versão: nenhuma escrita é autorizada
-// quando a margem ou qualquer um dos dois finais 0/9 é inválido.
+// A política v6 exige finais comerciais no bruto e na vitrine.
+// O cupom é condicional e o preço simulado após cupom não exige final 0/9.
+// Cotações anteriores devem ser recalculadas antes de autorizar escrita.
 export function validateKitDiscountQuote(quote){
- if(!quote||quote.priceEndingRuleVersion!==5)
+ if(!quote||quote.priceEndingRuleVersion!==6||quote.priceEndingPolicy!=='listed_price_coupon_conditional')
   throw Error('Cotação do kit em versão incompatível com o motor de preços. Recalcule e salve o kit antes de preparar o desconto.');
  const gross=money(quote.grossPrice),promo=money(quote.marketplacePrice),
   afterCoupon=money(quote.afterCoupon);
  if(!Number.isFinite(gross)||!Number.isFinite(promo)||!Number.isFinite(afterCoupon)||
     !(gross>promo&&promo>0&&afterCoupon>0))
   throw Error('Preço bruto ou desconto inválido. Recalcule os valores do kit e salve antes de preparar a prévia.');
+ if(!goodEnd(gross))
+  throw Error('O preço bruto não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
  if(!goodEnd(promo))
   throw Error('O preço visível na Shopee não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
- if(!goodEnd(afterCoupon))
-  throw Error('O preço após cupom não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
  if(!Number.isFinite(Number(quote.netMarginPct))||
     !Number.isFinite(Number(quote.targetMarginPct))||
     Number(quote.netMarginPct)+0.001<Number(quote.targetMarginPct))

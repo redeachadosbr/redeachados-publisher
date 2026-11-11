@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,rankKitIdeaProducts,suggestKitsForIdea,assessKitBuyerFit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
 import {clearKitStockCache} from '../shopeeKitAvailability.js';
 
-test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e proteção por SKU',async()=>{
+test('kits por categoria: custo exato, somatório, vitrine 0/9, prompts e proteção por SKU',async()=>{
  const oldFetch=globalThis.fetch,oldBase=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
  process.env.SUPABASE_URL='https://fixture-kits.supabase.co';
  process.env.SUPABASE_SECRET_KEY='fixture-key';
@@ -63,7 +63,7 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(kit.components[1].unitCost,8);
   assert.ok(kit.quote.netMarginPct>=15);
   assert.ok([0,9].includes(Math.round(kit.quote.marketplacePrice*100)%10));
-  assert.ok([0,9].includes(Math.round(kit.quote.afterCoupon*100)%10));
+  assert.ok(kit.quote.afterCoupon>0,'Cupom condicional deve ser considerado no lucro sem impor final 0/9');
   assert.equal(kit.shopeePublished,false);
   const prompts=kitPrompts(kit);
   assert.equal(prompts.length,9);

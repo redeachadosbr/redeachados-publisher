@@ -99,8 +99,9 @@ test('kit WeDrop usa base bruta de 3x custo total, depois aplica desconto seguro
    'Bruto não pode superar 3x o custo: '+cost);
   assert.ok(q.discountPct>=0&&q.discountPct<=50);
   assert.ok(q.netMarginPct+0.002>=15);
-  for(const price of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+  for(const price of [q.grossPrice,q.marketplaceDisplayPrice])
    assert.ok([0,9].includes(Math.round(price*100)%10),'Centavos 0/9: '+price);
+  assert.equal(q.priceEndingPolicy,'listed_price_coupon_conditional');
   const simulation=calculateShopeeSale(
    Math.round(q.grossPrice*100),{...settings,discountPct:q.discountPct},
    Math.round(cost*100)
@@ -111,11 +112,42 @@ test('kit WeDrop usa base bruta de 3x custo total, depois aplica desconto seguro
  }
  const bathroom=quoteShopeeKitPrice({unitCost:71.47,settings});
  assert.equal(bathroom.grossPrice,214.39);
- assert.equal(bathroom.discountPct,30.69);
- assert.equal(bathroom.marketplaceDisplayPrice,148.59);
+ assert.ok(bathroom.discountPct<=50);
+ assert.ok(bathroom.netMarginPct>=15);
+ assert.ok([0,9].includes(lastCents(bathroom.marketplaceDisplayPrice)%10));
  const extra=quoteShopeeKitPrice({unitCost:50.47,
   settings:{...settings,packing:2,shipping:1}});
  assert.ok(extra.grossPrice<=Math.round((50.47+2+1)*300)/100+0.001);
+});
+
+
+test('kit pet R$11,48 com margem de 10% não salta artificialmente para 19,54%',()=>{
+ const settings=normalizeShopeePricingSettings({
+  marginPct:10,minMarginPct:5,couponPct:1,taxPct:4,flashPct:0,
+  adsPct:0,packing:0,shipping:0,sellerType:'cpf'
+ });
+ const q=quoteShopeeKitPrice({unitCost:11.48,settings});
+ assert.equal(q.targetMarginPct,10);
+ assert.ok(q.netMarginPct>=10&&q.netMarginPct<11,
+  'A margem deve se aproximar da meta sem ficar abaixo dela');
+ assert.ok(q.grossPrice<=34.44);
+ assert.ok(q.discountPct<=50);
+ assert.ok([0,9].includes(lastCents(q.grossPrice)%10));
+ assert.ok([0,9].includes(lastCents(q.marketplaceDisplayPrice)%10));
+ const simulated=calculateShopeeSale(Math.round(q.grossPrice*100),
+  {...settings,discountPct:q.discountPct},1148);
+ assert.equal(simulated.profit,q.netProfit);
+ assert.equal(simulated.finalPrice,q.customerPrice);
+ assert.equal(simulated.marketplaceDisplayPrice,q.marketplaceDisplayPrice);
+});
+test('elevar margem de 10% para 20% não reduz o preço anunciado do kit',()=>{
+ const base=normalizeShopeePricingSettings({
+  marginPct:10,minMarginPct:5,couponPct:1,taxPct:4,flashPct:0,adsPct:0
+ });
+ const a=quoteShopeeKitPrice({unitCost:11.48,settings:base});
+ const b=quoteShopeeKitPrice({unitCost:11.48,settings:{...base,marginPct:20}});
+ assert.ok(b.marketplaceDisplayPrice>=a.marketplaceDisplayPrice);
+ assert.ok(b.netMarginPct>=20);
 });
 
 test('Otimização de anúncios: desconto variável dos kits na SKU 305350, sem fixar 20%',()=>{
@@ -159,4 +191,6 @@ test('Otimização: com média do mercado, protege piso ou sinaliza inviabilidad
  assert.ok(q.discountPct>0&&q.discountPct<=50);
  for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10));
+ assert.equal(q.priceEndingRuleVersion,4);
+ assert.equal(q.priceEndingPolicy,'both_checkout_and_visible');
 });

@@ -250,10 +250,57 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
 /**
  * Exclusivo para Kits WeDrop. O bruto começa em três vezes o custo total,
  * e pode diminuir para respeitar o limite de desconto de 50%.
- * Busca valores reais de promoção e checkout terminados em 0/9.
+ * Exige terminação 0/9 no bruto e na vitrine, mas não no cupom condicional.
  * Falha de modo seguro se margem, limite e finais forem incompatíveis.
  */
 export function quoteShopeeKitPrice({unitCost,settings={}}={}){
+ const c=normalizeShopeePricingSettings(settings);
+ const cost=Number(unitCost);
+ if(!Number.isFinite(cost)||cost<=0)throw Error('Custo do kit inválido.');
+ const desired=Math.max(c.marginPct,c.minMarginPct);
+ const effectiveCost=cost+c.packing+c.shipping;
+ // O bruto segue o teto de 3x. Caso necessário, permitimos reduzir o
+ // bruto em até R$1,50 sem ultrapassar 50% de desconto.
+ const grossCeiling=Math.min(BRL_LIMIT,money(effectiveCost*3));
+ const attractive=n=>attractiveCents.has(((n%100)+100)%100);
+ let best=null;
+ // O cupom é condicional: seu valor é considerado no lucro conservador,
+ // mas NÃO determina os centavos do preço anunciado na vitrine Shopee.
+ // Exigir ambos os finais 0/9 provocava saltos artificiais (ex.: a
+ // barra em 10% exibia margem de 19,54% num kit de custo R$11,48).
+ for(let delta=0;delta<=150;delta++){
+  const gross=grossCeiling-delta;
+  if(gross<=0||!attractive(gross))continue;
+  for(let basis=5000;basis>=0;basis--){
+   const discount=basis/100;
+   const financial=calculateShopeeSale(gross,{...c,discountPct:discount},money(cost));
+   const visible=money(financial.marketplaceDisplayPrice);
+   if(!attractive(visible)||financial.marginPct+1e-8<desired)continue;
+   // Menor preço VÍSIVEL que protege a margem, depois o bruto mais
+   // próximo de 3x para preservar a apresentação de desconto.
+   if(!best||visible<best.visible||
+      (visible===best.visible&&gross>best.gross)||
+      (visible===best.visible&&gross===best.gross&&
+       financial.marginPct<best.financial.marginPct))
+    best={gross,discount,financial,visible};
+  }
+ }
+ if(!best)throw Error('Sem combinação segura de margem, desconto máximo de 50% e preço anunciado com final 0/9. Revise taxas ou margem; nenhum preço será publicado.');
+ const f=best.financial;
+ return {grossPrice:brl(best.gross),discountPct:best.discount,
+  marketplaceDisplayPrice:f.marketplaceDisplayPrice,customerPrice:f.finalPrice,
+  couponPct:c.couponPct,netProfit:f.profit,
+  netMarginPct:Number(f.marginPct.toFixed(3)),targetMarginPct:desired,
+  priceEndingRuleVersion:6,
+  priceEndingPolicy:'listed_price_coupon_conditional',
+  breakdown:{commission:f.commission,fixedFee:f.fixedFee,tax:f.tax,flash:f.flash,
+   campaignDiscount:f.campaignDiscount,ads:f.ads},
+  grossMultiplier:3,maxDiscountPct:50};
+}
+
+// Política antiga exclusiva para anúncios individuais. A mudança de Kits v6
+// não pode alterar preços de anúncios individuais sem homologação própria.
+function quoteShopeeOptimizationLegacyKitPrice({unitCost,settings={}}={}){
  const c=normalizeShopeePricingSettings(settings);
  const cost=Number(unitCost);
  if(!Number.isFinite(cost)||cost<=0)throw Error('Custo do kit inválido.');
@@ -298,6 +345,7 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
    campaignDiscount:f.campaignDiscount,ads:f.ads},
   grossMultiplier:3,maxDiscountPct:50};
 }
+
 
 // Apenas na margem MANUAL: selecionar o menor preço anunciado que protege a meta.
 // O preço exibido (Minha Promoção) e o bruto continuam com finais comerciais
@@ -346,7 +394,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
  const desired=Math.max(c.marginPct,c.minMarginPct);
  // Mesma regra efetiva dos kits: bruto de ate 3x custos, desconto 0..50%,
  // lucro protegido e terminacoes 0/9 no bruto, vitrine e apos cupom.
- const base=marginOverride?null:quoteShopeeKitPrice({unitCost:cost,settings:c});
+ const base=marginOverride?null:quoteShopeeOptimizationLegacyKitPrice({unitCost:cost,settings:c});
  let chosen=marginOverride?closestManualOptimizationQuote(cost,c,desired):
   {grossCents:money(base.grossPrice),discountPct:base.discountPct,
    financial:calculateShopeeSale(money(base.grossPrice),
