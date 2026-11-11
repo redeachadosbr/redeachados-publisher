@@ -4935,7 +4935,7 @@ function optimizerExecutionTrackerRender(progress,job){
  // "Não incluído" não significa pendente quando o anúncio já foi confirmado.
  const rootAudit=optimizerRootAuditCache.get(rootKey)?.audit;
  const pendingRootStages=Array.isArray(rootAudit?.stages)?rootAudit.stages.filter(x=>
-  x.id!=='final'&&!['confirmed','not_applicable'].includes(x.status)):null;
+  x.id!=='final'&&!['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true):null;
  const skipped=mediaFiscalOnly?[]:pendingRootStages?
   pendingRootStages.map(x=>({id:x.id,label:x.label,status:x.status})):
   (progress.steps||[]).filter(x=>
@@ -6272,7 +6272,7 @@ async function kitAutoSweepPreparePlan(target){
 // integral varias vezes sem arquivo de video disponivel.
 function kitAutoSweepPreferredStage(audit){
  const missing=(audit?.stages||[]).filter(x=>x.id!=='final'&&
-  !['confirmed','not_applicable'].includes(x.status)).map(x=>x.id);
+  !['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true).map(x=>x.id);
  if(!missing.length)return 'all';
  const approved=new Set(globalThis.RAKitWizardExecutionReviews?.()?.stages||[]);
  if(missing.every(x=>['video','fiscal','discount'].includes(x))&&
@@ -6286,7 +6286,7 @@ async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
  const scope=$('#optimizerExecutionScope');
  if(!scope)return {plan:null,diagnostics:['Seletor de execucao indisponivel.']};
  const stages=(audit?.stages||[]).filter(x=>x.id!=='final'&&
-  !['confirmed','not_applicable'].includes(x.status));
+  !['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true);
  const pending=new Set(stages.map(x=>x.id));
  // A auditoria pode estar pendente em uma única etapa embora o plano geral
  // não tenha ações. Procurar cada escopo APROVADO, sem inventar mídia/revisão.
@@ -6355,7 +6355,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
      throw Error('A Shopee não confirmou o resultado anterior. Envio duplicado impedido.');
     }
     if(job.state==='failed'&&job.result?.phase!=='retry_allowed')
-     throw Error('Falha da Shopee: '+String(job.last_error||'etapa não confirmada').slice(0,210));
+     optimizerExecNotice('Falha anterior: conferindo dados atuais da Shopee antes de decidir o que ainda precisa de execução. Nenhum envio duplicado será iniciado.','warning');
     const query=new URLSearchParams({sku:target.sku,
      item_id:target.itemId,model_id:target.modelId});
     const fresh=await json('/api/shopee/optimizer/execution/root-audit?'+query,{
@@ -6371,7 +6371,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
      return;
     }
     const pending=(audit?.stages||[]).filter(s=>s.id!=='final'&&
-     !['confirmed','not_applicable'].includes(s.status)).map(s=>s.label);
+     !['confirmed','not_applicable'].includes(s.status)&&s.nonBlocking!==true).map(s=>s.label);
     if(!pending.length)throw Error('A conferência final ainda não foi confirmada pela Shopee.');
     if(launches>=9)throw Error('Limite de proteção atingido. Restam '+pending.join(', '));
     if(job.state==='verified')await sleep(3500); // propagacao da API
@@ -6381,7 +6381,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     // A auditoria raiz é a fonte de verdade, não a lista de ações do último job.
     // Se apenas o desconto estiver pendente, não preparar nem reenviar as demais etapas.
     const onlyDiscount=audit?.stages?.filter(s=>s.id!=='final'&&
-     !['confirmed','not_applicable'].includes(s.status)).every(s=>s.id==='discount')&&
+     !['confirmed','not_applicable'].includes(s.status)&&s.nonBlocking!==true).every(s=>s.id==='discount')&&
      audit?.stages?.some(s=>s.id==='discount'&&s.status==='pending');
     const executionScope=onlyDiscount?'discount':kitAutoSweepPreferredStage(audit);
     scope.value=executionScope;
@@ -6456,7 +6456,7 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   const audit=optimizerRootAuditCache.get([sku,String(itemId),String(modelId||'0')].join('|'))?.audit;
   if(!audit?.stages?.length)return {ok:false,error:'A Shopee não retornou a auditoria completa. Nenhuma alteração foi enviada.'};
   const rootMissing=audit.stages.filter(s=>s.id!=='final'&&
-   !['confirmed','not_applicable'].includes(s.status));
+   !['confirmed','not_applicable'].includes(s.status)&&s.nonBlocking!==true);
   const onlyDiscount=rootMissing.length===1&&rootMissing[0].id==='discount'&&
    rootMissing[0].status==='pending';
   const executionScope=onlyDiscount?'discount':kitAutoSweepPreferredStage(audit);
@@ -6473,7 +6473,7 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   const p=prepared.plan;
   if(!p)return {ok:false,error:'A auditoria encontrou pendencias, mas ainda nao ha acao aprovada para enviar. '+
    prepared.diagnostics.join(' | ')+'. Nenhuma publicacao foi iniciada.'};
-  const pending=(audit?.stages||[]).filter(x=>!['confirmed','not_applicable'].includes(x.status))
+  const pending=(audit?.stages||[]).filter(x=>x.id!=='final'&&!['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true)
    .map(x=>x.label);
   const actions=(p.actions||[]);
   const missing=optimizerKitMissingApprovedStages(p);
@@ -7373,7 +7373,7 @@ function optimizerRootAuditRender(audit){
  const note=document.createElement('p');
  note.style.cssText='font-size:12px;line-height:1.55;margin:7px 0 13px;color:#537093';
  const good=audit.stages?.filter(x=>x.id!=='final'&&x.status==='confirmed').length||0;
- const applicable=audit.stages?.filter(x=>x.id!=='final'&&x.status!=='not_applicable').length||0;
+ const applicable=audit.stages?.filter(x=>x.id!=='final'&&x.status!=='not_applicable'&&x.nonBlocking!==true).length||0;
  const pendingCount=Math.max(0,applicable-good);
  note.textContent=audit.complete?
   'Todas as '+applicable+' etapas aplicáveis confirmadas por leitura da Shopee.':
@@ -7391,11 +7391,12 @@ function optimizerRootAuditRender(audit){
   row.style.cssText='padding:10px 12px;border:1px solid #dce7f4;border-radius:12px;background:#fff;box-shadow:0 3px 7px rgba(40,71,101,.035)';
   const label=document.createElement('strong');
   label.style.cssText='font-size:12px;display:block';
-  label.textContent=(stage.status==='confirmed'?'✓ ':stage.status==='not_applicable'?'– ':stage.status==='failed'?'⚠ ':stage.status==='uncertain'?'? ':'○ ')+stage.label;
+  label.textContent=(stage.status==='confirmed'?'✓ ':stage.status==='not_applicable'||stage.nonBlocking===true?'– ':stage.status==='failed'?'⚠ ':stage.status==='uncertain'?'? ':'○ ')+stage.label;
   row.append(label);
   const state=document.createElement('small');
   state.style.cssText='display:block;margin-top:5px;color:#61748b;line-height:1.4';
-  state.textContent=stage.status==='confirmed'?(stage.id==='technical'?stage.reason:'Confirmado na Shopee'):
+  state.textContent=stage.nonBlocking===true?'Opcional não bloqueante: '+stage.reason:
+   stage.status==='confirmed'?(stage.id==='technical'?stage.reason:'Confirmado na Shopee'):
    stage.status==='not_applicable'?'Não aplicável':
    stage.status==='uncertain'?'Conferir antes de reenviar: '+stage.reason:stage.reason;
   if(['failed','uncertain'].includes(stage.status))
@@ -7412,7 +7413,7 @@ function optimizerRootAuditRender(audit){
   }
   // Somente etapas NÃO confirmadas oferecem ação. A correção abre o editor
   // original; executar reconsulta o Item ID e envia exclusivamente a etapa.
-  if(!['confirmed','not_applicable'].includes(stage.status)&&stage.id!=='final'){
+  if(!['confirmed','not_applicable'].includes(stage.status)&&stage.nonBlocking!==true&&stage.id!=='final'){
    const controls=document.createElement('div');
    controls.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:9px';
    const fix=document.createElement('button');
@@ -7752,7 +7753,7 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
    return;
   }
   const pending=audit.stages.filter(s=>s.id!=='final'&&
-   !['confirmed','not_applicable'].includes(s.status));
+   !['confirmed','not_applicable'].includes(s.status)&&s.nonBlocking!==true);
   const picked=onlyStage?pending.find(s=>s.id===onlyStage):null;
   if(onlyStage&&!picked){
    optimizerExecNotice('Etapa '+onlyStage+' já confirmada ou não aplicável na Shopee. Nada será reenviado.','success');
