@@ -2026,7 +2026,7 @@ app.post('/api/shopee/kits/optimization/manual-complete',mustLogin,requireWeDrop
   const kitSku=String(body.kitSku||'').trim();
   const sku=validateSkuLookup(body.sku),itemId=validItemId(body.itemId);
   const modelId=String(body.modelId??'0');
-  if(!/^\\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
   const saved=await recordKitManualOptimizationCompletion(auth.shopId,kitSku,{
    sku,itemId,modelId,confirmed:body.confirmed===true
   });
