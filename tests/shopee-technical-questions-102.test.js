@@ -18,6 +18,7 @@ test('opcionais permanecem recolhidos e a pergunta pode ser recarregada sem publ
  assert.match(studio,/dispensáveis',optional\.length,[\s\S]*?'optional',optional,false/);
  assert.match(app,/Atualizar perguntas da Shopee/);
  assert.match(app,/if\(attr\.nameMissing\)/);
+ assert.match(app,/option\.displayName\|\|option\.name/);
  assert.match(app,/await techRefreshSuggestions\(\)/);
  assert.match(app,/if\(same\(values,attr\.values\)\)return null/);
 });
