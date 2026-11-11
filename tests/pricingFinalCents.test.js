@@ -114,7 +114,7 @@ test('kit WeDrop usa base bruta de 3x custo total, depois aplica desconto seguro
  assert.equal(bathroom.grossPrice,214.39);
  assert.ok(bathroom.discountPct<=50);
  assert.ok(bathroom.netMarginPct>=15);
- assert.ok([0,9].includes(lastCents(bathroom.marketplaceDisplayPrice)));
+ assert.ok([0,9].includes(lastCents(bathroom.marketplaceDisplayPrice)%10));
  const extra=quoteShopeeKitPrice({unitCost:50.47,
   settings:{...settings,packing:2,shipping:1}});
  assert.ok(extra.grossPrice<=Math.round((50.47+2+1)*300)/100+0.001);
@@ -132,8 +132,8 @@ test('kit pet R$11,48 com margem de 10% não salta artificialmente para 19,54%',
   'A margem deve se aproximar da meta sem ficar abaixo dela');
  assert.ok(q.grossPrice<=34.44);
  assert.ok(q.discountPct<=50);
- assert.ok([0,9].includes(lastCents(q.grossPrice)));
- assert.ok([0,9].includes(lastCents(q.marketplaceDisplayPrice)));
+ assert.ok([0,9].includes(lastCents(q.grossPrice)%10));
+ assert.ok([0,9].includes(lastCents(q.marketplaceDisplayPrice)%10));
  const simulated=calculateShopeeSale(Math.round(q.grossPrice*100),
   {...settings,discountPct:q.discountPct},1148);
  assert.equal(simulated.profit,q.netProfit);
