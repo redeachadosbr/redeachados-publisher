@@ -2022,7 +2022,10 @@ app.post('/api/shopee/kits/optimization/manual-complete',mustLogin,requireWeDrop
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
  try{
-  const {auth}=await getValidAuth(req),body=req.body||{};
+  // Esta operação é apenas local: não exigir refresh OAuth nem chamar a Shopee.
+  const auth=await authStore.load(),body=req.body||{};
+  if(!Number.isSafeInteger(Number(auth?.shopId))||Number(auth.shopId)<=0)
+   throw Error('Loja não vinculada.');
   const kitSku=String(body.kitSku||'').trim();
   const sku=validateSkuLookup(body.sku),itemId=validItemId(body.itemId);
   const modelId=String(body.modelId??'0');
