@@ -86,7 +86,8 @@ export async function commercialReadiness({cfg,auth,kitSku,categoryId=0}){
   categoryNames(cfg,auth),attributeTree(cfg,auth,categoryId)
  ]);
  const ids=[...new Set([...recommended,...(validId(categoryId)?[Number(categoryId)]:[])])];
- const categories=ids.map(id=>({id,name:names.find(x=>x.id===id)?.name||'Categoria Shopee '+id}));
+ const candidates=ids.length?ids:names.filter(x=>x.leaf).slice(0,700).map(x=>x.id);
+ const categories=candidates.map(id=>({id,name:names.find(x=>x.id===id)?.name||'Categoria Shopee '+id}));
  const attrs=tree?commercialCategoryFields(tree,categoryId,[]):[];
  return {kitSku,mainSku,mode:'commercial',categories,
   requestedCategoryId:validId(categoryId)?Number(categoryId):null,
