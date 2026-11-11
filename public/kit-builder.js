@@ -2551,6 +2551,14 @@ async function kitPublishGuideNext(){
    kitPublishGuideNotice('Confirme a categoria oficial sugerida pela Shopee antes de publicar o anúncio novo.','info');
    kitPublishGuideFocus('#kitCommercialCategoryId');return;
   }
+  if(kitCommercialMode()){
+   const missing=[...document.querySelectorAll('#kitCommercialAttributeList [data-kit-commercial-attribute]')]
+    .filter(el=>!String(el.value||'').trim());
+   if(missing.length){
+    kitPublishGuideNotice('A Shopee exige '+missing.length+' atributo(s) oficial(is) desta categoria. Preencha apenas com valores comprovados; as fotos e o rascunho foram preservados.','warning');
+    missing[0].focus({preventScroll:false});return;
+   }
+  }
   if(!$('#kitLogisticId').value){
    kitPublishGuideNotice('Etapa 02/05: selecione um canal de envio habilitado na Shopee. Os canais disponíveis estão no campo abaixo.','info');
    kitPublishGuideFocus('#kitLogisticId');return;
