@@ -1030,8 +1030,8 @@ function kitWizardInit(){
    kitWizardExecutionFeedback('Abra um rascunho salvo antes de executar. Nenhum envio realizado.','warning');
    return;
   }
-  // Kit WeDrop: a PRIMEIRA SKU identifica o anúncio já publicado da Shopee.
-  // As demais SKUs compõem o kit somente no lado WeDrop; não usar add_kit_item.
+  // Kit WeDrop: a PRIMEIRA SKU identifica o anúncio comercial (novo ou existente).
+  // As demais SKUs compõem o kit somente no lado WeDrop; não usar a API de Kit Formal.
   if(!kitSaved){
    kitWizardExecutionFeedback('Salvando o rascunho antes de executar...','info');
    if(!await saveDraft()){
