@@ -147,6 +147,12 @@ export async function commercialPreview({cfg,auth,kitSku,input,secret}){
    videoIncluded:Boolean(result.payload.video_upload_id),
    message:'Prévia confirmada. Próximo clique criará UM anúncio normal; componentes complementares ficarão somente na WeDrop.'}};
 }
+// Erro explícito da API Shopee significa criação rejeitada; falha de transporte
+// pode ter sido processada e precisa ficar em estado INCERTO.
+export function isDefinitiveShopeeRejection(error){
+ const message=str(error?.message||error);
+ return /^(?:product\.|error_param\b|error_data\b|logistics\.|media_space\.|error_permission\b|error_auth\b)/i.test(message);
+}
 export async function commercialExecute({cfg,auth,kitSku,input,token,secret}){
  const key=auth.shopId+':'+kitSku;
  if(busy.has(key))throw Error('Já existe uma criação em andamento para este kit.');
@@ -167,8 +173,11 @@ export async function commercialExecute({cfg,auth,kitSku,input,token,secret}){
     body:result.payload
    });
   }catch(error){
-   await recordKitPublication(auth.shopId,kitSku,{status:'uncertain',
-    message:'Resposta de criação comercial incerta: '+str(error.message||error).slice(0,230)});
+   const definite=isDefinitiveShopeeRejection(error);
+   await recordKitPublication(auth.shopId,kitSku,{status:definite?'local_draft':'uncertain',
+    message:(definite?'Shopee rejeitou a criação: ':'Resposta de criação incerta: ')+str(error.message||error).slice(0,230)});
+   if(definite)throw Error('A Shopee recusou a criação. Corrija somente o campo indicado e use nova prévia: '+
+    str(error.message||error).slice(0,240));
    throw Error('A resposta da Shopee não foi confirmada. Não repita a criação: consulte o status do kit. '+str(error.message||error).slice(0,150));
   }
   const itemId=String(data?.response?.item_id??'');
