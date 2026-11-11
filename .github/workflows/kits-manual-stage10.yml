@@ -28,9 +28,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
       - name: Instalar dependências
-        run: npm ci --ignore-scripts
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Verificar sintaxe dos arquivos alterados
         run: |
           node --check server.js
