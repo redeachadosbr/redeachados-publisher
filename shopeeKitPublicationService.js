@@ -44,6 +44,11 @@ function summaryVideo(state){
   duration:state.duration,filename:state.filename};
 }
 export function kitVideoStatus(shopId,kitSku){return summaryVideo(activeKitVideo(shopId,kitSku));}
+// Compartilhar os IDs já enviados ao MediaSpace com o anúncio comercial comum.
+// Não reenvia imagens nem declara nenhuma posição publicada.
+export function kitUploadedMedia(shopId,kitSku){
+ return (media.get(key(shopId,kitSku))||[]).slice().sort((a,b)=>a.slot-b.slot).map(x=>String(x.imageId));
+}
 // Preparar vídeo é operação de mídia, não publicação. Não exigir preço/estoque
 // renovados aqui: a validação estrita continua na prévia/publicação do kit.
 async function checkedKitVideoDraft(auth,kitSku){
