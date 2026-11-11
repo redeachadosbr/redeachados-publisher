@@ -119,17 +119,14 @@
    /\b(?:da|do|das|dos|de|para|com|sem|até|em|por|apenas|produto|modelo|tamanho|altura|largura|comprimento|peso|idade|origem|fabricação|fabricacao|quantidade|capacidade|cor|marca|material|voltagem|garantia|medidas|peças|pecas)\b/i.test(raw);
  }
  function attribute(raw,id){
-  const original=String(raw??'').trim();if(!original)return id?'Atributo Shopee nº '+id:'Atributo da Shopee';
+  const original=String(raw??'').trim();if(!original)return 'Nome do atributo não retornado pela Shopee';
   const key=normalize(original);
   if(names[key])return names[key];
   if(isPortuguese(original))return original;
   if(/^dimension(?:s)?\s*\(/i.test(original))return 'Dimensões do produto';
-  if(/^battery\s/i.test(original))return 'Informações da bateria';
-  if(/^warranty\s/i.test(original))return 'Informações da garantia';
-  if(/^product\s/i.test(original))return 'Informações do produto';
-  if(/^package\s/i.test(original))return 'Informações da embalagem';
-  // Não inventar tradução de atributo desconhecido, nem expor rótulos em inglês.
-  return id?'Atributo da categoria nº '+id:'Outro atributo da categoria';
+  // Um nome oficial ainda não traduzido é mais útil e seguro que um ID opaco.
+  // Preservar exatamente a pergunta retornada pela Shopee, sem adivinhar.
+  return original;
  }
  function value(raw,id){
   const original=String(raw??'').trim();if(!original)return '';
@@ -143,9 +140,8 @@
   if(/^\d+(?:[.,]\d+)?(?:\s*(?:ml|l|g|kg|cm|mm|m|w|v|hz|mah))?$/i.test(original))return original;
   // Nomes comerciais, marcas, códigos e textos já em português não são modificados.
   if(isPortuguese(original)||/^[A-Z0-9][A-Z0-9._/+ -]*$/.test(original))return original;
-  // Não apresentar uma opção inglesa desconhecida como se fosse traduzida.
-  if(/\b(?:with|without|not|and|for|per|year|years|months|battery|powered|electric|warranty|made|steel|wooden|plastic|color|colour|size|type|piece|pieces)\b/i.test(original))
-   return id&&Number(id)>0?'Opção oficial nº '+id+' (conferir na Shopee)':'Opção oficial para conferir';
+  // Preservar o texto EXATO da opção oficial quando não houver tradução segura.
+  // O value_id e o original_value_name continuam intocados na submissão.
   return original;
  }
  root.RATechnicalPT=Object.freeze({attribute,value});
