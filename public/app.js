@@ -10987,7 +10987,7 @@ function optimizerTechnicalRender(data){
   const name=attr.name||'Nome do atributo não retornado pela Shopee',type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
   const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
   field.append(optimizerMake('legend','',optimizerTechLabel(name,attr.id)+(attr.mandatory?' *':'')));
-  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>optimizerTechValueLabel(x.name,x.valueId)+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
+  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>optimizerTechValueLabel(x.displayName||x.name,x.valueId)+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
   if(attr.introduction){const tip=optimizerMake('small','','Orientação oficial da categoria');tip.title='Consulte a orientação original na Central do Vendedor Shopee para confirmar este atributo.';field.append(tip);}
   field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
     attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
@@ -11100,7 +11100,7 @@ function optimizerTechnicalRender(data){
       const selected=select.value;
       for(const option of response.options||[]){
        if([...select.options].some(o=>o.value===String(option.id)))continue;
-       const element=optimizerMake('option','',optimizerTechValueLabel(option.name,option.id)+(option.unit?' '+option.unit:''));
+       const element=optimizerMake('option','',optimizerTechValueLabel(option.displayName||option.name,option.id)+(option.unit?' '+option.unit:''));
        element.value=String(option.id);
        select.append(element);
       }
@@ -11123,7 +11123,7 @@ function optimizerTechnicalRender(data){
    const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',optimizerTechLabel(name)+' — opção');
    const blank=optimizerMake('option','','Selecione uma opção');blank.value='';select.append(blank);
    for(const option of (attr.options||[]).filter(x=>x.id>0)){
-    const item=optimizerMake('option','',optimizerTechValueLabel(option.name,option.id)+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
+    const item=optimizerMake('option','',optimizerTechValueLabel(option.displayName||option.name,option.id)+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
    }
    if(custom){const other=optimizerMake('option','','Informar valor');other.value='0';select.append(other);}
    select.value=value.valueId!==undefined?String(value.valueId):type===3||!attr.options?.length?'0':'';
