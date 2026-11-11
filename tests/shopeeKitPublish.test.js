@@ -127,7 +127,10 @@ test('Etapa 10 utiliza somente a SKU principal Shopee, sem exigir anuncio dos co
   builder.indexOf("$('#kitWizardOpenTechnical')?.addEventListener('click'"));
  assert.match(click,/kitWizardResumeTargetForExecution/);
  assert.match(click,/await saveDraft\(\)/);
- assert.doesNotMatch(click,/kitWizardExecuteNewKit|kitPublishGuideNext|kitPublicationReadiness|Kit Formal/);
+ // Rascunho sem Item ID abre a criação comercial; anúncio existente segue o otimizador.
+ assert.match(click,/if\(kitWizardIsNewUnpublished\(\)\)/);
+ assert.match(click,/await kitPublishGuideNext\(\)/);
+ assert.doesNotMatch(click,/kitPublicationReadiness|add_kit_item/);
  const flow=builder.slice(builder.indexOf('async function kitWizardResumeTargetForExecution()'),
   builder.indexOf('let kitWizardExecutionOpening='));
  assert.match(flow,/const principal=String\(prepared\.kit\.components\?\.\[0\]\?\.sku\|\|''\)/);
