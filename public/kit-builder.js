@@ -397,6 +397,30 @@ function kitWizardExecutionFeedback(message,state='info'){
  node.style.color=state==='error'?'#a1272f':state==='warning'?'#85520d':'#173e72';
  node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
 }
+// A confirmação manual encerra apenas o fluxo interno; não valida ações na Shopee.
+let kitWizardManualSaving=false;
+function kitWizardManualLink(){
+ const kit=prepared?.kit,main=String(kit?.components?.[0]?.sku||'');
+ const link=prepared?.optimization?.itemId?prepared.optimization:null;
+ // Somente vínculo confirmado e salvo: handoff efêmero não autoriza conclusão.
+ if(!kitSaved||!kit||!link||
+    String(link.kitSku)!==String(kit.kitSku)||
+    String(link.sku)!==main||String(link.mainSku||main)!==main||
+    !/^[1-9]\d{0,17}$/.test(String(link.itemId||'')))return null;
+ return {kitSku:String(kit.kitSku),sku:main,itemId:String(link.itemId),
+  modelId:String(link.modelId||'0')};
+}
+function kitWizardManualSync(){
+ const panel=$('#kitWizardManualPanel'),check=$('#kitWizardManualCheck'),
+  button=$('#kitWizardManualComplete'),label=$('#kitWizardManualItemId');
+ if(panel)panel.hidden=kitWizardStage!==10;
+ const link=kitWizardManualLink();
+ if(label)label.textContent=link?
+  'SKU principal: '+link.sku+' · Item ID vinculado: '+link.itemId:
+  'Vínculo do anúncio não encontrado. Confirme o Item ID existente na etapa 09 e salve o rascunho.';
+ if(check){check.disabled=!link||kitWizardManualSaving;if(!link)check.checked=false;}
+ if(button)button.disabled=!link||!check?.checked||kitWizardManualSaving;
+}
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
  if(panel&&home){if(panel.parentElement!==home)home.append(panel);panel.hidden=true;}
@@ -854,6 +878,10 @@ async function kitWizardRequestDiscount({force=false}={}){
    return;
   }
   kitWizardDiscountLinkButton(false);
+  if(result.link&&prepared?.kit?.kitSku===identity){
+   prepared.optimization=result.link;
+   kitWizardManualSync();
+  }
   const opened=globalThis.RAKitOpenDiscountReview?.()===true;
   kitWizardDiscountStatus('✓ Item ID '+result.itemId+' vinculado ao kit. '+
    (opened?'Conferência de Minha Promoção aberta.':
@@ -941,6 +969,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
  const direct=$('#kitWizardOpenExecution');
  if(direct){direct.hidden=kitWizardStage!==10;direct.disabled=!prepared?.kit;}
+ kitWizardManualSync();
  const mark=$('#kitWizardConfirm');if(mark)mark.hidden=kitWizardStage===10;
  const forward=$('#kitWizardNext');if(forward)forward.hidden=kitWizardStage===10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
@@ -998,6 +1027,10 @@ function kitWizardInit(){
     kitWizardDiscountStatus(result?.error||'Não foi possível concluir o vínculo.',result?.cancelled?'info':'warning');
     return;
    }
+   if(result.link&&prepared?.kit?.kitSku===result.link.kitSku){
+    prepared.optimization=result.link;
+    kitWizardManualSync();
+   }
    kitWizardDiscountLinkButton(false);
    kitWizardDiscountStatus('✓ Item ID '+result.itemId+
     ' vinculado e salvo no rascunho. Recarregando Minha Promoção. Nenhuma publicação na Shopee.','success');
@@ -1005,6 +1038,46 @@ function kitWizardInit(){
   }catch(error){
    kitWizardDiscountStatus('Não foi possível concluir o vínculo: '+String(error.message||error),'error');
   }finally{button.disabled=false;}
+ });
+ $('#kitWizardManualCheck')?.addEventListener('change',kitWizardManualSync);
+ $('#kitWizardManualComplete')?.addEventListener('click',async()=>{
+  if(kitWizardStage!==10||kitWizardManualSaving||kitWizardExecutionOpening||
+     kitWizardResumingTarget)return;
+  const link=kitWizardManualLink(),checked=$('#kitWizardManualCheck');
+  const feedback=$('#kitWizardManualStatus');
+  const note=(message,mode='info')=>{
+   if(feedback){feedback.textContent=message;feedback.dataset.state=mode;}
+  };
+  if(!link||checked?.checked!==true){
+   note('Confirme a caixa e o Item ID previamente vinculado à SKU principal.','error');
+   return;
+  }
+  kitWizardManualSaving=true;kitWizardManualSync();
+  note('Gravando a confirmação manual sem enviar alterações à Shopee...');
+  try{
+   const result=await api('/api/shopee/kits/optimization/manual-complete',{body:{
+    ...link,confirmed:true
+   }});
+   if(result?.finalized!==true||result?.finalization?.status!=='manual_confirmed')
+    throw Error('O servidor não confirmou a conclusão manual.');
+   if(prepared?.kit?.kitSku===link.kitSku)prepared.optimizationFinalization=result.finalization;
+   const stageChecks=new Set(kitWizardChecked());stageChecks.add(10);
+   let localCheckSaved=true;
+   try{localStorage.setItem(kitWizardStorageKey(link.kitSku),JSON.stringify([...stageChecks]));}
+   catch{localCheckSaved=false;}
+   kitWizardUpdateProgress();
+   note('✓ Concluído manualmente para o Item ID '+link.itemId+
+    '. Nenhum envio realizado. Este registro não equivale à auditoria oficial.'+
+    (localCheckSaved?'':' O check local não foi salvo, mas a conclusão foi gravada no servidor.'),'success');
+   kitCloseInlineEditor();
+   await loadDrafts({restoreCurrent:false});
+   status('✓ Kit concluído manualmente e movido ao histórico · Item ID '+link.itemId+
+    '. Nenhuma alteração enviada à Shopee.','success');
+  }catch(error){
+   note('Não foi possível concluir: '+String(error.message||error),'error');
+  }finally{
+   kitWizardManualSaving=false;kitWizardManualSync();
+  }
  });
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
  // A Etapa 10 possui um único botão; as demais etapas continuam clicáveis
@@ -1776,6 +1849,8 @@ function clearKitPublishApproval(){
  $('#kitDiscountPreviewBox').hidden=true;
 }
 function resetKitPublication({saved=false,publication=null}={}){
+ // Uma nova edição exige consentimento manual novo, mesmo para outra SKU/kit.
+ const manualCheck=$('#kitWizardManualCheck');if(manualCheck)manualCheck.checked=false;
  kitDisablePreOrder();
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  clearKitPublishApproval();
@@ -2719,6 +2794,7 @@ async function loadDrafts({restoreCurrent=true}={}){
    publishedRoot.replaceChildren();
    for(const published of result.published||[]){
     const optimized=published.optimizationFinalization?.status==='verified';
+    const manual=published.optimizationFinalization?.status==='manual_confirmed';
     const card=elt('article','kit-card kit-published-card'),pic=elt('div','kit-draft-images');
     for(const url of (published.images||[]).slice(0,3)){
      const img=elt('img');img.src=url;img.alt='Produto publicado '+published.kitSku;
@@ -2727,10 +2803,13 @@ async function loadDrafts({restoreCurrent=true}={}){
     if(!pic.children.length)pic.append(elt('span','','▧'));
     const info=elt('div','kit-draft-description');
     info.append(elt('span','kit-draft-state kit-draft-state-confirmed',
-      optimized?'✓ ANÚNCIO OTIMIZADO NA SHOPEE':'✓ PUBLICADO NA SHOPEE'),
+      optimized?'✓ ANÚNCIO OTIMIZADO NA SHOPEE':
+      manual?'✓ CONCLUÍDO MANUALMENTE · SEM AUDITORIA SHOPEE':'✓ PUBLICADO NA SHOPEE'),
      elt('strong','',published.title||published.kitSku),
      elt('small','',(published.skus||[]).join(' + ')),
      elt('small','',published.itemId?'Item ID Shopee: '+published.itemId:'Publicação confirmada'));
+    if(manual)info.append(elt('small','',
+     'Conferência declarada pelo vendedor. Não significa que todas as etapas foram verificadas pela Shopee.'));
     const metrics=elt('div','kit-draft-metrics');
     if(published.quote)for(const [label,value] of [
      ['Custo',money(published.kitCost)],

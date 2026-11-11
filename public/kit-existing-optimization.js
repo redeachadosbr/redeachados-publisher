@@ -633,6 +633,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     modelId:String(linked.modelId||'0'),prepared:true,autoVerified:true};
    open();
    return {ok:true,linked:true,itemId:String(linked.itemId),
+    link:{kitSku:kit.kitSku,sku,mainSku:sku,itemId:String(linked.itemId),modelId:String(linked.modelId||'0')},
     campaigns:result.campaigns||[]};
   }
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
@@ -712,7 +713,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     prepared:true,autoVerified:true};
    notice('✓ Vínculo local do Item ID '+identity.itemId+' confirmado no banco e na revisão do anúncio. Nenhuma publicação realizada.','success');
    open();
-   return {ok:true,itemId:identity.itemId};
+   return {ok:true,itemId:identity.itemId,link:{...identity,mainSku:sku}};
   }catch(error){
    return {ok:false,error:'Não foi possível confirmar o vínculo local: '+String(error.message||error)+
     '. Nenhuma publicação foi realizada; revise a conferência do Item ID.'};

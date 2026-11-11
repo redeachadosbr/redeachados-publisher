@@ -9,8 +9,9 @@ const builder=source('public/kit-builder.js');
 
 test('rascunho de anuncio otimizado vira Publicados sem fingir criacao de Kit Formal',()=>{
  assert.match(store,/optimizationFinalization:x\.draft\?\.optimizationFinalization\|\|null/);
- assert.match(store,/x\.optimizationFinalization\?\.status==='verified'/);
+ assert.match(store,/isFinishedOptimization\(x\.optimizationFinalization\)/);
  assert.match(store,/const drafts=all\.filter\(x=>!isFinished\(x\)/);
+ assert.match(store,/\['verified','manual_confirmed'\]\.includes/);
  assert.match(builder,/optimized\?'✓ ANÚNCIO OTIMIZADO NA SHOPEE'/);
  assert.match(builder,/RAKitOptimizationFinalized=/);
  assert.match(store,/shopeePublished:false,[\s\S]*?optimizationFinalization:finalization/);
@@ -31,8 +32,8 @@ test('finalizacao recusa progresso local, escopo parcial incompleto e outra SKU'
 });
 
 test('finalizado mantém dados e impede reabrir para edicao acidental',()=>{
- assert.match(store,/previous\?\.optimizationFinalization\?\.status==='verified'/);
- assert.match(store,/current\.optimizationFinalization\?\.status==='verified'/);
+ assert.match(store,/isFinishedOptimization\(previous\?\.optimizationFinalization\)/);
+ assert.match(store,/isFinishedOptimization\(current\.optimizationFinalization\)/);
  assert.match(builder,/if\(activeConfirmed\)\{/);
  assert.match(builder,/kitCloseInlineEditor\(\)/);
 });

@@ -41,7 +41,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,saveKitFiscalOrigin,findKitDraftsLinkedToItemId} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,recordKitManualOptimizationCompletion,saveKitFiscalOrigin,findKitDraftsLinkedToItemId} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition,resolveKitMainListingModel} from './shopeeKitOptimization.js';
 import {classifyPendingImageEditor} from './shopeePendingImageEditor.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
@@ -2015,6 +2015,33 @@ app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res
     });
     res.json({ok:true,readOnly:true,record});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
+});
+// Exceção consciente do vendedor: conclui o fluxo LOCAL do kit sem alterar
+// anúncio, imagem, vídeo, promoção ou preço na Shopee. Não equivale à auditoria oficial.
+app.post('/api/shopee/kits/optimization/manual-complete',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  // Esta operação é apenas local: não exigir refresh OAuth nem chamar a Shopee.
+  const auth=await authStore.load(),body=req.body||{};
+  if(!Number.isSafeInteger(Number(auth?.shopId))||Number(auth.shopId)<=0)
+   throw Error('Loja não vinculada.');
+  const kitSku=String(body.kitSku||'').trim();
+  const sku=validateSkuLookup(body.sku),itemId=validItemId(body.itemId);
+  const modelId=String(body.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  const pendingJob=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(['running','uncertain'].includes(String(pendingJob?.state||'')))
+   throw Error('Existe uma execução em andamento ou incerta neste Item ID. Confira o resultado antes de concluir manualmente.');
+  const saved=await recordKitManualOptimizationCompletion(auth.shopId,kitSku,{
+   sku,itemId,modelId,confirmed:body.confirmed===true
+  });
+  res.json({ok:true,...saved,kitSku,marketplaceUpdated:false,
+   officialAuditVerified:false,
+   message:'✓ Fluxo concluído por confirmação manual. Nenhuma alteração foi enviada à Shopee.'});
+ }catch(error){
+  res.status(409).json({ok:false,finalized:false,error:String(error.message||error).slice(0,330)});
+ }
 });
 // Preparação do anúncio de KIT já existente na Shopee. Sem publicação/criação.
 app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
