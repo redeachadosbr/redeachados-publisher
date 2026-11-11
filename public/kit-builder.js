@@ -399,8 +399,19 @@ function kitWizardExecutionFeedback(message,state='info'){
 }
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
- if(panel&&home){if(panel.parentElement!==home)home.append(panel);
-  panel.hidden=!(kitWizardStage===10&&kitWizardIsNewUnpublished());}
+ if(panel&&home){
+  if(panel.parentElement!==home)home.append(panel);
+  const newListing=kitWizardStage===10&&kitWizardIsNewUnpublished();
+  panel.hidden=!newListing;
+  const heading=panel.querySelector('.kit-formal-header h3');
+  if(heading)heading.textContent=newListing?'Criar anúncio comercial do kit na Shopee':'Criar Kit Formal na Shopee';
+  const guide=panel.querySelector('.kit-publish-guide-copy strong');
+  if(guide)guide.textContent=newListing?'✦ Assistente de anúncio comercial':'✦ Assistente de publicação do Kit Formal';
+  const preview=panel.querySelector('#kitPublishPreview');
+  if(preview)preview.textContent=newListing?'Preparar prévia do anúncio comercial →':'Preparar prévia segura do Kit Formal →';
+  const clip=panel.querySelector('#kitVideoInclude')?.parentElement;
+  if(clip)clip.lastChild.textContent=newListing?' Incluir vídeo no anúncio comercial':' Incluir vídeo na publicação do Kit Formal';
+ }
  $('#kitWizardExecutionDiagnostics')?.remove();
  const button=$('#kitWizardOpenExecution');
  if(button)button.textContent='▶ Executar na Shopee';
@@ -2285,6 +2296,12 @@ async function kitReadinessCheck(){
   }});
   kitReadiness=result;
   if(commercial){
+   const uploaded=new Set(result.uploadedImageIds||[]);
+   // Render pode reiniciar entre o envio e a prévia: reconciliar com o
+   // MediaSpace real do servidor e recuperar sem pedir novas fotos.
+   for(const [slot,id] of kitShopeePhotoSlots)if(!uploaded.has(id))kitShopeePhotoSlots.delete(slot);
+   $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
+    ' de 9 imagens confirmadas nesta sessão. As restantes serão reenviadas do rascunho.';
    const main=String(prepared.kit.components?.[0]?.sku||'');
    if([...$('#kitMainSku').options].some(o=>o.value===main))$('#kitMainSku').value=main;
    kitCommercialCategoryUi(result);
