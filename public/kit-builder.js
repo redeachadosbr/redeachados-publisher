@@ -1032,6 +1032,43 @@ function kitWizardInit(){
    kitWizardDiscountStatus('Não foi possível concluir o vínculo: '+String(error.message||error),'error');
   }finally{button.disabled=false;}
  });
+ $('#kitWizardManualCheck')?.addEventListener('change',kitWizardManualSync);
+ $('#kitWizardManualComplete')?.addEventListener('click',async()=>{
+  if(kitWizardStage!==10||kitWizardManualSaving||kitWizardExecutionOpening||
+     kitWizardResumingTarget)return;
+  const link=kitWizardManualLink(),checked=$('#kitWizardManualCheck');
+  const feedback=$('#kitWizardManualStatus');
+  const note=(message,mode='info')=>{
+   if(feedback){feedback.textContent=message;feedback.dataset.state=mode;}
+  };
+  if(!link||checked?.checked!==true){
+   note('Confirme a caixa e o Item ID previamente vinculado à SKU principal.','error');
+   return;
+  }
+  kitWizardManualSaving=true;kitWizardManualSync();
+  note('Gravando a confirmação manual sem enviar alterações à Shopee...');
+  try{
+   const result=await api('/api/shopee/kits/optimization/manual-complete',{body:{
+    ...link,confirmed:true
+   }});
+   if(result?.finalized!==true||result?.finalization?.status!=='manual_confirmed')
+    throw Error('O servidor não confirmou a conclusão manual.');
+   if(prepared?.kit?.kitSku===link.kitSku)prepared.optimizationFinalization=result.finalization;
+   const stageChecks=new Set(kitWizardChecked());stageChecks.add(10);
+   localStorage.setItem(kitWizardStorageKey(link.kitSku),JSON.stringify([...stageChecks]));
+   kitWizardUpdateProgress();
+   note('✓ Concluído manualmente para o Item ID '+link.itemId+
+    '. Nenhum envio realizado. Este registro não equivale à auditoria oficial.','success');
+   kitCloseInlineEditor();
+   await loadDrafts({restoreCurrent:false});
+   status('✓ Kit concluído manualmente e movido ao histórico · Item ID '+link.itemId+
+    '. Nenhuma alteração enviada à Shopee.','success');
+  }catch(error){
+   note('Não foi possível concluir: '+String(error.message||error),'error');
+  }finally{
+   kitWizardManualSaving=false;kitWizardManualSync();
+  }
+ });
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
  // A Etapa 10 possui um único botão; as demais etapas continuam clicáveis
  // no painel de 10 passos, sem um segundo cartão de navegação.
