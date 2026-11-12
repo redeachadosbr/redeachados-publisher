@@ -124,7 +124,7 @@ async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
  kitWizardResumingTarget=true;
  const current=String(prepared.kit.kitSku);
- const principal=String(prepared.kit.components?.[0]?.sku||'');
+ const principal=kitCurrentMain(prepared.kit);
  const chosen=$('#kitOptimizeMainSku'),selectedMain=$('#kitPrincipalSku');
  if(chosen&&[...chosen.options].some(x=>x.value===principal))chosen.value=principal;
  if(selectedMain&&[...selectedMain.options].some(x=>x.value===principal))selectedMain.value=principal;
@@ -1048,7 +1048,7 @@ function kitWizardInit(){
   }
   kitWizardMountTechnical();
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
-  const principal=String(prepared.kit.components?.[0]?.sku||'');
+  const principal=kitCurrentMain(prepared.kit);
   const confirmedId=kitWizardConfirmedItemId(prepared.kit.kitSku);
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
@@ -1189,8 +1189,13 @@ function kitRememberedMain(kit=prepared?.kit){
 }
 function kitCurrentMain(kit=prepared?.kit){
  const parts=kit?.components||[];
- const candidates=[kitRememberedMain(kit),prepared?.optimization?.mainSku,
-  $('#kitPrincipalSku')?.value,$('#kitOptimizeMainSku')?.value,parts[0]?.sku];
+ // O kit comercial foi confirmado com Bola Interativa 894939 principal,
+ // embora o identificador interno liste a escova primeiro.
+ const confirmed=kit?.kitSku==='KIT-894182-894939'&&
+  parts.some(p=>String(p.sku)==='894939')?'894939':'';
+ const candidates=[confirmed,kitRememberedMain(kit),prepared?.logistics?.mainSku,
+  prepared?.optimization?.mainSku,$('#kitPrincipalSku')?.value,
+  $('#kitOptimizeMainSku')?.value,parts[0]?.sku];
  return String(candidates.find(x=>x&&parts.some(p=>String(p.sku)===String(x)))||'');
 }
 function kitOrderedComponents(kit=prepared?.kit,main=kitCurrentMain(kit)){
@@ -1213,6 +1218,15 @@ function kitReorderSelect(select,main){
 function kitApplyMainSkuOrder(main,{persist=true}={}){
  const kit=prepared?.kit;
  if(!kit?.components?.some(p=>String(p.sku)===String(main)))return false;
+ if(kit.kitSku==='KIT-894182-894939'&&String(main)!=='894939'&&
+    kit.components.some(p=>String(p.sku)==='894939')){
+  for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku']){
+   const select=$(selector);
+   if(select&&[...select.options].some(option=>option.value==='894939'))select.value='894939';
+  }
+  if(persist)status('Este kit foi confirmado com a Bola Interativa 894939 como principal; a Escova 894182 é complementar.','info');
+  return false;
+ }
  if(persist&&(kitAutoImageBusy||kitBridgeController?.activeJob())){
   const previous=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||'')||
    String(kit.components[0]?.sku||'');
@@ -2302,7 +2316,7 @@ async function kitReadinessCheck(){
    for(const [slot,id] of kitShopeePhotoSlots)if(!uploaded.has(id))kitShopeePhotoSlots.delete(slot);
    $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
     ' de 9 imagens confirmadas nesta sessão. As restantes serão reenviadas do rascunho.';
-   const main=kitCurrentMain(prepared.kit);
+   const main=String(result.mainSku||kitCurrentMain(prepared.kit));
    if([...$('#kitMainSku').options].some(o=>o.value===main))$('#kitMainSku').value=main;
    kitCommercialCategoryUi(result);
   }else if($('#kitCommercialForm'))$('#kitCommercialForm').hidden=true;
@@ -2316,7 +2330,13 @@ async function kitReadinessCheck(){
   const channelSelect=$('#kitLogisticId'),chosen=channelSelect.value;
   channelSelect.replaceChildren(new Option('Selecione um canal ativo',''));
   for(const x of result.channels)channelSelect.append(new Option(x.name+' (ID '+x.id+')',x.id));
-  if(result.channels.some(x=>String(x.id)===String(chosen)))channelSelect.value=String(chosen);
+  const selected=[chosen,result.logistics?.logisticId,prepared?.logistics?.logisticId]
+   .map(x=>String(x||'')).find(id=>result.channels.some(ch=>String(ch.id)===id));
+  if(selected)channelSelect.value=selected;
+  else if(result.channels.length===1){
+   channelSelect.value=String(result.channels[0].id);
+   channelSelect.dispatchEvent(new Event('change',{bubbles:true}));
+  }
   kitLogisticsKeeper.channel(result.channels);
   kitApplyPendingLogisticName();
   kitPublishStatus(result.blockers?.length?
@@ -2563,10 +2583,15 @@ async function kitPublishGuideNext(){
    kitPublishGuideNotice('Etapa 02/05: selecione um canal de envio habilitado na Shopee. Os canais disponíveis estão no campo abaixo.','info');
    kitPublishGuideFocus('#kitLogisticId');return;
   }
-  if(!$('#kitWeightKg').value||!$('#kitLengthCm').value||
-     !$('#kitWidthCm').value||!$('#kitHeightCm').value){
-   kitPublishGuideNotice('Etapa 02/05: confirme peso e três dimensões reais do pacote completo.','info');
+  const packedWeight=Number($('#kitWeightKg').value);
+  if(!Number.isFinite(packedWeight)||packedWeight<=0||packedWeight>30){
+   kitPublishGuideNotice('O peso informado está em kg: '+String($('#kitWeightKg').value||'vazio')+
+    '. Confira o peso real (máximo 30 kg). Se a fonte informar 100 gramas, use 0,100 kg somente após verificar. Checks verdes preservados.','warning');
    kitPublishGuideFocus('#kitWeightKg');return;
+  }
+  if(!$('#kitLengthCm').value||!$('#kitWidthCm').value||!$('#kitHeightCm').value){
+   kitPublishGuideNotice('Etapa 02/05: confira as três dimensões reais do pacote completo.','info');
+   kitPublishGuideFocus('#kitLengthCm');return;
   }
   if(!$('#kitContentsReviewed').checked||!$('#kitPhotosReviewed').checked||
      !$('#kitSingleParcelConfirmed').checked){
@@ -3279,7 +3304,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
  kitAutoImageUi();
  void kitCheckAutoImageAvailability();
  // Restabelecer a escolha por kit ao reabrir, sem refazer as 9 fotos.
- const primary=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||'');
+ const primary=kitCurrentMain(kit);
  if(primary)kitApplyMainSkuOrder(primary,{persist:false});
  getKitExtensionBridge().probe();
  void kitRestoreImageGallery(kit.kitSku);

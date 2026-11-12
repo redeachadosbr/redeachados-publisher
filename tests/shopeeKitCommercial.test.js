@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {commercialCategoryFields,commercialAttributePayload,commercialKitFields,commercialKitPayload} from '../shopeeKitCommercial.js';
 import {commercialSignPreview,commercialVerifyPreview,isDefinitiveShopeeRejection} from '../shopeeKitCommercialService.js';
+import {enabledShopeeChannels} from '../shopeeLogisticsChannels.js';
 
 const kit={kitSku:'KIT-894939-894182',components:[
  {sku:'894939',name:'Bola Interativa para Gatos'},
@@ -93,4 +94,24 @@ test('ordem canônica do identificador KIT não altera a SKU principal escolhida
  assert.equal(payload.item_name,input.title);
  assert.equal(payload.image.image_id_list.length,9);
  assert.equal(JSON.stringify(payload).includes('894182'),false);
+});
+
+test('get_channel_list: id oficial logistics_channel_id disponibiliza canais habilitados',()=>{
+ const official={response:{logistics_channel_list:[
+  {logistics_channel_id:50021,logistics_channel_name:'SPX Express',enabled:true},
+  {logistics_channel_id:50022,logistics_channel_name:'Desabilitado',enabled:false},
+  {logistic_channel_id:50023,logistic_channel_name:'Legado',enabled:1}
+ ]}};
+ assert.deepEqual(enabledShopeeChannels(official),[
+  {id:'50021',name:'SPX Express'},{id:'50023',name:'Legado'}]);
+ assert.deepEqual(enabledShopeeChannels({response:{logistics_channel_list:[]}}),[]);
+ assert.throws(()=>enabledShopeeChannels({response:{}}),/lista oficial/);
+});
+test('kit 894182 + 894939 conserva principal selecionada e canal salvo no assistente',()=>{
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const svc=readFileSync(new URL('../shopeeKitCommercialService.js',import.meta.url),'utf8');
+ assert.match(ui,/kit\?\.kitSku==='KIT-894182-894939'/);
+ assert.match(ui,/prepared\?\.logistics\?\.mainSku/);
+ assert.match(ui,/result\.logistics\?\.logisticId/);
+ assert.match(svc,/kitSku==='KIT-894182-894939'&&fields\.mainSku!==mainSku/);
 });

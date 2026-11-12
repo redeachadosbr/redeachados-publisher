@@ -4,6 +4,7 @@ import {findExactCatalogSku} from './catalogStore.js';
 import {readWeDropSkuLinks,upsertWeDropSkuLink} from './wedropCosts.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {callShopeeShopApi} from './shopee.js';
+import {enabledShopeeChannels} from './shopeeLogisticsChannels.js';
 const safeId=x=>/^[1-9]\d{0,17}$/.test(String(x))&&Number.isSafeInteger(Number(x));
 function availableStock(record){
  const value=record?.stock_info_v2?.summary_info?.total_available_stock;
@@ -163,15 +164,12 @@ export async function kitShopeeOptions(cfg,auth){
  const blockers=[];
  const max=limits.status==='fulfilled'?limits.value.response:null;
  if(!max)blockers.push('API de limites do Kit Formal não autorizada ou temporariamente indisponível.');
- const list=logistics.status==='fulfilled'?(logistics.value.response?.logistics_channel_list||
-  logistics.value.response?.logistic_channel_list||[]):[];
- if(!Array.isArray(list)||!list.length)
-  blockers.push('Shopee não retornou canais de envio; selecione um canal somente após conectar a logística.');
- const channels=(Array.isArray(list)?list:[]).filter(x=>{
-  const flag=x.enabled??x.is_enabled??x.status;
-  return flag===true||flag==='ENABLED'||flag==='NORMAL'||flag===1;
- }).map(x=>({id:String(x.logistic_channel_id??x.logistic_id??''),
-  name:String(x.logistic_channel_name??x.logistic_name??'Envio Shopee')}))
- .filter(x=>safeId(x.id));
+ let channels=[];
+ if(logistics.status==='fulfilled'){
+  try{channels=enabledShopeeChannels(logistics.value);}
+  catch{blockers.push('A Shopee não retornou a lista oficial de canais de envio.');}
+ }else blockers.push('Consulta de canais de envio da Shopee indisponível.');
+ if(!channels.length)
+  blockers.push('A Shopee não confirmou nenhum canal de envio habilitado para esta loja.');
  return {limits:max,channels,blockers};
 }

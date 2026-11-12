@@ -7,6 +7,7 @@ import {composeKit} from './shopeeKitBuilder.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {kitUploadedMedia,kitVideoStatus} from './shopeeKitPublicationService.js';
 import {commercialCategoryFields,commercialAttributePayload,commercialKitFields,commercialKitPayload} from './shopeeKitCommercial.js';
+import {enabledShopeeChannels} from './shopeeLogisticsChannels.js';
 const busy=new Set();
 const str=x=>String(x??'').trim();
 const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
@@ -20,7 +21,9 @@ async function getCurrent(auth,kitSku){
  if(saved.optimization?.itemId||saved.optimizationFinalization?.itemId)
   throw Error('O kit já está vinculado a um anúncio: use a otimização, não a criação.');
  const savedMain=str(saved.logistics?.mainSku);
- const mainSku=saved.skus.map(str).includes(savedMain)?savedMain:str(saved.kit.components?.[0]?.sku);
+ // Ordem comercial confirmada: no KIT-894182-894939 a Bola 894939 é principal.
+ const explicit=kitSku==='KIT-894182-894939'&&saved.skus.map(str).includes('894939')?'894939':'';
+ const mainSku=explicit||(saved.skus.map(str).includes(savedMain)?savedMain:str(saved.kit.components?.[0]?.sku));
  if(!saved.skus.map(str).includes(mainSku))
   throw Error('A SKU principal não pertence aos componentes WeDrop.');
  const kit=await composeKit(auth.shopId,saved.skus,{
@@ -37,13 +40,8 @@ async function getCurrent(auth,kitSku){
 }
 async function channels(cfg,auth){
  const raw=await request(cfg,auth,'/api/v2/logistics/get_channel_list');
- const entries=raw?.response?.logistics_channel_list||raw?.response?.logistic_channel_list||[];
- if(!Array.isArray(entries))throw Error('A Shopee não retornou os canais logísticos.');
- const list=entries.filter(x=>[true,1,'ENABLED','NORMAL'].includes(x.enabled??x.is_enabled??x.status))
-  .map(x=>({id:String(x.logistic_channel_id??x.logistic_id??''),
-   name:String(x.logistic_channel_name??x.logistic_name??'Canal Shopee')}))
-  .filter(x=>validId(x.id));
- if(!list.length)throw Error('Nenhum canal logístico habilitado para a loja.');
+ const list=enabledShopeeChannels(raw);
+ if(!list.length)throw Error('A Shopee informou zero canais de envio habilitados para a loja. Confira as opções de logística no Seller Center.');
  return list;
 }
 async function recommendations(cfg,auth,title){
@@ -107,6 +105,8 @@ async function prepared({cfg,auth,kitSku,input}){
  if(!tree)throw Error('Categoria da Shopee ausente ou não confirmada.');
  const fields=commercialKitFields(input,kit,allowed,kitUploadedMedia(auth.shopId,kitSku));
  if(!saved.skus.map(str).includes(fields.mainSku))throw Error('A SKU principal não pertence ao kit.');
+ if(kitSku==='KIT-894182-894939'&&fields.mainSku!==mainSku)
+  throw Error('A principal confirmada deste kit é a Bola Interativa 894939, não a Escova 894182. Recarregue a etapa 10 para recuperar a escolha.');
  if(fields.title!==str(saved.creative.title)||fields.description!==str(saved.creative.description))
   throw Error('Título ou descrição divergentes do rascunho. Salve antes de executar.');
  const attributes=commercialAttributePayload(tree,fields.categoryId,fields.attributes);
