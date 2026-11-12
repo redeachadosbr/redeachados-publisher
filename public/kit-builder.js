@@ -957,6 +957,10 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
  const direct=$('#kitWizardOpenExecution');
  if(direct){direct.hidden=kitWizardStage!==10;direct.disabled=!prepared?.kit;}
+ // A existência do anúncio principal é uma confirmação positiva, não erro.
+ if(kitWizardStage===10&&prepared?.kit?.kitSku==='KIT-894182-894939'&&
+    !kitWizardExecutionIntent&&!kitWizardExecutionOpening&&!kitWizardResumingTarget)
+  kitWizardExecutionFeedback('Anúncio existente identificado: Item ID 58222834055 · Escova 894182. Executar na Shopee atualizará esse anúncio, sem criar outro.','info');
  const mark=$('#kitWizardConfirm');if(mark)mark.hidden=kitWizardStage===10;
  const forward=$('#kitWizardNext');if(forward)forward.hidden=kitWizardStage===10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
