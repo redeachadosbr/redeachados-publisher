@@ -2695,6 +2695,10 @@ async function kitWizardExecuteNewListingDirect(){
   if(!kitSaved&&!await saveDraft())throw Error('Não foi possível salvar o rascunho.');
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
 
+  // Preserve a categoria previamente revisada; se não houve revisão,
+  // só usar uma categoria recomendada pela API oficial da Shopee.
+  const categoryBefore=Number($('#kitCommercialCategoryId')?.value||0);
+  const categoryPreviouslyApproved=$('#kitCommercialCategoryApproved')?.checked===true;
   // A Shopee valida novamente preço, estoque, categoria e duplicidade no backend.
   kitReadiness=null;
   await kitReadinessCheck();
@@ -2712,6 +2716,10 @@ async function kitWizardExecuteNewListingDirect(){
   if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
   if(!kitReadiness.categories?.some(category=>Number(category.id)===categoryId))
    throw Error('A categoria selecionada não foi confirmada pela Shopee.');
+  const recommended=(kitReadiness.recommendedCategoryIds||[]).map(Number);
+  if(!(categoryPreviouslyApproved&&categoryBefore===categoryId)&&
+     !recommended.includes(categoryId))
+   throw Error('A Shopee não recomendou uma categoria segura para publicação automática. Nenhuma publicação foi enviada.');
 
   // O clique em "Executar na Shopee" autoriza usar a categoria oficial
   // selecionada no rascunho, sem exigir uma segunda confirmação visual.
