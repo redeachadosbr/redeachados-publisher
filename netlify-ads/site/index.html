@@ -230,7 +230,7 @@
           <div class="field-grid">
             <div class="field"><label for="pSku">SKU *</label><input id="pSku" placeholder="Ex.: TRC0593" required maxlength="70">
  <button type="button" id="supplierSkuLookup" class="btn-secondary mini" style="margin-top:7px">Buscar SKU no catálogo</button>
- <p id="supplierSkuResult" class="tip">Carregue o catálogo para preencher foto, custo e nome por SKU.</p></div>
+ <p id="supplierSkuResult" class="tip">Carregue o catálogo para preencher foto, custo e nome por SKU.</p><p id="skuCorrectionHint" class="tip" hidden>SKU cadastrada errada? Edite o código e salve. O histórico e os vínculos do app serão preservados; a Shopee não será modificada.</p></div>
             <div class="field full"><label for="pName">Nome do produto *</label><input id="pName" placeholder="Ex.: Ralador Multiuso 3 em 1" required maxlength="240"></div>
 <div class="field full"><label for="pImageUrl">Foto principal do SKU (link HTTPS) · opcional</label>
 <div class="product-photo-input-row"><div class="ads-product-photo" title="Prévia da foto"><img id="productFormPhoto" alt="Prévia da foto do produto" loading="eager" referrerpolicy="no-referrer" hidden><span id="productFormPhotoEmpty" aria-hidden="true">▧</span></div>
@@ -512,6 +512,7 @@
 </div>
 <script src="/xlsx-reader.js"></script>
 <script src="/ads-single-analysis.js?v=20261112-1"></script>
+<script src="/ads-sku-rename.js?v=20261112-1"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
@@ -1504,9 +1505,9 @@ function lookupSupplierSKU(){
  const sku=normalizeSupplierSku($('pSku').value),found=supplierBySku.get(sku),hint=$('supplierSkuResult');
  if(!sku){hint.textContent='Digite uma SKU para buscar no catálogo.';return}
  if(!found){hint.textContent=supplierBySku.size?'SKU '+sku+' não encontrada no catálogo importado.':'Importe o catálogo .xlsx para consultar SKUs.';return}
- if(editingSku&&editingSku!==sku){hint.textContent='Finalize a edição do produto '+editingSku+' antes de trocar a SKU.';return}
+ if(editingSku&&editingSku!==sku&&readProducts().some(p=>p.sku===sku)){hint.textContent='Essa SKU já existe no cadastro. Não é possível substituir outro produto.';return}
  const exists=readProducts().find(p=>p.sku===sku);
- if(exists&&!editingSku){
+ if(exists&&(!editingSku||editingSku!==sku)){
   hint.textContent='Este SKU já está cadastrado. Clique em Editar na lista para alterar os dados. Foto sincronizada pelo catálogo quando faltava.';
   return;
  }
@@ -1608,9 +1609,9 @@ function renderProductPreview(){updateKitUI();updateCurvePreview();const p=norma
   $('previewBreakdown').innerHTML=tableRender([p.isKit?'Detalhamento por kit':'Detalhamento por unidade','Valor'],[['Preço de venda'+(p.isKit?' do kit':''),money(p.price)],...(p.isKit?[['Custo unitário × '+p.kitQuantity,money(p.cost)+' × '+p.kitQuantity]]:[]),['Custo fornecedor'+(p.isKit?' (total do kit)':''),'− '+money(c.totalCost)],['Comissão Shopee ('+NUM.format(c.f.percent)+'%)','− '+money(p.price*c.f.percent/100)],['Tarifa fixa Shopee','− '+money(c.f.fixed)],['Imposto ('+NUM.format(p.tax||0)+'%)','− '+money(c.tax)],['Taxas adicionais ('+NUM.format(p.extraPct||0)+'%)','− '+money(c.others)],['Embalagem, frete e cupom','− '+money(c.extras)],['Lucro sem Ads','<strong>'+money(c.contribution)+'</strong>'],['Custo de Ads ('+(p.target>0?'ROAS '+roas(p.target):'não incluído')+')',c.ads===null?'Não simulado':'− '+money(c.ads)],['Lucro simulado com Ads',c.profitWithAds===null?'Não simulado':'<strong>'+money(c.profitWithAds)+'</strong>']]);
 }
 function setManualFeeFields(){const manual=$('pFeeMode').value==='manual';$('pFeePct').disabled=!manual;$('pFeeFixed').disabled=!manual;}
-function resetProductForm(){editingSku=null;$('productForm').reset();renderFormProductPhoto();$('pIsKit').checked=false;$('pKitQuantity').value='';updateKitUI();$('pRegime').value='CNPJ';$('pTax').value='4';$('pMargin').value='5';$('pTarget').value='25';$('pGoalProfit').value='5';$('pFeeMode').value='auto';for(const id of ['pPacking','pShipping','pCoupon','pExtraPct'])$(id).value='0';$('pCurve').value='';$('pAdsStatus').value='unknown';$('productFormTitle').textContent='Cadastrar produto';$('saveProductBtn').textContent='Salvar produto';$('pSku').readOnly=false;$('productError').hidden=true;setManualFeeFields();showPriceMode('price')}
+function resetProductForm(){editingSku=null;$('skuCorrectionHint').hidden=true;$('supplierSkuResult').textContent='Carregue o catálogo para preencher foto, custo e nome por SKU.';$('productForm').reset();renderFormProductPhoto();$('pIsKit').checked=false;$('pKitQuantity').value='';updateKitUI();$('pRegime').value='CNPJ';$('pTax').value='4';$('pMargin').value='5';$('pTarget').value='25';$('pGoalProfit').value='5';$('pFeeMode').value='auto';for(const id of ['pPacking','pShipping','pCoupon','pExtraPct'])$(id).value='0';$('pCurve').value='';$('pAdsStatus').value='unknown';$('productFormTitle').textContent='Cadastrar produto';$('saveProductBtn').textContent='Salvar produto';$('pSku').readOnly=false;$('productError').hidden=true;setManualFeeFields();showPriceMode('price')}
 function fillProductForm(p){editingSku=p.sku;const ids={sku:'pSku',name:'pName',cost:'pCost',price:'pPrice',market:'pMarket',target:'pTarget',tax:'pTax',feePct:'pFeePct',feeFixed:'pFeeFixed',extraPct:'pExtraPct',packing:'pPacking',shipping:'pShipping',coupon:'pCoupon',margin:'pMargin'};
-for(const [k,id] of Object.entries(ids))$(id).value=p[k]??'';$('pImageUrl').value=p.imageUrl||'';renderFormProductPhoto();$('pCurve').value=p.curve||'';$('pAdsStatus').value=adsStatusOf(p);$('pIsKit').checked=!!p.isKit;$('pKitQuantity').value=p.isKit?p.kitQuantity:'';updateKitUI();$('pRegime').value=p.regime||'CNPJ';$('pFeeMode').value=p.feeMode||'auto';$('pCpfExtra').checked=!!p.cpfExtra;$('pSku').readOnly=true;$('productFormTitle').textContent='Editar produto · '+p.sku;$('saveProductBtn').textContent='Salvar alterações';$('productError').hidden=true;setManualFeeFields();$('pGoalProfit').value=p.goalProfit??5;showPriceMode(p.calcMode||'price');switchTab('produtos');$('productDetail').scrollIntoView({behavior:'smooth',block:'start'})}
+for(const [k,id] of Object.entries(ids))$(id).value=p[k]??'';$('pImageUrl').value=p.imageUrl||'';renderFormProductPhoto();$('pCurve').value=p.curve||'';$('pAdsStatus').value=adsStatusOf(p);$('pIsKit').checked=!!p.isKit;$('pKitQuantity').value=p.isKit?p.kitQuantity:'';updateKitUI();$('pRegime').value=p.regime||'CNPJ';$('pFeeMode').value=p.feeMode||'auto';$('pCpfExtra').checked=!!p.cpfExtra;$('pSku').readOnly=false;$('skuCorrectionHint').hidden=false;$('supplierSkuResult').textContent='SKU atual: '+p.sku+'. Se o código estiver errado, digite a SKU correta e salve.';$('productFormTitle').textContent='Editar produto · '+p.sku;$('saveProductBtn').textContent='Salvar alterações';$('productError').hidden=true;setManualFeeFields();$('pGoalProfit').value=p.goalProfit??5;showPriceMode(p.calcMode||'price');switchTab('produtos');$('productDetail').scrollIntoView({behavior:'smooth',block:'start'})}
 function renderProductList(){
  const items=readProducts();
  const search=$('productSearch').value.trim().toLocaleLowerCase('pt-BR');
