@@ -191,6 +191,8 @@ export async function kitPublishApproved({cfg,auth,kitSku,input,token,secret}){
  // duplicaria a SKU principal e desrespeitaria a composição via WeDrop.
  if(kitSku==='KIT-TX24505K-TX24508E')
   throw Error('Este kit deve atualizar o anúncio existente ID 58222633999 pela etapa Executar na Shopee. Não criar outro anúncio.');
+ if(kitSku==='KIT-894182-894939')
+  throw Error('Este kit deve otimizar o Item ID 58222834055 da Escova 894182. Não criar outro anúncio.');
  const k=key(auth.shopId,kitSku);
  if(pendingLocks.has(k))throw Error('Publicação deste kit já está em andamento.');
  pendingLocks.add(k);
