@@ -1180,10 +1180,17 @@ const kitExistingOptimizer=initExistingKitOptimization({
 // A escolha principal altera a ordem de apresentação, não o kitSku nem a
 // composição canônica usada pelas APIs de preço, publicação e persistência.
 const KIT_MAIN_ORDER_PREFIX='redeachados-kit-main-order-v1:';
+// Repara uma única vez a escolha antiga do kit PET, que foi forçada para 894939.
+// A partir de agora qualquer SKU real pode ser escolhida e lembrada livremente.
+function kitMainPreferenceKey(kit){
+ return (kit?.kitSku==='KIT-894182-894939'?
+  'redeachados-kit-main-order-v2:':KIT_MAIN_ORDER_PREFIX)+kit.kitSku;
+}
 function kitRememberedMain(kit=prepared?.kit){
  if(!kit?.kitSku)return '';
  try{
-  const sku=String(localStorage.getItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku)||'');
+  const sku=String(localStorage.getItem(kitMainPreferenceKey(kit))||
+   (kit.kitSku==='KIT-894182-894939'?'894182':''));
   return kit.components?.some(p=>String(p.sku)===sku)?sku:'';
  }catch{return '';}
 }
@@ -1193,9 +1200,10 @@ function kitCurrentMain(kit=prepared?.kit){
  // Usar a seleção somente quando as opções são exatamente as SKUs do kit aberto.
  const selected=$('#kitPrincipalSku');
  const selectable=new Set([...selected?.options||[]].map(o=>String(o.value)).filter(Boolean));
- const uiMain=selectable.size===parts.length&&
+ const uiMain=selected?.dataset?.kitSku===String(kit?.kitSku||'')&&
+  selectable.size===parts.length&&
   parts.every(p=>selectable.has(String(p.sku)))?selected.value:'';
- const candidates=[uiMain,prepared?.logistics?.mainSku,kitRememberedMain(kit),
+ const candidates=[uiMain,kitRememberedMain(kit),prepared?.logistics?.mainSku,
   prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value,parts[0]?.sku];
  return String(candidates.find(x=>x&&parts.some(p=>String(p.sku)===String(x)))||'');
 }
@@ -1241,7 +1249,7 @@ function kitApplyMainSkuOrder(main,{persist=true}={}){
     kitWizardUpdateProgress();
    }
   }
-  try{localStorage.setItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku,String(main));}
+  try{localStorage.setItem(kitMainPreferenceKey(kit),String(main));}
   catch{status('Ordem alterada nesta sessão, mas não pôde ser armazenada neste navegador.','warning');}
   prepared.logistics={...(prepared.logistics||{}),mainSku:String(main)};
   // Um novo SKU principal não pode herdar o Item ID de outro produto.
@@ -1414,10 +1422,11 @@ function renderKitPricingSummary(kit=prepared?.kit){
  if(!select||!values||!costs||!state)return;
  const parts=Array.isArray(kit?.components)?kit.components:[];
  const displayParts=kitOrderedComponents(kit);
- const former=select.value;
+ const former=select.dataset.kitSku===String(kit?.kitSku||'')?select.value:'';
  select.replaceChildren(new Option(parts.length?'Escolha o SKU Principal':'Selecione um kit',''));
+ select.dataset.kitSku=String(kit?.kitSku||'');
  for(const p of displayParts)select.append(new Option(p.sku+' · '+p.name,p.sku));
- const main=[former,prepared?.logistics?.mainSku,kitRememberedMain(kit),
+ const main=[former,kitRememberedMain(kit),prepared?.logistics?.mainSku,
   prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value,parts[0]?.sku]
   .find(x=>x&&parts.some(p=>String(p.sku)===String(x)));
  select.value=main||'';select.disabled=!parts.length;
