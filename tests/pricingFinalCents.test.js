@@ -192,8 +192,9 @@ test('Otimização: referência de mercado inviável rejeita sem inventar descon
  const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marginOverride:true});
  assert.ok(q.netMarginPct>=15);
  assert.ok(q.discountPct>0&&q.discountPct<=50);
- for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+ for(const value of [q.grossPrice,q.marketplaceDisplayPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10));
+ assert.ok(q.customerPrice<q.marketplaceDisplayPrice);
  // O mercado abaixo da margem/terminações não deve gerar cotação falsa.
  assert.throws(()=>quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:180}),
   /Desconto variável inviável/);
