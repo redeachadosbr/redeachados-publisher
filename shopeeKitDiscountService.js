@@ -13,27 +13,30 @@ const locks=new Set(),validId=n=>/^[1-9]\d{0,17}$/.test(String(n))&&Number.isSaf
 const goodEnd=x=>[0,9].includes(Math.round(Number(x)*100)%10);
 const money=x=>Math.round(Number(x)*100)/100;
 
-// A cotação dos Kits usa a política v5, distinta da cotação individual (v4).
-// Validar valores reais, não apenas a versão: nenhuma escrita é autorizada
-// quando a margem ou qualquer um dos dois finais 0/9 é inválido.
+// Política v6 dos kits: bruto e preço da promoção com finais 0/9.
+// O cupom é condicional; seu preço simulado pode ter outros centavos,
+// mas precisa corresponder ao percentual cadastrado e entrar no lucro.
 export function validateKitDiscountQuote(quote){
- if(!quote||quote.priceEndingRuleVersion!==5)
+ if(!quote||quote.priceEndingRuleVersion!==6)
   throw Error('Cotação do kit em versão incompatível com o motor de preços. Recalcule e salve o kit antes de preparar o desconto.');
  const gross=money(quote.grossPrice),promo=money(quote.marketplacePrice),
-  afterCoupon=money(quote.afterCoupon);
+  afterCoupon=money(quote.afterCoupon),couponPct=Number(quote.couponPct);
  if(!Number.isFinite(gross)||!Number.isFinite(promo)||!Number.isFinite(afterCoupon)||
-    !(gross>promo&&promo>0&&afterCoupon>0))
+    !(gross>promo&&promo>0&&afterCoupon>0&&afterCoupon<=promo))
   throw Error('Preço bruto ou desconto inválido. Recalcule os valores do kit e salve antes de preparar a prévia.');
+ if(!goodEnd(gross))throw Error('O preço bruto não termina em 0 ou 9 centavos.');
  if(!goodEnd(promo))
   throw Error('O preço visível na Shopee não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
- if(!goodEnd(afterCoupon))
-  throw Error('O preço após cupom não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
+ if(!Number.isFinite(couponPct)||couponPct<0||couponPct>90||
+    Math.abs(afterCoupon-money(promo*(1-couponPct/100)))>.011)
+  throw Error('O preço após cupom não corresponde ao cupom da loja. Recalcule o desconto mantendo o cupom cadastrado.');
  if(!Number.isFinite(Number(quote.netMarginPct))||
     !Number.isFinite(Number(quote.targetMarginPct))||
     Number(quote.netMarginPct)+0.001<Number(quote.targetMarginPct))
   throw Error('A margem líquida do kit está abaixo da margem escolhida. Revise custos, taxas ou margem antes do desconto.');
  return {gross,promo,afterCoupon};
 }
+
 async function context(cfg,auth,kitSku,discountId,{requireExecution=true}={}){
  if(!validId(discountId))throw Error('Informe o ID da Minha Promoção criada na Shopee.');
  const saved=await loadKitDraft(auth.shopId,kitSku);
