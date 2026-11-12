@@ -10948,7 +10948,7 @@ function optimizerTechnicalRender(data){
   const existing=(data.attributes||[]).filter(a=>!a.conditional&&a.values?.length).length;
   const suggestions=(data.sourceFacts?.suggestions||[]).length;
   optimizerTechNotice('✓ Ficha da SKU principal: '+existing+' atributo(s) já na Shopee, '+
-   auto+' preenchido(s) no rascunho com dados da WeDrop e '+
+   auto+' preenchido(s) no rascunho com fontes da própria SKU (WeDrop e vendedor/print) e '+
    suggestions+' sugestão(ões) comprovadas localizadas. '+
    'Os demais campos dependem de informação real; nenhuma alteração foi publicada.','success');
  }else if(data.supplierProduct&&data.sourceEvidence?.sourceText){
