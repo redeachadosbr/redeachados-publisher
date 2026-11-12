@@ -63,7 +63,9 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(kit.components[1].unitCost,8);
   assert.ok(kit.quote.netMarginPct>=15);
   assert.ok([0,9].includes(Math.round(kit.quote.marketplacePrice*100)%10));
-  assert.ok([0,9].includes(Math.round(kit.quote.afterCoupon*100)%10));
+  assert.equal(kit.quote.priceEndingRuleVersion,6);
+  assert.equal(kit.quote.afterCoupon,
+    Math.round(kit.quote.marketplacePrice*(1-kit.quote.couponPct/100)*100)/100);
   assert.equal(kit.shopeePublished,false);
   const prompts=kitPrompts(kit);
   assert.equal(prompts.length,9);
