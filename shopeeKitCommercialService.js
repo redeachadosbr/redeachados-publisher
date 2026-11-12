@@ -21,6 +21,10 @@ export function resolveCommercialKitMainSku(saved){
  return mainSku;
 }
 async function getCurrent(auth,kitSku){
+ // Anúncio principal já existe e foi identificado pelo vendedor.
+ // O publicador comercial nunca deve criar um segundo Item ID para este kit.
+ if(kitSku==='KIT-894182-894939')
+  throw Error('O Item ID 58222834055 já existe para a Escova 894182. Use a otimização do anúncio existente, sem criar outro.');
  const saved=await loadKitDraft(auth.shopId,kitSku);
  if(!saved?.kit||!Array.isArray(saved.skus))throw Error('Rascunho de kit não salvo nesta loja.');
  if(saved.publication?.itemId||String(saved.publication?.status||'local_draft')!=='local_draft')
