@@ -43,3 +43,13 @@ test('SKU principal é salva e link antigo não pode ser reaproveitado',()=>{
  assert.match(store,/String\(previous\.optimization\.mainSku\|\|''\)===String\(savedLogistics\.mainSku\)/);
  assert.match(store,/String\(current\.optimization\.mainSku\|\|''\)===String\(logistics\.mainSku\|\|''\)/);
 });
+
+test('Execução direta sincroniza principal antes de consultar publicação Shopee',()=>{
+ const start=builder.indexOf('async function kitWizardExecuteNewListingDirect()');
+ const end=builder.indexOf('// Preserve a categoria previamente revisada',start);
+ const section=builder.slice(start,end);
+ assert.ok(start>0&&end>start);
+ assert.match(section,/const syncedMain=await api\('\/api\/shopee\/kits\/drafts\/logistics'/);
+ assert.match(section,/String\(syncedMain\.logistics\?\.mainSku\)!==principalForDraft/);
+ assert.ok(builder.indexOf('await kitReadinessCheck({throwOnError:true});',start)>end);
+});
