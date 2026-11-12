@@ -143,6 +143,9 @@ function render(r){
   tile('CTR',percent(r.ctr),'Cliques ÷ impressões')+
   tile('Custo por clique',money(r.cpc),'Investimento ÷ cliques')+
   tile('Pedidos atribuídos',count(r.orders),'Dado da campanha')+
+  tile('Conversão de cliques',percent(r.conversion),'Pedidos ÷ cliques · aproximado')+
+  tile('Custo por pedido',money(r.cpa),'Investimento ÷ pedidos atribuídos')+
+  tile('Adições ao carrinho',count(number(r.d.addToCart)),'Se fornecidas pela Shopee')+
   tile('Itens vendidos',count(r.itemsSold),r.itemsSold===null?'Não fornecidos pela API':'Informados/associados à campanha')+
   tile('Saldo após Ads, antes dos custos',money(r.afterAds),'NÃO é lucro líquido')+
   tile('ROAS de equilíbrio',r.fin?ratio(r.fin.breakeven):'—','Estimativa do cadastro do SKU')+
