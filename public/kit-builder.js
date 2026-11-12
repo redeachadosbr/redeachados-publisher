@@ -1189,13 +1189,14 @@ function kitRememberedMain(kit=prepared?.kit){
 }
 function kitCurrentMain(kit=prepared?.kit){
  const parts=kit?.components||[];
- // O kit comercial foi confirmado com Bola Interativa 894939 principal,
- // embora o identificador interno liste a escova primeiro.
- const confirmed=kit?.kitSku==='KIT-894182-894939'&&
-  parts.some(p=>String(p.sku)==='894939')?'894939':'';
- const candidates=[confirmed,kitRememberedMain(kit),prepared?.logistics?.mainSku,
-  prepared?.optimization?.mainSku,$('#kitPrincipalSku')?.value,
-  $('#kitOptimizeMainSku')?.value,parts[0]?.sku];
+ // A escolha visível tem prioridade sobre vínculos e preferências antigas.
+ // Usar a seleção somente quando as opções são exatamente as SKUs do kit aberto.
+ const selected=$('#kitPrincipalSku');
+ const selectable=new Set([...selected?.options||[]].map(o=>String(o.value)).filter(Boolean));
+ const uiMain=selectable.size===parts.length&&
+  parts.every(p=>selectable.has(String(p.sku)))?selected.value:'';
+ const candidates=[uiMain,prepared?.logistics?.mainSku,kitRememberedMain(kit),
+  prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value,parts[0]?.sku];
  return String(candidates.find(x=>x&&parts.some(p=>String(p.sku)===String(x)))||'');
 }
 function kitOrderedComponents(kit=prepared?.kit,main=kitCurrentMain(kit)){
@@ -1218,15 +1219,6 @@ function kitReorderSelect(select,main){
 function kitApplyMainSkuOrder(main,{persist=true}={}){
  const kit=prepared?.kit;
  if(!kit?.components?.some(p=>String(p.sku)===String(main)))return false;
- if(kit.kitSku==='KIT-894182-894939'&&String(main)!=='894939'&&
-    kit.components.some(p=>String(p.sku)==='894939')){
-  for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku']){
-   const select=$(selector);
-   if(select&&[...select.options].some(option=>option.value==='894939'))select.value='894939';
-  }
-  if(persist)status('Este kit foi confirmado com a Bola Interativa 894939 como principal; a Escova 894182 é complementar.','info');
-  return false;
- }
  if(persist&&(kitAutoImageBusy||kitBridgeController?.activeJob())){
   const previous=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||'')||
    String(kit.components[0]?.sku||'');
@@ -1251,6 +1243,12 @@ function kitApplyMainSkuOrder(main,{persist=true}={}){
   }
   try{localStorage.setItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku,String(main));}
   catch{status('Ordem alterada nesta sessão, mas não pôde ser armazenada neste navegador.','warning');}
+  prepared.logistics={...(prepared.logistics||{}),mainSku:String(main)};
+  // Um novo SKU principal não pode herdar o Item ID de outro produto.
+  if(prepared.optimization&&String(prepared.optimization.mainSku)!==String(main)){
+   prepared.optimization=null;
+   kitExistingOptimizer.restore(null);
+  }
   clearKitPublishApproval();
   const photosReviewed=$('#kitPhotosReviewed');if(photosReviewed)photosReviewed.checked=false;
   if(images.size)imageStatus('Ordem das SKUs alterada. As '+images.size+
@@ -1258,6 +1256,7 @@ function kitApplyMainSkuOrder(main,{persist=true}={}){
  }
  for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku'])
   kitReorderSelect($(selector),String(main));
+ if(persist)kitLogisticsKeeper.queue(); // Sincronizar SKU principal com rascunho da loja.
  // Move os cartões reais, preservando textarea, prints, validações e listeners.
  const facts=$('#kitMissingFactFields');
  if(facts){
@@ -1418,8 +1417,9 @@ function renderKitPricingSummary(kit=prepared?.kit){
  const former=select.value;
  select.replaceChildren(new Option(parts.length?'Escolha o SKU Principal':'Selecione um kit',''));
  for(const p of displayParts)select.append(new Option(p.sku+' · '+p.name,p.sku));
- const main=[kitRememberedMain(kit),prepared?.optimization?.mainSku,former,$('#kitOptimizeMainSku')?.value]
-  .find(x=>x&&parts.some(p=>p.sku===x));
+ const main=[former,prepared?.logistics?.mainSku,kitRememberedMain(kit),
+  prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value,parts[0]?.sku]
+  .find(x=>x&&parts.some(p=>String(p.sku)===String(x)));
  select.value=main||'';select.disabled=!parts.length;
  const validCosts=parts.length>=2&&parts.length<=4&&
   parts.every(p=>Number.isFinite(Number(p.unitCost))&&Number(p.unitCost)>0)&&
