@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {commercialCategoryFields,commercialAttributePayload,commercialKitFields,commercialKitPayload} from '../shopeeKitCommercial.js';
-import {commercialSignPreview,commercialVerifyPreview,isDefinitiveShopeeRejection} from '../shopeeKitCommercialService.js';
+import {commercialSignPreview,commercialVerifyPreview,isDefinitiveShopeeRejection,resolveCommercialKitMainSku} from '../shopeeKitCommercialService.js';
 import {enabledShopeeChannels} from '../shopeeLogisticsChannels.js';
 
 const kit={kitSku:'KIT-894939-894182',components:[
@@ -107,11 +107,26 @@ test('get_channel_list: id oficial logistics_channel_id disponibiliza canais hab
  assert.deepEqual(enabledShopeeChannels({response:{logistics_channel_list:[]}}),[]);
  assert.throws(()=>enabledShopeeChannels({response:{}}),/lista oficial/);
 });
-test('kit 894182 + 894939 conserva principal selecionada e canal salvo no assistente',()=>{
+test('kit 894182 + 894939 usa Escova escolhida sem impor Bola no servidor',()=>{
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const svc=readFileSync(new URL('../shopeeKitCommercialService.js',import.meta.url),'utf8');
- assert.match(ui,/kit\?\.kitSku==='KIT-894182-894939'/);
+ const saved={kit:{kitSku:'KIT-894182-894939',components:[
+  {sku:'894182',name:'Escova Gato'},{sku:'894939',name:'Bola Interativa'}]},
+  skus:['894182','894939'],logistics:{mainSku:'894182'}};
+ assert.equal(resolveCommercialKitMainSku(saved),'894182');
+ assert.equal(resolveCommercialKitMainSku({...saved,logistics:{mainSku:'894939'}}),'894939');
+ assert.equal(resolveCommercialKitMainSku({...saved,logistics:null}),'894182');
  assert.match(ui,/prepared\?\.logistics\?\.mainSku/);
- assert.match(ui,/result\.logistics\?\.logisticId/);
- assert.match(svc,/kitSku==='KIT-894182-894939'&&fields\.mainSku!==mainSku/);
+ assert.match(svc,/saveKitDraftLogistics\(auth\.shopId,kitSku/);
+ assert.doesNotMatch(svc,/Ordem comercial confirmada: no KIT-894182-894939 a Bola/);
+ assert.doesNotMatch(svc,/A principal confirmada deste kit é a Bola Interativa/);
+});
+test('payload comercial usa escova 894182 como item_sku sem trocar componentes',()=>{
+ const reversed={...kit,kitSku:'KIT-894182-894939',components:[kit.components[1],kit.components[0]]};
+ const fields=commercialKitFields({...input,mainSku:'894182'},reversed,channel,input.imageIds);
+ const payload=commercialKitPayload(fields,reversed,[]);
+ assert.equal(payload.item_sku,'894182');
+ assert.equal(payload.normal_stock,1);
+ assert.equal(payload.item_name,input.title);
+ assert.equal(JSON.stringify(payload).includes('894939'),false);
 });
