@@ -206,10 +206,10 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V17.1.1 · Decisão manual + financeiro</span>
+    <span class="pill">V18.0 · Análise inteligente por anúncio</span>
   </div>
-  <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
-  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Decisão atual</button><button class="tab" data-tab="evolucao">▥ Evolução</button><button class="tab" data-tab="historico">◷ Alterações</button><button class="tab" data-tab="regras">▤ Regras Ads</button></nav>
+  <header class="hero"><div><div class="eyebrow">Painel de desempenho • ROAS, conversão e lucro estimado</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte os indicadores Shopee Ads por campanha, acompanhe cliques, vendas, ROAS real e lucratividade estimada.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
+  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Decisão atual</button><button class="tab" data-tab="evolucao">▥ Evolução</button><button class="tab" data-tab="historico">◷ Alterações</button><button class="tab" data-tab="regras">▤ Como analisamos</button></nav>
   <section class="view" id="produtos">
     <div class="catalog-layout">
       <div class="panel" id="productDetail">
@@ -327,7 +327,7 @@
   </section>
   <section class="view active" id="simulador"><div class="columns">
     <div class="panel" id="editor">
-      <div class="section-head"><div><div class="overline">01 · Insira os dados</div><h2>Produto, gasto e ROAS</h2></div><span class="subtle">* campos necessários</span></div>
+      <div class="section-head"><div><div class="overline">01 · Insira os dados</div><h2>Produto, gasto e ROAS</h2></div><span class="subtle">Gasto e vendas do mesmo período</span></div>
       <form id="adsForm" novalidate>
         <div class="field-grid">
           <div class="field full"><label for="campaignAdsFilter">Mostrar produtos por situação no Ads</label><select id="campaignAdsFilter"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><span class="tip">Usa status confirmado pela API nesta sessão quando disponível; caso contrário, o status informado manualmente.</span></div>
@@ -356,10 +356,10 @@
             <p class="tiny">O vínculo é salvo no cadastro do SKU e sincronizado pelo Google Drive. Os indicadores permanecem separados por campanha; nenhuma alteração é executada na Shopee.</p>
           </div>
         </div>
-        <div class="campaign-metrics-title">Sua regra de investimento</div>
+        <div class="campaign-metrics-title">Orçamento e ROAS-alvo (opcionais)</div>
         <div class="campaign-fields">
           <div class="field"><label for="budget" id="budgetLabel">1. Orçamento diário (R$) *</label><div class="budget-entry"><input id="budget" inputmode="decimal" placeholder="Ex.: 15,00"><select id="budgetMode" aria-label="Tipo de orçamento"><option value="daily">Diário</option><option value="unlimited">Ilimitado</option></select></div><p class="tip" id="budgetHint">Informe quanto deseja gastar por dia. No modo ilimitado, é apenas uma referência.</p></div>
-          <div class="field"><label for="target">2. Meta de ROAS *</label><input id="target" inputmode="decimal" placeholder="Ex.: 30">
+          <div class="field"><label for="target">2. Meta de ROAS (se configurada)</label><input id="target" inputmode="decimal" placeholder="Ex.: 30">
 <label for="minDesiredRoas" style="display:block;margin-top:12px">ROAS mínimo desejado (x) · opcional</label>
 <input id="minDesiredRoas" inputmode="decimal" placeholder="Ex.: 15">
 <p class="tip" id="minDesiredRoasHint">Seu ROAS mínimo aceitável. Ao sair do campo, o valor será salvo no cadastro do SKU e sincronizado pelo Google Drive.</p></div>
@@ -387,8 +387,8 @@
       </form>
     </div>
     <div class="panel" id="resultPanel">
-      <div class="section-head"><div><div class="overline">02 · O que fazer agora</div><h2>Sua decisão Ads</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
-      <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha orçamento, período, gasto, meta e ROAS real ou receita. Depois clique em <strong>Analisar campanha</strong>.</p></div>
+      <div class="section-head"><div><div class="overline">02 · Diagnóstico da campanha</div><h2>Análise inteligente Shopee Ads</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
+      <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Escolha as datas, informe gasto e vendas atribuídas ou consulte a API. O app calcula o diagnóstico sem exigir orçamento ou meta.</p></div>
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
         <section id="essentialDecision" class="ads-simple" aria-live="polite">
@@ -400,7 +400,7 @@
 <p class="ads-simple-note" id="simpleBasis">—</p>
 <p class="ads-simple-note" id="ordersCompareQuick" hidden></p>
 </section>
-<details id="adsDetails" class="ads-advanced"><summary>Ver todas as métricas, regras e justificativas</summary>
+<details id="adsDetails" class="ads-advanced"><summary>Detalhes legados (desativados)</summary>
 <div id="performanceStats" class="ads-kpis"></div>
 <div class="notice" id="ordersAdsCompare" hidden style="margin-top:10px"></div><div id="adsDecisionSummary" class="notice" style="margin-top:12px" hidden aria-live="polite"></div>
         <section id="criticalAdsDiagnosis" class="critical-ads" hidden aria-live="polite"></section>
@@ -468,7 +468,7 @@
   <p class="tiny">O dia da modificação e o dia atual aparecem separadamente: não entram nas comparações de fases fechadas. Unidades em pedidos não cancelados incluem pendentes, enviadas e entregues; cancelamentos/devoluções ficam separados. A abrangência por datas do XLSX é indicativa, não garante exportação completa. Pedidos totais da loja não são vendas atribuídas ao Ads. Nenhum anúncio é alterado.</p>
  </div>
 </section>
-  <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Cenário</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
+  <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Diagnóstico</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
     <div class="panel history-split" id="changeHistoryPanel">
       <div class="section-head"><div><div class="overline">Modificações do anúncio</div><h2>Registrar alteração por produto</h2></div><span class="subtle">Data e hora automáticas</span></div>
       <p class="subtle">Depois de alterar seu anúncio na Shopee, selecione o SKU, marque as mudanças realizadas e salve. A data e a hora serão registradas neste momento, sem edição manual.</p>
@@ -507,7 +507,7 @@
       <p class="tiny">Histórico local preservado no backup JSON e sincronizado com o Google Drive quando a conexão estiver disponível.</p>
     </div>
   </section>
-  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 17.1.1</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 18.0</div><div>Análise somente leitura. Nenhum orçamento ou ROAS-alvo é alterado automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
 <script src="/ads-single-analysis.js?v=20261112-1"></script>
@@ -915,7 +915,7 @@ function render(r){
 }
 function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory();if(tab==='evolucao')window.RedeEvolution?.open();}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
-function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
+function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$)';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
 $('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){if(window.RedeAdsQuick?.renderProvisional?.(d,errors))return;showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
 // Quando uma regra ou métrica muda, atualiza a recomendação sem exigir outro clique.
 let liveAnalysisTimer=null;
