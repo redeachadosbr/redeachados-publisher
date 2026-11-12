@@ -1,0 +1,25 @@
+name: Validar análise única Shopee Ads
+on:
+  push:
+    paths:
+      - "netlify-ads/site/**"
+      - "netlify-ads/tests/**"
+      - ".github/workflows/ads-analysis-check.yml"
+  pull_request:
+    paths:
+      - "netlify-ads/site/**"
+      - "netlify-ads/tests/**"
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe HTML/JS e testes Ads
+        run: |
+          node --check netlify-ads/site/ads-single-analysis.js
+          node --check netlify-ads/site/decision-finance.js
+          node --test netlify-ads/tests/ads-single-analysis.test.mjs
