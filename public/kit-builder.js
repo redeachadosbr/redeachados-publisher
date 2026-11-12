@@ -2784,6 +2784,21 @@ async function kitWizardExecuteNewListingDirect(){
    refreshKitPrices(prepared.kit);
    progress('✓ Rascunho sincronizado com a margem atual e a SKU principal.');
   }
+  // O clique pode ocorrer antes do autosave debounced (650 ms) terminar.
+  // Confirmar a principal NO SERVIDOR, sem regravar fotos, texto ou checks.
+  const mainFieldForSync=$('#kitMainSku');
+  if(!mainFieldForSync||![...mainFieldForSync.options].some(o=>o.value===principalForDraft))
+   throw Error('SKU principal escolhida não está mais disponível no kit.');
+  mainFieldForSync.value=principalForDraft;
+  await kitLogisticsKeeper.flush();
+  const latestLogistics={...kitLogisticsKeeper.read(),mainSku:principalForDraft};
+  const syncedMain=await api('/api/shopee/kits/drafts/logistics',{body:{
+   kitSku,logistics:latestLogistics
+  }});
+  if(!syncedMain?.saved||String(syncedMain.logistics?.mainSku)!==principalForDraft)
+   throw Error('A Shopee não será acionada: não foi possível salvar a SKU principal '+principalForDraft+'.');
+  prepared.logistics={...(prepared.logistics||{}),...syncedMain.logistics};
+  progress('✓ SKU principal '+principalForDraft+' gravada e conferida no rascunho.');
 
   // Preserve a categoria previamente revisada; se não houve revisão,
   // só usar uma categoria recomendada pela API oficial da Shopee.
