@@ -510,6 +510,7 @@
   <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 17.1.1</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
 </div>
 <script src="/xlsx-reader.js"></script>
+<script src="/ads-single-analysis.js?v=20261112-1"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
@@ -559,7 +560,22 @@ function getData(){
  sku,curve:product?.curve||'',financeSource:validFinancial?'cadastro_sku':null
  };
 }
-function validate(d){const issues=[];let days=daysInclusive(d.dateStart,d.dateEnd);if(days===null||days<=0)issues.push('Informe as datas inicial e final em ordem correta.');if(days>366)issues.push('Selecione um período de até 366 dias para manter a comparação clara.');if(!isNonNeg(d.spent))issues.push('Informe o gasto da campanha (zero é aceito).');if(d.target===null||d.target<=0)issues.push('Informe um ROAS alvo maior que zero.');if(d.minDesiredRoas!==null&&!(d.minDesiredRoas>0))issues.push('O ROAS mínimo desejado precisa ser positivo ou ficar em branco.');if(d.budgetMode==='daily'&&(d.budget===null||d.budget<=0))issues.push('Informe um orçamento diário maior que zero.');if(d.budgetMode==='unlimited'&&d.budget!==null&&d.budget<=0)issues.push('O teto diário simulado precisa ser maior que zero. Deixe em branco para não simular.');if(!isNonNeg(d.revenue)&&!isNonNeg(d.actual))issues.push('Informe receita atribuída ou ROAS real.');for(const id of ['revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','price','cost','feePercent','feeFixed','taxPercent','packing','shipping','coupon','desiredMargin']){if(d[id]!==null&&d[id]<0)issues.push('O campo '+id+' não pode ser negativo.')}if(d.feePercent!==null&&d.feePercent>100)issues.push('A taxa Shopee (%) deve ser de até 100%.');if(d.taxPercent!==null&&d.taxPercent>100)issues.push('O imposto (%) deve ser de até 100%.');if(d.desiredMargin!==null&&d.desiredMargin>=100)issues.push('A margem desejada deve ser menor que 100%.');return [...new Set(issues)]}
+function validate(d){
+ const issues=[],days=daysInclusive(d.dateStart,d.dateEnd);
+ if(days===null||days<=0)issues.push('Informe datas inicial e final válidas.');
+ if(days>366)issues.push('Selecione um período de até 366 dias.');
+ if(!isNonNeg(d.spent))issues.push('Informe o investimento Ads (zero é permitido).');
+ if(!isNonNeg(d.revenue)&&!isNonNeg(d.actual))issues.push('Informe as vendas atribuídas ou o ROAS real.');
+ if(d.target!==null&&d.target<=0)issues.push('Se informar ROAS-alvo, use valor positivo.');
+ if(d.budget!==null&&d.budget<=0)issues.push('Se informar orçamento, use valor positivo.');
+ if(d.minDesiredRoas!==null&&d.minDesiredRoas<=0)issues.push('Se informar ROAS mínimo, use valor positivo.');
+ for(const id of ['revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','price','cost','feePercent','feeFixed','taxPercent','packing','shipping','coupon','desiredMargin']){
+  if(d[id]!==null&&d[id]!==undefined&&d[id]<0)issues.push('O campo '+id+' não pode ser negativo.');
+ }
+ if(d.feePercent!==null&&d.feePercent>100)issues.push('A taxa Shopee deve ser de até 100%.');
+ if(d.taxPercent!==null&&d.taxPercent>100)issues.push('O imposto deve ser de até 100%.');
+ return [...new Set(issues)];
+}
 function calcFinance(d,actual){const required=['price','cost','feePercent','feeFixed','taxPercent'];if(!required.every(k=>d[k]!==null)||d.price<=0)return null;const extras=(d.packing||0)+(d.shipping||0)+(d.coupon||0);const contrib=d.price-d.cost-d.price*(d.feePercent+d.taxPercent)/100-d.feeFixed-extras;const breakeven=contrib>0?d.price/contrib:Infinity;const desired=d.desiredMargin??5;const neededContribution=contrib-d.price*desired/100;const minRoas=neededContribution>0?d.price/neededContribution:Infinity;const margin=actual>0?(contrib-d.price/actual)/d.price*100:null;const unfilled=['packing','shipping','coupon'].filter(k=>d[k]===null);return {contrib,breakeven,minRoas,margin,desired,unfilled}}
 // Regra 05 — meta ROAS com orçamento ilimitado. A referência diária NÃO é um limite real.
 function unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend}){
@@ -616,68 +632,7 @@ function unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend}){
   financialFloor:financial,minDesired:personal,effectiveMin:minimum,minMet:!!fin&&meetsMin,goalMet:meetsTarget,
   eligible:enough,risk:['risco de prejuízo','margem desejada não atingida','abaixo do mínimo escolhido'].includes(stage),alerts};
 }
-function analyze(d){
-const days=daysInclusive(d.dateStart,d.dateEnd);
-const dailySpend=days>0?d.spent/days:null;
-const dailyReference=d.budget!==null&&d.budget>0?d.budget:null;
-const simulated=d.budgetMode==='unlimited'&&dailyReference!==null;
-const grossMax=dailyReference!==null?dailyReference*days:null;
-// Mesmo resultado de gasto total/(orçamento diário × dias), porém exibimos
-// explicitamente a média diária para facilitar a decisão do vendedor.
-const consumed=dailySpend!==null&&dailyReference!==null?dailySpend/dailyReference*100:null;
-const dailyReferenceReached=consumed!==null&&consumed>=95;
-const actualDailyLimit=d.budgetMode==='daily';const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=actualDailyLimit&&d.budgetStable;
-const total=dailyReferenceReached;
-const scenarioCandidate=reliableLimit&&meets!==null&&d.spent>0?(total?(meets?4:3):(meets?1:2)):null;
-// Período aberto: mostrar uma PRÉVIA, nunca emitir mudanças percentuais como recomendação final.
-const previewScenario=!d.periodClosed?scenarioCandidate:null;
-const scenario=d.periodClosed?scenarioCandidate:null;
-const suggestedBudget=(d.budgetMode==='daily'||simulated)?(scenario===1||scenario===2?d.budget*.8:(scenario===3?d.budget:null)):null;
-const suggestedROAS=scenario===1||scenario===2?d.target*.8:scenario===3?d.target*1.2:null;
-const fin=calcFinance(d,actual);
-const alerts=[];
-if(simulated)alerts.push({level:'warn',text:'CONTROLE: sua campanha continua com orçamento ILIMITADO na Shopee. A referência desejada é '+money(d.budget)+'/dia. Ela NÃO representa limite ou esgotamento de verba. A Regra 05 avalia o ROAS sem aplicar as quatro regras de consumo. Nenhuma configuração foi alterada.'});else if(d.budgetMode==='unlimited')alerts.push({level:'warn',text:'Orçamento ilimitado: informe quanto pretende gastar por dia (R$ 10, R$ 15 etc.) para comparar com o gasto médio. A referência NÃO limita a Shopee; a Regra 05 analisa o ROAS de forma independente.'});
-if(!d.budgetStable&&d.budgetMode==='daily')alerts.push({level:'danger',text:'O limite diário mudou durante o período. Sem histórico de cada limite, o consumo não é confiável; cenário indeterminado.'});
-if(!d.periodClosed)alerts.push({level:'warn',text:'O relatório inclui um dia ainda em andamento: o consumo e a classificação são provisórios. Evite ajuste expressivo apenas com o dia parcial.'});
-if(consumed!==null&&consumed>105)alerts.push({level:'warn',text:simulated?'O gasto supera em mais de 5% a referência hipotética de '+money(grossMax)+'. Isso NÃO significa que a campanha excedeu um orçamento real.':'Gasto acima do teto teórico de '+money(grossMax)+'. Revise datas, mudanças de orçamento e cobranças antes de confiar no cenário.'});
-if(consumed!==null&&consumed>=90&&consumed<95)alerts.push({level:'warn',text:(simulated?'Gasto equivalente a 90%–95% do teto SIMULADO. ':'Consumo entre 90% e 95%: ')+ 'Perto do teto, mas abaixo do critério analítico de 95%.'});
-if(d.curve==='D'||d.curve==='E')alerts.push({level:'warn',text:'Curva '+d.curve+' informada manualmente: produto de baixa prioridade para Ads. Confirme vendas, demanda, preço e margem antes de investir.'});
-if(d.spent===0)alerts.push({level:'warn',text:'Não houve gasto: não existe ROAS real comparável; cenário indeterminado.'});
-if(d.revenue!==null&&d.actual!==null&&actual!==null&&Math.abs(actual-d.actual)>.1)alerts.push({level:'danger',text:'ATENÇÃO: ROAS informado '+roas(d.actual)+' é diferente do ROAS calculado '+roas(actual)+' ('+money(d.revenue)+' em vendas ÷ '+money(d.spent)+' investidos). A análise usa o calculado. Confirme campanha, período e critério de atribuição antes de mudar os Ads.'});
-if(d.impressions>0&&d.clicks!==null&&d.ctrReported!==null&&Math.abs(100*d.clicks/d.impressions-d.ctrReported)>0.5)alerts.push({level:'warn',text:'O CTR informado difere do cálculo cliques ÷ impressões. Verifique a leitura do print e o período.'});
-if(d.orders===0&&d.clicks!==null&&d.clicks>=30)alerts.push({level:'danger',text:d.clicks+' cliques e nenhum pedido informado: investigue conversão e oferta antes de ampliar a entrega.'});
-if(actual!==null&&actual===0&&d.spent>0)alerts.push({level:'danger',text:'Investimento sem receita atribuída no período: não há lucro proveniente dessas vendas Ads para compensar o gasto.'});
-if(fin){if(d.minDesiredRoas!==null&&d.minDesiredRoas<fin.minRoas)alerts.push({level:'warn',text:'Seu ROAS mínimo '+roas(d.minDesiredRoas)+' está abaixo do mínimo financeiro para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'inviável')+'). Não usar o menor para autorizar escala.'});if(fin.unfilled.length)alerts.push({level:'warn',text:'Embalagem, frete ou cupons ficaram em branco e foram tratados como R$ 0,00: a margem calculada pode estar superestimada.'});if(fin.margin!==null&&fin.margin<0)alerts.push({level:'danger',text:'Margem estimada negativa com o ROAS real. Priorize limitar a perda e corrigir a oferta antes de escalar.'});else if(fin.margin!==null&&fin.margin<fin.desired)alerts.push({level:'warn',text:'A margem líquida aproximada no ROAS real ficou abaixo da meta de '+pct(fin.desired)+'.'});if(suggestedROAS!==null&&suggestedROAS<fin.minRoas)alerts.push({level:'danger',text:'Alerta financeiro: a regra recomenda ROAS alvo '+roas(suggestedROAS)+', abaixo do mínimo para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'meta não atingível')+'). A recomendação de −20% continua visível; a decisão é sua.'});}else{alerts.push({level:'warn',text:'Lucratividade não validada: selecione um SKU com preço, custo, taxas e margem cadastrados na aba Produtos. Não foram presumidos valores financeiros.'});}
-let safeAction='',rule='';const belowGoal=fin&&fin.margin!==null&&fin.margin<fin.desired;
-if(scenario===1){rule='Consumo parcial e ROAS real ≥ alvo: reduzir orçamento e ROAS alvo 20%.';safeAction='Aplicar a recomendação do Cenário 1: orçamento diário e ROAS-alvo −20% (conforme as regras). Confira os alertas financeiros antes de executar; a decisão permanece disponível mesmo com risco de prejuízo.';}
-else if(scenario===2){rule='Consumo parcial e ROAS real < alvo: primeiro conferir concorrência, preço e fotos; depois reduzir ambos 20%.';safeAction='Primeiro revisar competitividade, capa, preço, frete e conversão; depois a regra recomenda reduzir ROAS-alvo e orçamento em 20%. O alerta financeiro é informativo e não bloqueia a recomendação.';}
-else if(scenario===3){rule='Consumo total (≥95%) e ROAS real < alvo: revisar oferta, aumentar alvo 20% e manter orçamento.';safeAction='Corrigir preço, fotos e conversão; subir o alvo 20% conforme o caderno pode conter entrega, mas não garante melhora. '+(belowGoal?'A margem estimada está abaixo da desejada: contenha risco antes de manter gastos altos.':'Não aumentar a verba até validar rentabilidade.');}
-else if(scenario===4){rule='Consumo total (≥95%) e ROAS real ≥ alvo: escolher A, B ou C segundo a verba mensal disponível.';safeAction='Sem confirmação de verba extra, não escalar automaticamente. Compare A, B e C e selecione conforme seu orçamento mensal, validando a margem por venda.';}
-else{rule='Não foi possível aplicar com segurança um dos quatro cenários: falta limite comparável ou ROAS válido.';safeAction='Não aplicar porcentagens de forma automática. '+(d.budgetMode==='unlimited'?'Defina um teto diário (exemplo de teste conservador: R$ 5,00, se permitido) e acompanhe o gasto.':'Corrija período, orçamento ou dados de ROAS antes de decidir.')+' Revise margem e conversão.';}
-// Mesmo quando há dados suficientes para uma prévia, nenhuma alteração fica liberada
-// enquanto o período não estiver fechado.
-if(previewScenario!==null){
- const summary=previewScenario===1?'gasto abaixo do teto e ROAS alcançado':
-  previewScenario===2?'gasto abaixo do teto e ROAS abaixo do alvo':
-  previewScenario===3?'uso médio do teto e ROAS abaixo do alvo':
-  'uso médio do teto e ROAS alcançado';
- rule='PRÉVIA do Cenário '+String(previewScenario).padStart(2,'0')+' — '+summary+'. O período ainda não foi encerrado; não aplicar agora os ajustes percentuais do caderno.';
- safeAction='Mantenha o ROAS atual de '+roas(d.target)+' e acompanhe a campanha até encerrar o período. O gasto médio é '+money(dailySpend)+'/dia frente ao limite informado de '+money(dailyReference)+'/dia. Após o fechamento, confirme se o limite era realmente diário e estável; reavalie o ROAS e a margem do SKU antes de qualquer ajuste.';
- if(fin&&actual!==null&&actual<fin.breakeven)
-  safeAction+=' Atenção: o ROAS real está abaixo do equilíbrio financeiro; priorize conter prejuízo.';
- alerts.push({level:'warn',text:'PRÉVIA, não decisão final: o dia atual ainda está em andamento. A classificação '+String(previewScenario).padStart(2,'0')+' pode mudar após fechar o período. Nenhuma recomendação de −20% ou +20% será aplicada com base apenas nesta prévia.'});
-}
-if(d.budgetMode==='daily'&&d.minDesiredRoas!==null&&suggestedROAS!==null&&suggestedROAS<d.minDesiredRoas){
- alerts.push({level:'danger',text:'Alerta: a regra recomenda ROAS '+roas(suggestedROAS)+', abaixo do mínimo que você escolheu ('+roas(d.minDesiredRoas)+'). A decisão não será bloqueada.'});
-}
-let unlimitedRule=null;
-if(d.budgetMode==='unlimited'){
- unlimitedRule=unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend});
- rule='REGRA 05 — '+unlimitedRule.name+' com orçamento ILIMITADO: '+unlimitedRule.stage+'. Esta regra NÃO presume que a referência diária seja um orçamento configurado na Shopee.';
- safeAction=unlimitedRule.action;
- alerts.push(...unlimitedRule.alerts);
-}
-return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,previewScenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
+function analyze(d){return window.RedeAdsSingle.analyze(d,calcFinance);}
 function showError(msg){window.RedeAdsQuick?.clearPreview?.();$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
 function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(r.previewScenario)return 'Prévia Cenário '+String(r.previewScenario).padStart(2,'0')+' · período em andamento';if(!r.scenario)return 'Indeterminado · confira os dados do período';return 'Cenário '+String(r.scenario).padStart(2,'0')}
 function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
@@ -948,86 +903,16 @@ function renderSimpleDecision(r,decision){
   $('simpleBasis').textContent='Consulte os dados e justificativas em “Ver todas as métricas”.';
  }
 }
-function render(r){window.RedeAdsQuick?.clearPreview?.();lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;const simpleDecision=makeSimpleDecision(r);$('resultScenario').textContent='Decisão Ads';renderSimpleDecision(r,simpleDecision);$('resultBadge').className='status '+(simpleDecision.tone==='risk'?'red':simpleDecision.tone==='healthy'?'green':'');
-$('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':r.d.budgetMode==='daily'&&!r.d.budgetStable?'Confirmar histórico':'Dados insuficientes';
-const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
-const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
-const performanceItems=[
- ['Orçamento diário',r.d.budgetMode==='unlimited'?'Ilimitado'+(r.simulated?' · referência '+money(r.d.budget)+'/dia':''):money(r.d.budget)],
- ['Meta de ROAS',roas(r.d.target)],
- ['Impulsão Rápida',boostLabel],
- ['Impressões',r.d.impressions===null?'—':Number(r.d.impressions).toLocaleString('pt-BR')],
- ['Cliques',r.d.clicks===null?'—':Number(r.d.clicks).toLocaleString('pt-BR')],
- ['CTR',ctrCalculated!==null?pct(ctrCalculated):r.d.ctrReported!==null?pct(r.d.ctrReported):'—'],
- ['Investimento total',money(r.d.spent)],
- ['Média de investimento diário',r.dailySpend===null?'—':money(r.dailySpend)],
- ['Dias do período',String(r.days)],
- ['ROAS',r.actual===null?'—':roas(r.actual)],
- ['Adicionar ao carrinho',r.d.addToCart===null?'—':String(r.d.addToCart)],
- ['Itens vendidos (Ads informado)',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
- ['Vendas atribuídas (Ads)',r.revenue===null?'—':money(r.revenue)]];
-$('performanceStats').innerHTML=performanceItems.map(([k,v])=>'<div class="stat"><div class="k">'+safe(k)+'</div><div class="v">'+safe(v)+'</div></div>').join('');
-renderOrdersAdsComparison(r);
-window.RedeAdsFinance?.refresh?.(r);
-const decision=$('adsDecisionSummary');
-if(decision){
- decision.hidden=!r.unlimitedRule;
- if(r.unlimitedRule){
-  const u=r.unlimitedRule;
-  decision.className='notice'+(u.risk?' danger':u.stage==='meta atingida'?' ok':'');
-  decision.textContent='ROAS ALVO: '+roas(r.d.target)+' · MÍNIMO DESEJADO: '+(u.minDesired===null?'não informado':roas(u.minDesired))+
-   ' · MÍNIMO FINANCEIRO: '+(u.financialFloor===null?'não validado':Number.isFinite(u.financialFloor)?roas(u.financialFloor):'inviável')+
-   ' · ROAS REAL: '+(r.actual===null?'não disponível':roas(r.actual))+
-   '. DECISÃO · '+u.stage.toUpperCase()+': '+u.action;
- }
+function render(r){
+ window.RedeAdsQuick?.clearPreview?.();
+ lastReport=r;lastData=r.d;
+ $('resultEmpty').style.display='none';
+ $('resultContent').hidden=false;
+ $('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');
+ $('resultName').textContent=r.d.campaign;
+ window.RedeAdsSingle.render(r);
+ window.RedeAdsFinance?.refresh?.(r);
 }
-renderCriticalCampaignDiagnosis(r);
-const dailySummary=$('dailyBudgetSummary');
-if(dailySummary){
- const type=r.d.budgetMode==='daily'?'orçamento real':'valor diário desejado (simulação)';
- const comp=r.dailyReference===null?'Sem referência diária informada':
-   ' • '+type+': '+money(r.dailyReference)+'/dia • utilização média: '+pct(r.consumed)+
-   (r.d.budgetMode==='daily'?
-     (r.d.budgetStable?(r.dailyReferenceReached?' • LIMITE MÉDIO ATINGIDO (critério ≥95%)':' • abaixo do limite médio'):' • limite mudou: comparação indisponível'):
-     (r.dailyReferenceReached?' • referência diária alcançada (NÃO é limite real)':' • abaixo da referência diária'));
- const roasStatus=r.meets===null?'ROAS ainda não confirmado':r.meets?'ROAS alvo atingido':'ROAS alvo não atingido';
- dailySummary.className='notice '+(r.d.budgetMode==='daily'&&r.d.budgetStable&&r.dailyReferenceReached?'':'');
- dailySummary.textContent='📊 Orçamento diário: '+money(r.d.spent)+' investidos ÷ '+r.days+' dia(s) = '+money(r.dailySpend)+'/dia'+comp+
-  ' • '+roasStatus+' ('+(r.actual===null?'—':roas(r.actual))+' / '+roas(r.d.target)+'). '+
-  (r.d.budgetMode==='unlimited'?'Shopee permanece ILIMITADA. ':'')+
-  (!r.d.periodClosed?'Período não encerrado: média e cenário provisórios; não alterar a campanha com base nesta prévia. ':'')+
-  'A média do período não comprova que o limite foi atingido em cada dia individual.';
-}
-$('resultAlerts').innerHTML=r.alerts.map(a=>'<div class="notice '+(a.level==='danger'?'danger':a.level==='ok'?'ok':'')+'">'+safe(a.text)+'</div>').join('');$('ruleExplanation').textContent=r.rule;
-let table='';if(r.unlimitedRule){
- const u=r.unlimitedRule;
- table=tableRender(['Regra 05 · ROAS + orçamento ilimitado','Valor observado','Orientação'],[
- ['Orçamento real Shopee','ILIMITADO','Nenhum teto diário é aplicado pela referência'],
- ['Gasto diário desejado',u.ref===null?'Não informado':money(u.ref),'Controle manual, não limite real'],
- ['Gasto médio diário',u.daily===null?'—':money(u.daily),u.ref===null?'Sem referência':u.daily>u.ref?'Acima do desejado':'Dentro do valor desejado'],
- ['ROAS alvo atual',roas(r.d.target),'Meta na Shopee, não é ROAS garantido'],
- ['ROAS mínimo desejado',u.minDesired===null?'Não informado':roas(u.minDesired),'Mínimo escolhido por você'],
- ['ROAS mínimo financeiro',u.financialFloor===null?'Não validado':Number.isFinite(u.financialFloor)?roas(u.financialFloor):'Inviável','Necessário para a margem cadastrada'],
- ['Mínimo de proteção',u.effectiveMin===null?'Não validado':Number.isFinite(u.effectiveMin)?roas(u.effectiveMin):'Inviável','Maior entre mínimo desejado e financeiro'],
- ['ROAS real',r.actual===null?'—':roas(r.actual),u.financialFloor===null?'Margem ainda não conferida':u.minMet?'Mínimo alcançado':'Mínimo NÃO alcançado'],
- ['Ajuste de ROAS',u.candidate===null?'Manter por enquanto':'Testar '+roas(u.candidate),'Somente após conferência e aprovação manual']
- ]);
-}else if(r.previewScenario){
- table=tableRender(['Conferência da prévia','Resultado','Próxima ação'],[
- ['Campanha','Orçamento diário REAL informado','Confirme que a Shopee não está com orçamento ilimitado'],
- ['Cenário provisório','Cenário '+String(r.previewScenario).padStart(2,'0'),'Não executar alterações de orçamento ou ROAS antes do fechamento'],
- ['Investimento médio',money(r.dailySpend)+'/dia','Comparar com limite diário de '+money(r.dailyReference)],
- ['Utilização média',pct(r.consumed),'Critério de ≥95% é apenas comparativo'],
- ['ROAS real / alvo',(r.actual===null?'—':roas(r.actual))+' / '+roas(r.d.target),'Confirmar margem e período de atribuição'],
- ['ROAS alvo recomendado agora','Manter '+roas(r.d.target),'Sem redução automática de 20% com período parcial']
- ]);
-}else if(r.scenario===4){const b=r.d.budget,t=r.d.target;table=tableRender(['Opção','Orçamento/dia','ROAS alvo','Quando usar'],[[r.simulated?'Referência hipotética':'Atual',money(b),roas(t),r.simulated?'Shopee segue ilimitada':'Referência'],['A · Verba extra', '<strong>'+money(b*1.2)+'</strong>',roas(t),'Escalar alcance'],['B · Sem verba',money(b),'<strong>'+roas(t*1.2)+'</strong>','Buscar eficiência'],['C · Verba + eficiência','<strong>'+money(b*1.2)+'</strong>','<strong>'+roas(t*1.2)+'</strong>','Testar ambos']]);}
-else{table=tableRender(['Configuração','Atual','Regra do caderno'],[...(r.simulated?[['Situação real','Ilimitado','Nenhuma alteração na Shopee']]:[]),[r.simulated?'Referência diária simulada':'Orçamento diário',r.simulated?money(r.d.budget):(r.d.budgetMode==='unlimited'?'Ilimitado':money(r.d.budget)),r.suggestedBudget===null?'—':'<strong>'+money(r.suggestedBudget)+'</strong>'],['ROAS alvo',roas(r.d.target),r.suggestedROAS===null?'—':'<strong>'+roas(r.suggestedROAS)+'</strong>'],[r.simulated?'Consumo da referência':'Consumo do limite',r.consumed===null?'Não calculável':pct(r.consumed),r.scenario?(r.simulated?'Cenário hipotético':'Classificado'):'Indeterminado']]);}
-$('recommendTable').innerHTML=table;
-if(r.fin){const f=r.fin;let finRows=[['Contribuição antes dos Ads por unidade',money(f.contrib)],['ROAS de equilíbrio (0% lucro)',Number.isFinite(f.breakeven)?roas(f.breakeven):'Sem equilíbrio com o preço atual'],['ROAS para margem desejada de '+pct(f.desired),Number.isFinite(f.minRoas)?roas(f.minRoas):'Meta não atingível com o preço atual'],['Margem estimada com ROAS real',f.margin===null?'Não calculável sem vendas atribuídas':pct(f.margin)]];$('financeOutput').innerHTML='<h3 style="font-size:14px;margin:20px 0 8px">Validação de margem · simulação</h3><div class="table-scroll">'+tableRender(['Indicador','Estimativa'],finRows)+'</div><p class="muted-line">Premissas: preço e custos uniformes por unidade, receita atribuída aos anúncios e custos proporcionais. O ROAS alvo não é o ROAS realizado.</p>';}
-else $('financeOutput').innerHTML='<p class="muted-line">Margem não validada. Selecione um SKU cadastrado com dados financeiros completos em Produtos para visualizar ROAS de equilíbrio e a margem desejada.</p>';
-$('safeAction').textContent=r.safeAction;
-const checklist=['Concorrência: preço final e ofertas similares.','Capa, título, fotos e benefícios reais do anúncio.','Frete, prazo de entrega, cupons e avaliação do produto.','Custo WeDrop, taxas CNPJ, impostos e margem líquida.','Estoque disponível e possíveis atrasos no relatório de atribuição.'];$('checkList').innerHTML=checklist.map(v=>'<li>'+safe(v)+'</li>').join('');$('reviewNote').textContent='Reavalie diariamente na primeira semana e, depois, semanalmente. Não execute dois ajustes simultâneos sem registrar o resultado anterior.';}
 function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory();if(tab==='evolucao')window.RedeEvolution?.open();}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
 function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Referência de gasto diário. A Shopee continua ILIMITADA e pode ultrapassar esse valor.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{updateBudgetMode();});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
