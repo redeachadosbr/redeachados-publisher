@@ -37,3 +37,32 @@ test('envio de fotos e prévia ainda exigem validação; publicar exige confirma
  assert.match(js,/PUBLICAR NOVO KIT FORMAL NA SHOPEE/);
  assert.match(js,/token:kitPublishToken,confirm:true/);
 });
+
+
+test('etapa 10 nao exibe o assistente de seis passos e usa o botao unico para anuncios novos',()=>{
+ const audit=js.slice(js.indexOf('function kitWizardExecutionAudit(){'),
+  js.indexOf('function kitWizardUpdateProgress(){'));
+ assert.match(audit,/panel\.hidden=true/);
+ assert.doesNotMatch(audit,/panel\.hidden=!newListing/);
+ assert.match(js,/if\(kitWizardIsNewUnpublished\(\)\)\{[\s\S]*?await kitWizardExecuteNewListingDirect\(\)/);
+ const direct=js.slice(js.indexOf('async function kitWizardExecuteNewListingDirect(){'),
+  js.indexOf('async function kitDiscountPrepare(){'));
+ assert.ok(direct.length>1500);
+ for(const required of [
+  'await kitReadinessCheck()',
+  'await kitSendPhotos()',
+  'await kitPreparePublishPreview()',
+  "/api/shopee/kits/commercial/execute",
+  'kitCurrentMain(prepared.kit)',
+  'kitWizardChecked()',
+  'kitShopeePhotoSlots.size!==9',
+  'done.itemId'
+ ])assert.ok(direct.includes(required),required);
+ assert.ok(direct.indexOf('await kitReadinessCheck()')<direct.indexOf('await kitSendPhotos()'));
+ assert.ok(direct.indexOf('await kitSendPhotos()')<direct.indexOf('await kitPreparePublishPreview()'));
+ assert.ok(direct.indexOf('await kitPreparePublishPreview()')<direct.indexOf("'/api/shopee/kits/commercial/execute'"));
+ assert.doesNotMatch(direct,/kitPublishGuideNext\(\)/);
+ assert.doesNotMatch(direct,/window\.confirm\(/);
+ assert.match(js,/!kitWizardDirectPublishing&&[\s\S]*?!window\.confirm\('O vídeo/);
+ assert.match(js,/!kitWizardDirectPublishing\)\s*setTimeout/);
+});
