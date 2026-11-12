@@ -402,7 +402,9 @@ function kitWizardExecutionAudit(){
  if(panel&&home){
   if(panel.parentElement!==home)home.append(panel);
   const newListing=kitWizardStage===10&&kitWizardIsNewUnpublished();
-  panel.hidden=!newListing;
+  // O botão único da etapa 10 substitui o assistente comercial visível.
+  // Mantemos os campos no DOM para reutilizar o rascunho sem recriar telas.
+  panel.hidden=true;
   const heading=panel.querySelector('.kit-formal-header h3');
   if(heading)heading.textContent=newListing?'Criar anúncio comercial do kit na Shopee':'Criar Kit Formal na Shopee';
   const guide=panel.querySelector('.kit-publish-guide-copy strong');
@@ -1063,9 +1065,7 @@ function kitWizardInit(){
   // sem exigir anúncios dos complementares e sem tentar otimizar outra SKU.
   if(kitWizardIsNewUnpublished()){
    kitWizardExecutionIntent=false;
-   kitWizardExecutionAudit();
-   kitWizardExecutionFeedback('Anúncio novo: conferindo categoria, imagens, logística e atributos oficiais para publicar apenas a SKU principal.','info');
-   await kitPublishGuideNext();
+   await kitWizardExecuteNewListingDirect();
    return;
   }
   // Atualização: recuperar somente o Item ID verdadeiro já publicado.
@@ -2245,8 +2245,8 @@ function kitCommercialCategoryUi(result){
  const chosen=String(result.requestedCategoryId||oldId||(result.categories||[])[0]?.id||'');
  if(chosen&&[...input.options].some(o=>o.value===chosen))input.value=chosen;
  // Recarregar automaticamente a árvore oficial após receber a primeira sugestão.
- if(chosen&&!result.requestedCategoryId)
-  setTimeout(()=>{if(kitCommercialMode()&&kitWizardStage===10&&!kitPublishBusy)void kitReadinessCheck();},100);
+ if(chosen&&!result.requestedCategoryId&&!kitWizardDirectPublishing)
+  setTimeout(()=>{if(kitCommercialMode()&&kitWizardStage===10&&!kitPublishBusy&&!kitWizardDirectPublishing)void kitReadinessCheck();},100);
  else if(chosen){input.append(new Option('Categoria '+chosen,chosen));input.value=chosen;}
  label.append(input);catRow.append(label);
  const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Atualizar atributos';
@@ -2378,7 +2378,8 @@ async function kitSendPhotos(){
 }
 async function kitPreparePublishPreview(){
  if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit primeiro.','error');
- if(kitVideoData&&!kitVideoRemote?.ready&&
+ // Vídeo opcional pendente não bloqueia a publicação pelo botão único.
+ if(kitVideoData&&!kitVideoRemote?.ready&&!kitWizardDirectPublishing&&
   !window.confirm('O vídeo deste kit está salvo localmente, mas NÃO foi confirmado pela Shopee. Gerar a prévia SEM o vídeo?'))return;
  if(kitPublishBusy)return;
  if(!kitReadiness||kitReadiness.blockers?.length)
@@ -2428,6 +2429,7 @@ async function kitPreparePublishPreview(){
 // Fluxo guiado: automatiza conferência e envio de mídia, mas NUNCA o botão
 // de publicar. A autorização final continua explícita após a prévia assinada.
 let kitPublishGuideBusy=false;
+let kitWizardDirectPublishing=false;
 function kitRefreshDiagnosis(){
  const card=$('#kitPublishFreshness'),reason=$('#kitPublishFreshnessReason');
  if(!card||!reason)return;
@@ -2671,6 +2673,131 @@ async function kitPublishExecute(){
    ' na Central do Vendedor antes de qualquer novo envio.';
  }finally{kitPublishBusy=false;$('#kitPublishExecute').disabled=false;}
 }
+
+/**
+ * Etapa 10: criar o anúncio comercial a partir do rascunho já revisado.
+ * Sem abrir o assistente visual e sem criar um Kit Formal.
+ * Preview assinado e proteção de duplicidade continuam obrigatórios no servidor.
+ */
+async function kitWizardExecuteNewListingDirect(){
+ if(kitWizardDirectPublishing||kitPublishBusy||!prepared?.kit||kitWizardStage!==10)return;
+ const kitSku=String(prepared.kit.kitSku);
+ const button=$('#kitWizardOpenExecution');
+ const progress=(message,level='info')=>{
+  if(prepared?.kit?.kitSku!==kitSku)return;
+  kitWizardExecutionFeedback(message,level);
+  kitPublishStatus(message,level);
+ };
+ kitWizardDirectPublishing=true;
+ if(button)button.disabled=true;
+ try{
+  progress('Conferindo os dados salvos e a SKU principal...');
+  if(!kitSaved&&!await saveDraft())throw Error('Não foi possível salvar o rascunho.');
+  if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
+
+  // Preserve a categoria previamente revisada; se não houve revisão,
+  // só usar uma categoria recomendada pela API oficial da Shopee.
+  const categoryBefore=Number($('#kitCommercialCategoryId')?.value||0);
+  const categoryPreviouslyApproved=$('#kitCommercialCategoryApproved')?.checked===true;
+  // A Shopee valida novamente preço, estoque, categoria e duplicidade no backend.
+  kitReadiness=null;
+  await kitReadinessCheck();
+  if(!kitReadiness)throw Error('A consulta das opções oficiais da Shopee não foi concluída.');
+  if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
+  let categoryId=Number($('#kitCommercialCategoryId')?.value||0);
+  if(!categoryId)throw Error('A Shopee não retornou uma categoria para o anúncio.');
+  if(Number(kitReadiness.requestedCategoryId||0)!==categoryId){
+   progress('Obtendo os atributos oficiais da categoria sugerida pela Shopee...');
+   kitReadiness=null;
+   await kitReadinessCheck();
+   if(!kitReadiness||Number(kitReadiness.requestedCategoryId)!==categoryId)
+    throw Error('Não foi possível carregar os atributos oficiais da categoria.');
+  }
+  if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
+  if(!kitReadiness.categories?.some(category=>Number(category.id)===categoryId))
+   throw Error('A categoria selecionada não foi confirmada pela Shopee.');
+  const recommended=(kitReadiness.recommendedCategoryIds||[]).map(Number);
+  if(!(categoryPreviouslyApproved&&categoryBefore===categoryId)&&
+     !recommended.includes(categoryId))
+   throw Error('A Shopee não recomendou uma categoria segura para publicação automática. Nenhuma publicação foi enviada.');
+
+  // O clique em "Executar na Shopee" autoriza usar a categoria oficial
+  // selecionada no rascunho, sem exigir uma segunda confirmação visual.
+  const categoryApproved=$('#kitCommercialCategoryApproved');
+  if(categoryApproved)categoryApproved.checked=true;
+  const missing=[...document.querySelectorAll('#kitCommercialAttributeList [data-kit-commercial-attribute]')]
+   .filter(input=>!String(input.value||'').trim());
+  if(missing.length){
+   const names=missing.map(input=>input.closest('label')?.textContent?.trim()||'atributo obrigatório');
+   throw Error('A Shopee exige dados não cadastrados: '+names.join(', ')+'. Nenhum valor foi inventado.');
+  }
+  const principal=kitCurrentMain(prepared.kit);
+  const main=$('#kitMainSku');
+  if(main&&[...main.options].some(option=>option.value===principal))main.value=principal;
+  if(!main?.value||main.value!==principal)
+   throw Error('Não consegui recuperar a SKU principal validada para este kit.');
+  if(!$('#kitLogisticId')?.value)throw Error('A Shopee não retornou um canal de envio ativo.');
+  const weight=Number($('#kitWeightKg')?.value||0);
+  if(!Number.isFinite(weight)||weight<=0||weight>30)
+   throw Error('O peso do pacote salvo não está válido em kg.');
+  if(['#kitLengthCm','#kitWidthCm','#kitHeightCm'].some(id=>Number($(id)?.value||0)<=0))
+   throw Error('Faltam as medidas reais salvas do pacote.');
+
+  // Checks verdes das etapas anteriores valem como confirmação já registrada.
+  const checked=new Set(kitWizardChecked());
+  if(checked.has(1)){
+   $('#kitContentsReviewed').checked=true;
+   $('#kitSingleParcelConfirmed').checked=true;
+  }
+  if(checked.has(2))$('#kitPhotosReviewed').checked=true;
+  if(!$('#kitContentsReviewed').checked||!$('#kitPhotosReviewed').checked||
+     !$('#kitSingleParcelConfirmed').checked)
+   throw Error('A composição, as fotos ou o envio conjunto ainda não foram conferidos.');
+  if(images.size!==9)throw Error('O kit precisa das nove imagens revisadas antes de publicar.');
+  if(kitShopeePhotoSlots.size<9){
+   progress('Sincronizando as imagens já aprovadas com a Shopee...');
+   await kitSendPhotos();
+   if(kitShopeePhotoSlots.size!==9)throw Error('A Shopee não confirmou as nove imagens. Nenhuma publicação foi iniciada.');
+  }
+  if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
+  // O vídeo é opcional: quando pendente, não será enviado nem bloqueará o anúncio.
+  progress('Validando a prévia internamente e verificando duplicidades...');
+  await kitPreparePublishPreview();
+  if(!kitPublishToken)throw Error('A Shopee não aprovou a prévia. Nenhuma publicação foi iniciada.');
+  const token=kitPublishToken;
+  const fields=kitCommercialFields();
+  progress('Criando o anúncio da SKU principal na Shopee...');
+  // Único comando de criação. O backend trava reenvios e respostas incertas.
+  const done=await api('/api/shopee/kits/commercial/execute',{body:{
+   kitSku,fields,token,confirm:true
+  }});
+  if(!done?.itemId)throw Error('A Shopee não retornou Item ID; consulte o status antes de tentar novamente.');
+  kitItemId=done.itemId;
+  clearKitPublishApproval();
+  $('#kitDiscountNext').hidden=false;
+  $('#kitPublishedMessage').textContent='Kit '+kitSku+' · Item ID '+done.itemId+
+   ' · Status '+done.status+'. '+String(done.message||'');
+  progress('✓ Anúncio criado na Shopee. Item ID '+done.itemId+
+   (done.status==='published'?' · publicação confirmada.':' · aguardando confirmação do status.'),'success');
+  if(done.status==='published'){
+   const stages=new Set(kitWizardChecked());
+   stages.add(10);
+   try{localStorage.setItem(kitWizardStorageKey(kitSku),JSON.stringify([...stages].sort((a,b)=>a-b)));}
+   catch{}
+   kitWizardUpdateProgress();
+  }
+  void loadDrafts();
+ }catch(error){
+  const message=String(error?.message||error);
+  progress('Não concluído: '+message+
+   (/(incerta|não retornou Item ID|resposta da Shopee)/i.test(message)?
+    ' Não repita o envio sem conferir o anúncio na Shopee.':''),'error');
+ }finally{
+  kitWizardDirectPublishing=false;
+  if(button)button.disabled=false;
+ }
+}
+
 async function kitDiscountPrepare(){
  if(!prepared||!kitItemId)return kitPublishStatus('Confirme o novo Item ID antes do desconto.','error');
  if(kitPublishBusy)return;

@@ -89,6 +89,8 @@ export async function commercialReadiness({cfg,auth,kitSku,categoryId=0}){
  const categories=candidates.map(id=>({id,name:names.find(x=>x.id===id)?.name||'Categoria Shopee '+id}));
  const attrs=tree?commercialCategoryFields(tree,categoryId,[]):[];
  return {kitSku,mainSku,mode:'commercial',categories,
+  // Diferencia categoria sugerida oficialmente de fallback generico.
+  recommendedCategoryIds:recommended,
   requestedCategoryId:validId(categoryId)?Number(categoryId):null,
   attributes:attrs,channels:logistics,
   uploadedImageIds:kitUploadedMedia(auth.shopId,kitSku),
