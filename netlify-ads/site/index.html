@@ -1665,9 +1665,108 @@ $('minDesiredRoas').addEventListener('change',()=>{
  updateMinDesiredRoasHint();
 });
 function selectProductForAds(sku,jump){const p=readProducts().find(x=>x.sku===sku);if(!p)return;if($('campaignAdsFilter').value&&effectiveAdsStatus(p)!==$('campaignAdsFilter').value)$('campaignAdsFilter').value='';refreshProductSelect();$('productSelect').value=sku;showCurveInAds();loadMinDesiredRoas();$('campaign').value=p.name+' — SKU '+p.sku;if(p.target>0)$('target').value=p.target;else $('target').value='';if(jump)switchTab('simulador');}
-$('productForm').addEventListener('submit',ev=>{ev.preventDefault();updatePriceMode();let p=normalizeProduct(readProductForm());const errors=validateProduct(p);if($('pImageUrl').value.trim()&&!safeProductPhotoUrl($('pImageUrl').value))errors.unshift('A foto precisa de um link HTTPS válido, ou deixe o campo em branco.');if(errors.length){$('productError').hidden=false;$('productError').textContent=errors.join(' ');return;}
-const items=readProducts();let i=items.findIndex(v=>v.sku===p.sku);if(i>=0&&editingSku!==p.sku){$('productError').hidden=false;$('productError').textContent='Esta SKU já existe. Use Editar para atualizar.';return;}
-if(i>=0){const old=items[i];p.adsStatusChangedAt=adsStatusOf(old)===adsStatusOf(p)?old.adsStatusChangedAt:new Date().toISOString();p.linkedCampaignIds=old.linkedCampaignIds||[];p.adsMinRoas=old.adsMinRoas??null;items[i]=p}else{p.adsStatusChangedAt=p.adsStatus==='unknown'?'':new Date().toISOString();items.push(p)}const ok=persistProducts(items);renderProductList();refreshProductSelect();resetProductForm();$('dataStatus').textContent=ok?'Produto salvo neste navegador. Faça backup JSON periodicamente.':'Não foi possível gravar no navegador. Faça o download do backup JSON nesta sessão.';alert('Produto '+p.sku+' '+(i>=0?'atualizado.':'cadastrado.')+(ok?'':' ATENÇÃO: sem armazenamento persistente.'));
+// Correção de SKU no cadastro (sem alterar qualquer identificador na Shopee).
+function commitSkuCorrection(plan){
+ if(!storageAvailable)throw Error('Armazenamento indisponível. Não foi possível salvar com segurança.');
+ const values={
+  [CHANGE_KEY]:plan.changes,[ADS_SNAPSHOTS_KEY]:plan.adsSnapshots,
+  [STORAGE_KEY]:plan.history,[API_CHOICE_KEY]:plan.preferences,
+  redeachados_ads_lucro_manual_v1:plan.profitKeys
+ };
+ const backup=new Map(Object.keys(values).map(key=>[key,localStorage.getItem(key)]));
+ try{
+  // Grave os dados vinculados primeiro: o hook de persistProducts sincroniza o
+  // retrato final inteiro com o Google Drive e marca a SKU antiga como removida.
+  for(const [key,value] of Object.entries(values))
+   localStorage.setItem(key,JSON.stringify(value));
+  if(!persistProducts(plan.products))throw Error('Falha ao gravar o catálogo atualizado.');
+ }catch(error){
+  for(const [key,raw] of backup){
+   try{if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw)}
+   catch{/* localStorage indisponível */}
+  }
+  throw error;
+ }
+}
+$('productForm').addEventListener('submit',ev=>{
+ ev.preventDefault();
+ updatePriceMode();
+ const p=normalizeProduct(readProductForm()),errors=validateProduct(p);
+ if($('pImageUrl').value.trim()&&!safeProductPhotoUrl($('pImageUrl').value))
+  errors.unshift('Informe uma URL HTTPS válida para a foto, ou deixe em branco.');
+ if(errors.length){
+  $('productError').hidden=false;$('productError').textContent=errors.join(' ');return;
+ }
+ const products=readProducts(),oldSku=editingSku;
+ const original=oldSku?products.find(x=>x.sku===oldSku):null;
+ if(oldSku&&!original){
+  $('productError').hidden=false;
+  $('productError').textContent='O produto original não foi localizado. Clique em Editar novamente na lista.';
+  return;
+ }
+ if(original){
+  p.adsStatusChangedAt=adsStatusOf(original)===adsStatusOf(p)?
+   original.adsStatusChangedAt:new Date().toISOString();
+  p.linkedCampaignIds=original.linkedCampaignIds||[];
+  p.adsMinRoas=original.adsMinRoas??null;
+  if(p.sku!==oldSku){
+   let plan;
+   try{
+    plan=window.RedeAdsSkuRename.plan({
+     oldSku,newSku:p.sku,editedProduct:p,products,
+     changes:getChanges(),adsSnapshots:getAdsSnapshots(),history:getHistory(),
+     preferences:JSON.parse(localStorage.getItem(API_CHOICE_KEY)||'{}'),
+     profitKeys:JSON.parse(localStorage.getItem('redeachados_ads_lucro_manual_v1')||'{}'),
+     at:new Date().toISOString()
+    });
+   }catch(error){
+    $('productError').hidden=false;
+    $('productError').textContent=String(error.message||error);return;
+   }
+   const accepted=confirm('Corrigir a SKU deste produto no Rede Achados Ads?\n\n'+
+    oldSku+' → '+plan.after+'\n\nTodos os dados históricos e os vínculos cadastrados serão mantidos.'+
+    '\nNenhum anúncio será modificado na Shopee.');
+   if(!accepted)return;
+   try{commitSkuCorrection(plan)}
+   catch(error){
+    $('productError').hidden=false;
+    $('productError').textContent='Não foi possível corrigir a SKU: '+String(error.message||error);return;
+   }
+   if(apiObservedAdsStatus.has(oldSku)){
+    apiObservedAdsStatus.set(plan.after,apiObservedAdsStatus.get(oldSku));
+    apiObservedAdsStatus.delete(oldSku);
+   }
+   lastReport=null;lastData=null;lastAdsFilledCampaignKey='';
+   hideApiCampaignPicker();
+   $('campaignAdsFilter').value='';
+   renderProductList();refreshProductSelect();
+   $('productSelect').value=plan.after;
+   showCurveInAds();loadMinDesiredRoas();
+   renderHistory();renderChangeHistory();
+   resetProductForm();
+   $('dataStatus').textContent='SKU corrigida '+oldSku+' → '+plan.after+
+    '. Confira a sincronização no Google Drive na barra superior.';
+   alert('✓ SKU corrigida no aplicativo: '+oldSku+' → '+plan.after+
+    '.\nO histórico foi preservado. Confira se o Google Drive mostra “Sincronizado”.');
+   return;
+  }
+  const idx=products.findIndex(x=>x.sku===oldSku);
+  products[idx]=p;
+ }else{
+  if(products.some(x=>x.sku===p.sku)){
+   $('productError').hidden=false;
+   $('productError').textContent='Esta SKU já está cadastrada. Clique em Editar na lista.';return;
+  }
+  p.adsStatusChangedAt=p.adsStatus==='unknown'?'':new Date().toISOString();
+  products.push(p);
+ }
+ if(!persistProducts(products)){
+  $('productError').hidden=false;
+  $('productError').textContent='Não foi possível salvar o produto. O formulário foi preservado.';return;
+ }
+ renderProductList();refreshProductSelect();resetProductForm();
+ $('dataStatus').textContent='Produto salvo. Confira o status de sincronização com Google Drive.';
+ alert('Produto '+p.sku+' '+(original?'atualizado.':'cadastrado.'));
 });
 $('clearProductBtn').addEventListener('click',resetProductForm);
 for(const btn of document.querySelectorAll('[data-price-mode]'))btn.addEventListener('click',()=>showPriceMode(btn.dataset.priceMode));
