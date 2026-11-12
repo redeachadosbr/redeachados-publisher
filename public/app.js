@@ -10942,7 +10942,15 @@ function optimizerTechnicalRender(data){
  }
  const countTag=$('#optimizerTechImagesCount'),imageCount=(data.sourceEvidence?.screenshots||[]).length;
  if(data.technicalSkuFactsApplied){
-  optimizerTechNotice('✓ Informações por SKU recuperadas do kit e cruzadas com a WeDrop. Indicação, dimensões e demais dados comprovados foram aplicados ao rascunho para conferência; nada foi publicado.','success');
+  const drafts=(data.technicalDraft?.fields||[]).filter(f=>f.enabled&&!f.userDisabled&&
+   f.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
+  const auto=drafts.filter(f=>f.source==='wedrop-auto').length;
+  const existing=(data.attributes||[]).filter(a=>!a.conditional&&a.values?.length).length;
+  const suggestions=(data.sourceFacts?.suggestions||[]).length;
+  optimizerTechNotice('✓ Ficha da SKU principal: '+existing+' atributo(s) já na Shopee, '+
+   auto+' preenchido(s) no rascunho com dados da WeDrop e '+
+   suggestions+' sugestão(ões) comprovadas localizadas. '+
+   'Os demais campos dependem de informação real; nenhuma alteração foi publicada.','success');
  }else if(data.supplierProduct&&data.sourceEvidence?.sourceText){
   optimizerTechNotice('Dados da WeDrop e texto vinculados a esta SKU. Sugestões compatíveis já aparecem na prévia; use “Ler dados” para interpretar prints.','info');
  }else if(data.supplierProduct){

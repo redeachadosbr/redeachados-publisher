@@ -108,7 +108,7 @@ import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
 import {marketFloorDiscountEligibility,unresearchedMarginApprovalEligible} from './shopeeMarketFloorApproval.js';
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
-import {scanLiveNormalSku,catalogCandidatesIfNoActive} from './shopeeSkuActiveResolver.js';
+import {scanLiveNormalSku,catalogCandidatesIfNoActive,selectNewestVerifiedSkuTarget} from './shopeeSkuActiveResolver.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -1929,21 +1929,31 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
   }
   // Só usar pesquisa por SKU como alternativa de descoberta. Ela pode omitir
   // anúncios existentes; não substituir automaticamente um ID persistido.
-  const search=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
+  const search=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{
+   fastOnly:req.query?.deep!=='1'
+  });
   const matches=(search.matches||[]).filter(x=>String(x.sku)===sku&&
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()))
    .map(x=>({itemId:String(x.itemId),modelId:String(x.modelId??0),
-    sku,title:String(x.title||sku),status:String(x.status)}));
+    sku,title:String(x.title||sku),status:String(x.status),
+    createTime:Number(x.createTime)||null}));
+  // Prioridade: vínculo confirmado > criação mais recente oficialmente datada.
+  const newest=!storedItemId?selectNewestVerifiedSkuTarget(matches):null;
   const linked=storedItemId&&!directMismatch?
    matches.find(x=>String(x.itemId)===storedItemId&&
     String(x.modelId||'0')===storedModelId):null;
   res.json({ok:true,kitSku,sku,searchMode:'direct_exact_fallback',
    matches,verifiedSavedTarget:linked?
     {sku,itemId:linked.itemId,modelId:linked.modelId}:null,
+   preferredVerifiedTarget:newest?.preferredTarget?
+    {sku,itemId:newest.preferredTarget.itemId,modelId:newest.preferredTarget.modelId}:null,
+   preferredItemId:newest?.preferredItemId||null,
+   selectionReason:newest?.selectionReason||'saved_item_id_requires_readback',
    savedItemId:storedItemId||null,notFound:!matches.length,canDeepSearch:true,
    warnings:[...(directFailure?['A leitura direta do Item ID salvo falhou: '+directFailure]:[]),
     ...(search.warnings||[])].slice(0,3),marketplaceUpdated:false,
    message:directMismatch?'O Item ID salvo divergiu da ficha da Shopee. Nenhum outro anúncio será vinculado automaticamente.':
+    newest?.preferredTarget&&matches.length>1?'Anúncio mais recente selecionado pela data oficial de criação da Shopee.':
     matches.length?'Anúncio localizado pela SKU exata na Shopee.':
     'Busca rápida não encontrou anúncio; o Item ID salvo também não foi confirmado por leitura direta.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340),marketplaceUpdated:false});}

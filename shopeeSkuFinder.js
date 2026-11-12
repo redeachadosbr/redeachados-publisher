@@ -30,6 +30,7 @@ export async function findLiveShopeeSku(cfg,auth,callApi,sku,{maxPages=12,maxMod
       title:String(base.item_name||'Produto Shopee'),
       imageUrl:String(base.image?.image_url_list?.[0]||''),
       status:String(base.item_status||''),
+      createTime:Number(base.create_time??base.createTime??0)||null,
       source:model?'shopee_model_live':'shopee_item_live'
     });
     return true;
@@ -98,7 +99,9 @@ export async function findLiveShopeeSku(cfg,auth,callApi,sku,{maxPages=12,maxMod
       for(const item of matched){
         matches.set(String(item.itemId)+':0',{
           itemId:String(item.itemId),modelId:'0',sku,title:item.title,
-          imageUrl:item.imageUrl||'',status:item.status||'',source:'shopee_catalog_refresh'
+          imageUrl:item.imageUrl||'',status:item.status||'',
+          createTime:Number(item.createTime??0)||null,
+          source:'shopee_catalog_refresh'
         });
       }
       for(const item of items){

@@ -79,3 +79,20 @@ export function catalogCandidatesIfNoActive({cached=[],sku,live=[],normalScanCom
  }
  return [...uniq.values()];
 }
+
+
+// Resolver SKU repetida pela data oficial de criação (não por maior ID).
+// Ausência ou empate de data não permite alterar um anúncio arbitrário.
+export function selectNewestVerifiedSkuTarget(candidates=[]){
+ const active=(Array.isArray(candidates)?candidates:[]).filter(x=>
+  /^[1-9]\d{0,17}$/.test(String(x?.itemId||''))&&
+  ['NORMAL','UNLIST'].includes(String(x?.status||'').toUpperCase()));
+ const dated=active.length>0&&active.every(x=>
+  Number.isFinite(Number(x.createTime))&&Number(x.createTime)>0);
+ if(!dated)return {preferredItemId:null,preferredTarget:null,selectionReason:'creation_time_missing'};
+ const sorted=[...active].sort((a,b)=>Number(b.createTime)-Number(a.createTime));
+ if(sorted.length>1&&Number(sorted[0].createTime)===Number(sorted[1].createTime))
+  return {preferredItemId:null,preferredTarget:null,selectionReason:'creation_time_tied'};
+ return {preferredItemId:String(sorted[0].itemId),preferredTarget:sorted[0],
+  selectionReason:'newest_verified_creation_time'};
+}

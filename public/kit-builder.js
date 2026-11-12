@@ -15,7 +15,7 @@ import {kitImagesLookDuplicated} from './kit-image-guard.js';
 import {validateKitCoverImage} from './kit-cover-validation.js?v=1';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
-import {initExistingKitOptimization} from './kit-existing-optimization.js?v=18-media-resume';
+import {initExistingKitOptimization} from './kit-existing-optimization.js?v=19-duplicate-newest';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -148,7 +148,7 @@ async function kitWizardResumeTargetForExecution(){
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase())&&
    /^[1-9]\d{0,17}$/.test(String(x.itemId||'')));
   const prior=prepared.optimization||null;
-  const backend=search.verifiedSavedTarget||null;
+  const backend=search.verifiedSavedTarget||search.preferredVerifiedTarget||null;
   const savedId=backend?.sku===principal?String(backend.itemId||''):
    prior?.sku===principal&&prior?.mainSku===principal?
    String(prior.itemId||''):'';
@@ -663,7 +663,7 @@ async function kitWizardRequestTechnical({force=false}={}){
    return;
   }
   kitWizardTechnicalStatus('Consultando a ficha técnica original da SKU principal '+code+
-   '. Se houver mais de um anúncio, escolha o Item ID confirmado abaixo. Nenhuma alteração será publicada.','info');
+   '. Havendo anúncios repetidos, a seleção usa a data de criação da Shopee. Nenhuma publicação será realizada.','info');
   const started=await open();
   if(started!==true&&kitWizardTechnicalLoadingFor===identity){
    kitWizardTechnicalLoadingFor='';

@@ -257,11 +257,11 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    // Kit com ID informado: consultar a ficha oficial DIRETAMENTE por item_id.
    // Evita percorrer todas as páginas do catálogo em toda abertura do kit.
    const pinned=USER_CONFIRMED_KIT_TARGETS[current];
-   const endpoint=current==='KIT-TX24505K-TX24508E'
-    ?'/api/shopee/kits/optimization/find?'+new URLSearchParams({kitSku:current,sku:code,mainSku:code})
-    :pinned
+   const endpoint=pinned&&current!=='KIT-TX24505K-TX24508E'
     ?'/api/shopee/optimizer/audit?'+new URLSearchParams({item_id:pinned,sku:code})
-    :'/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:deep?'1':'0'});
+    :'/api/shopee/kits/optimization/find?'+new URLSearchParams({
+      kitSku:current,sku:code,mainSku:code,...(deep?{deep:'1'}:{})
+     });
    const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(pinned?25000:deep?60000:30000)])});
    if(pinned&&data.record){
     const r=data.record;
@@ -283,26 +283,33 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     return null;
    }
    const correctedId=USER_CONFIRMED_KIT_TARGETS[current];
-   const choose=m=>{
+   const choose=(m,autoVerified=false)=>{
     target={kitSku:current,sku:code,itemId:String(m.itemId),
-     modelId:String(m.modelId??'0'),prepared:false,autoVerified:false};
-    $('#kitOptimizeConfirm').checked=false;
+     modelId:String(m.modelId??'0'),prepared:false,autoVerified};
+    $('#kitOptimizeConfirm').checked=autoVerified;
     $('#kitOptimizeSelected').textContent='Item ID '+m.itemId+' · SKU '+code;
-    notice(target.autoVerified?'SKU principal e Item ID confirmados. Validando composição WeDrop...':
+    notice(autoVerified?'✓ Item ID e SKU principal verificados pela Shopee.':
      'Anúncio da SKU principal localizado. Confirme o Item ID antes de otimizar.','success');
     globalThis.RAKitLookupPhase?.('Item ID '+m.itemId+' confirmado na consulta da Shopee.');
     paint();
    };
-   // Prioridade: data real de criação da Shopee, nunca o Item ID salvo anteriormente.
-   // Conferência humana e auditoria de composição continuam obrigatórias.
-   const preferred=matches.find(m=>String(m.itemId)===String(correctedId||data.preferredItemId||''));
+   // Vínculo salvo confirmado > data de criação oficial > SKU única.
+   // Nenhum dado é enviado à Shopee nesta escolha.
+   const verified=data.verifiedSavedTarget||data.preferredVerifiedTarget||null;
+   const preferredId=String(correctedId||verified?.itemId||data.preferredItemId||'');
+   const preferred=matches.find(m=>String(m.itemId)===preferredId&&
+    (!verified||String(m.modelId||'0')===String(verified.modelId||'0')))||
+    (!preferredId&&matches.length===1?matches[0]:null);
    if(preferred){
-    choose(preferred);
-    notice('Anúncio mais recente confirmado pela Shopee: Item ID '+preferred.itemId+
-     '. Confirme este vínculo e valide a composição do kit antes de preparar.','success');
+    choose(preferred,true);
+    const reason=data.verifiedSavedTarget?'vínculo salvo confirmado':
+     data.preferredVerifiedTarget?'data oficial de criação mais recente':
+     'único anúncio correspondente à SKU';
+    notice('✓ Item ID '+preferred.itemId+' selecionado automaticamente ('+reason+
+     '). Ficha técnica pronta para carregar, sem publicação.','success');
    }
    // Manter alternativas visíveis para auditoria, sem escolher IDs antigos automaticamente.
-   $('#kitOptimizeAdvanced').open=true;
+   $('#kitOptimizeAdvanced').open=!preferred;
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
     button.textContent='Item ID '+m.itemId+' · '+(m.title||code)+' · Modelo '+String(m.modelId??'0');
@@ -316,8 +323,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     root.append(button);
    }
    if(!preferred){
-    // Dois ou mais anúncios com a mesma SKU não são erro de consulta.
-    // Encerrar explicitamente o estado visual e solicitar Item ID sem escolher por preço ou por número.
+    // Só pedir escolha quando faltar data oficial ou houver divergência real.
+    // Nunca presumir que o maior Item ID é o mais novo.
     $('#kitOptimizeSelected').textContent='Busca concluída: '+matches.length+' anúncio(s) da SKU '+code+'. Selecione o Item ID correto abaixo.';
     notice(correctedId?'O Item ID anteriormente indicado não foi confirmado. Selecione o anúncio correto na lista.':
      'Busca concluída. Existem '+matches.length+' anúncios com esta SKU. Clique no Item ID do anúncio que será transformado em kit e confirme o vínculo.','warning');
