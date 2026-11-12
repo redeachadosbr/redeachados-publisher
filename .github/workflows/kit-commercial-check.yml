@@ -12,6 +12,7 @@ on:
       - 'shopeeKitBuilder.js'
       - 'shopeeKitDiscountService.js'
       - 'tests/pricingFinalCents.test.js'
+      - 'tests/kitMarginPricing.test.js'
       - 'tests/shopeeKitDiscountQuoteV5.test.js'
       - 'tests/shopeeKitBuilder.test.js'
       - 'server.js'
@@ -33,4 +34,4 @@ jobs:
       - name: Validar sintaxe
         run: npm run check
       - name: Regressão criação comercial de kits
-        run: node --test tests/shopeeKitCommercial.test.js tests/shopeeKitPublish.test.js tests/kitPublicationGuide.test.js tests/pricingFinalCents.test.js tests/shopeeKitDiscountQuoteV5.test.js tests/shopeeKitBuilder.test.js
+        run: node --test tests/shopeeKitCommercial.test.js tests/shopeeKitPublish.test.js tests/kitPublicationGuide.test.js tests/kitMarginPricing.test.js tests/shopeeKitDiscountQuoteV5.test.js tests/shopeeKitBuilder.test.js
