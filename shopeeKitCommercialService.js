@@ -2,7 +2,7 @@
 // precisam ter anúncio Shopee. Mantém Kit Formal e otimizador isolados.
 import crypto from 'node:crypto';
 import {callShopeeShopApi} from './shopee.js';
-import {loadKitDraft,claimKitPublication,recordKitPublication} from './shopeeKitDraftStore.js';
+import {loadKitDraft,saveKitDraftLogistics,claimKitPublication,recordKitPublication} from './shopeeKitDraftStore.js';
 import {composeKit} from './shopeeKitBuilder.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {kitUploadedMedia,kitVideoStatus} from './shopeeKitPublicationService.js';
@@ -13,6 +13,13 @@ const str=x=>String(x??'').trim();
 const validId=x=>Number.isSafeInteger(Number(x))&&Number(x)>0;
 const request=(cfg,auth,path,query={})=>callShopeeShopApi(cfg,{
  path,accessToken:auth.accessToken,shopId:auth.shopId,query});
+// O identificador interno do kit não decide a SKU principal da Shopee.
+export function resolveCommercialKitMainSku(saved){
+ const skus=(saved?.skus||[]).map(str),chosen=str(saved?.logistics?.mainSku);
+ const mainSku=skus.includes(chosen)?chosen:str(saved?.kit?.components?.[0]?.sku);
+ if(!skus.includes(mainSku))throw Error('A SKU principal não pertence aos componentes WeDrop.');
+ return mainSku;
+}
 async function getCurrent(auth,kitSku){
  const saved=await loadKitDraft(auth.shopId,kitSku);
  if(!saved?.kit||!Array.isArray(saved.skus))throw Error('Rascunho de kit não salvo nesta loja.');
@@ -20,12 +27,7 @@ async function getCurrent(auth,kitSku){
   throw Error('A publicação já foi iniciada ou existe Item ID. Consulte o status antes de tentar novamente.');
  if(saved.optimization?.itemId||saved.optimizationFinalization?.itemId)
   throw Error('O kit já está vinculado a um anúncio: use a otimização, não a criação.');
- const savedMain=str(saved.logistics?.mainSku);
- // Ordem comercial confirmada: no KIT-894182-894939 a Bola 894939 é principal.
- const explicit=kitSku==='KIT-894182-894939'&&saved.skus.map(str).includes('894939')?'894939':'';
- const mainSku=explicit||(saved.skus.map(str).includes(savedMain)?savedMain:str(saved.kit.components?.[0]?.sku));
- if(!saved.skus.map(str).includes(mainSku))
-  throw Error('A SKU principal não pertence aos componentes WeDrop.');
+ const mainSku=resolveCommercialKitMainSku(saved);
  const kit=await composeKit(auth.shopId,saved.skus,{
   marginPct:Number(saved.kit.quote?.targetMarginPct??15),
   packing:Number(saved.kit.packing||0),shipping:Number(saved.kit.shipping||0)
@@ -107,8 +109,6 @@ async function prepared({cfg,auth,kitSku,input}){
  if(!tree)throw Error('Categoria da Shopee ausente ou não confirmada.');
  const fields=commercialKitFields(input,kit,allowed,kitUploadedMedia(auth.shopId,kitSku));
  if(!saved.skus.map(str).includes(fields.mainSku))throw Error('A SKU principal não pertence ao kit.');
- if(kitSku==='KIT-894182-894939'&&fields.mainSku!==mainSku)
-  throw Error('A principal confirmada deste kit é a Bola Interativa 894939, não a Escova 894182. Recarregue a etapa 10 para recuperar a escolha.');
  if(fields.title!==str(saved.creative.title)||fields.description!==str(saved.creative.description))
   throw Error('Título ou descrição divergentes do rascunho. Salve antes de executar.');
  const attributes=commercialAttributePayload(tree,fields.categoryId,fields.attributes);
@@ -117,6 +117,15 @@ async function prepared({cfg,auth,kitSku,input}){
  if(input?.includeVideo===true&&!videoId)
   throw Error('O vídeo ainda não foi confirmado na mídia Shopee.');
  const payload=commercialKitPayload(fields,kit,attributes,videoId);
+ // Se houver preferência antiga no rascunho, corrigir automaticamente com a
+ // seleção atual, já validada como componente real; não modificar dados comerciais.
+ if(fields.mainSku!==mainSku){
+  const updated=await saveKitDraftLogistics(auth.shopId,kitSku,{
+   ...(saved.logistics||{}),mainSku:fields.mainSku
+  });
+  if(!updated?.saved||str(updated.logistics?.mainSku)!==fields.mainSku)
+   throw Error('Não foi possível sincronizar a SKU principal no rascunho. Nenhuma publicação iniciada.');
+ }
  return {saved,kit,payload,fields};
 }
 function fingerprint(value){return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');}
