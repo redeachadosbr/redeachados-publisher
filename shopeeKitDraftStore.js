@@ -85,7 +85,10 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
     String(previous.creative?.description||'').trim()===description&&
     Number(previous.kit?.kitCost)===Number(kit.kitCost)&&
     Number(previous.kit?.quote?.grossPrice)===Number(kit.quote?.grossPrice)&&
-    codes.join('|')===(previous.skus||[]).join('|')?previous.optimization:null};
+    codes.join('|')===(previous.skus||[]).join('|')&&
+    (!savedLogistics?.mainSku||
+     String(previous.optimization.mainSku||'')===String(savedLogistics.mainSku))
+    ?previous.optimization:null};
  const rows=await request('?on_conflict=shop_id,kit_sku',{
   method:'POST',prefer:'resolution=merge-duplicates,return=representation',
   data:[{shop_id:id,kit_sku:kit.kitSku,component_skus:codes,draft,updated_at:new Date().toISOString()}]
@@ -246,7 +249,9 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
  const logistics=normalizeKitLogistics(input,current.kit);
  if(!logistics)throw Error('Dados de logística inválidos.');
  const draft={kit:current.kit,importBatchId:current.importBatchId||null,creative:current.creative,logistics,
-  reviewed:false,shopeePublished:false,publication:current.publication,optimization:current.optimization||null};
+  reviewed:false,shopeePublished:false,publication:current.publication,
+  optimization:current.optimization&&String(current.optimization.mainSku||'')===String(logistics.mainSku||'')
+   ?current.optimization:null};
  const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
    '&draft->publication->>status=eq.local_draft',{
    method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'
