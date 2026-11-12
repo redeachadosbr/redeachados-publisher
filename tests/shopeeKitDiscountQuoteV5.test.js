@@ -10,17 +10,17 @@ function sampleQuote(){
  const q=quoteShopeeKitPrice({unitCost:23,settings});
  return {grossPrice:q.grossPrice,marketplacePrice:q.marketplaceDisplayPrice,
   afterCoupon:q.customerPrice,netMarginPct:q.netMarginPct,
-  targetMarginPct:15,priceEndingRuleVersion:q.priceEndingRuleVersion};
+  targetMarginPct:15,couponPct:q.couponPct,priceEndingRuleVersion:q.priceEndingRuleVersion};
 }
 const lastCent=value=>Math.round(value*100)%10;
 const badCent=value=>(Math.round(value*100)+2)/100;
 
-test('prévia do desconto aceita cotação atual v5 do motor de kits',()=>{
+test('prévia do desconto aceita cotação v6 e cupom condicional do motor de kits',()=>{
  const quote=sampleQuote();
- assert.equal(quote.priceEndingRuleVersion,5);
+ assert.equal(quote.priceEndingRuleVersion,6);
  assert.ok(quote.netMarginPct>=quote.targetMarginPct);
  assert.ok([0,9].includes(lastCent(quote.marketplacePrice)));
- assert.ok([0,9].includes(lastCent(quote.afterCoupon)));
+ assert.equal(quote.afterCoupon,Math.round(quote.marketplacePrice*(1-quote.couponPct/100)*100)/100);
  assert.deepEqual(validateKitDiscountQuote(quote),{
   gross:quote.grossPrice,promo:quote.marketplacePrice,afterCoupon:quote.afterCoupon
  });
@@ -28,7 +28,7 @@ test('prévia do desconto aceita cotação atual v5 do motor de kits',()=>{
 
 test('versão antiga continua exigindo recálculo sem mascarar o problema como margem',()=>{
  const quote=sampleQuote();
- assert.throws(()=>validateKitDiscountQuote({...quote,priceEndingRuleVersion:4}),
+ assert.throws(()=>validateKitDiscountQuote({...quote,priceEndingRuleVersion:5}),
   /versão incompatível/);
 });
 
@@ -46,4 +46,11 @@ test('desconto continua protegido contra margem insuficiente e finais inválidos
  assert.throws(()=>validateKitDiscountQuote({
   ...quote,grossPrice:quote.marketplacePrice
  }),/Preço bruto ou desconto inválido/);
+});
+
+test('o desconto aceita centavos condicionais mas rejeita alterar o cupom ou o bruto',()=>{
+ const q=sampleQuote();
+ assert.ok([0,9].includes(lastCent(q.grossPrice)));
+ assert.throws(()=>validateKitDiscountQuote({...q,couponPct:50}),/preço após cupom/);
+ assert.throws(()=>validateKitDiscountQuote({...q,grossPrice:badCent(q.grossPrice)}),/preço bruto/);
 });

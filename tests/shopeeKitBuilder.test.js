@@ -63,7 +63,9 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(kit.components[1].unitCost,8);
   assert.ok(kit.quote.netMarginPct>=15);
   assert.ok([0,9].includes(Math.round(kit.quote.marketplacePrice*100)%10));
-  assert.ok([0,9].includes(Math.round(kit.quote.afterCoupon*100)%10));
+  assert.equal(kit.quote.priceEndingRuleVersion,6);
+  assert.equal(kit.quote.afterCoupon,
+    Math.round(kit.quote.marketplacePrice*(1-kit.quote.couponPct/100)*100)/100);
   assert.equal(kit.shopeePublished,false);
   const prompts=kitPrompts(kit);
   assert.equal(prompts.length,9);
@@ -158,6 +160,8 @@ test('barra manual de margem dos kits é equivalente ao controle da Otimização
  assert.match(js,/api\('\/api\/shopee\/kits\/plus-import'/);
  assert.match(js,/api\('\/api\/shopee\/kits\/prepare'/);
  assert.match(js,/refreshKitPrices\(prepared\.kit\)/);
+ assert.match(js,/Promise\.allSettled\(calls\)/);
+ assert.match(js,/margem líquida real · meta/);
  assert.match(js,/if\(marginUpdatePending\)/);
  assert.match(engine,/n<0\|\|n>70/);
 });
