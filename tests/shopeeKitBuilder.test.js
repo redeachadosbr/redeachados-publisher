@@ -160,6 +160,8 @@ test('barra manual de margem dos kits é equivalente ao controle da Otimização
  assert.match(js,/api\('\/api\/shopee\/kits\/plus-import'/);
  assert.match(js,/api\('\/api\/shopee\/kits\/prepare'/);
  assert.match(js,/refreshKitPrices\(prepared\.kit\)/);
+ assert.match(js,/Promise\.allSettled\(calls\)/);
+ assert.match(js,/margem líquida real · meta/);
  assert.match(js,/if\(marginUpdatePending\)/);
  assert.match(engine,/n<0\|\|n>70/);
 });
