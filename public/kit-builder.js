@@ -118,7 +118,9 @@ globalThis.RAKitWizardExecutionReviews=()=>{
 // O handoff da aba é efêmero: ao reabrir um kit, identificar novamente o
 // anúncio exato pela Shopee, preservando o Item ID vinculado no banco.
 // O ID explicitamente confirmado tem prioridade sobre handoffs e rascunhos antigos.
-const kitWizardConfirmedItemId=kitSku=>String(kitSku)==='KIT-TX24505K-TX24508E'?'58222633999':'';
+const kitWizardConfirmedItemId=kitSku=>
+ String(kitSku)==='KIT-TX24505K-TX24508E'?'58222633999':
+ String(kitSku)==='KIT-894182-894939'?'58222834055':'';
 let kitWizardResumingTarget=false,kitWizardResumeTimeout=null;
 async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
@@ -385,8 +387,8 @@ async function kitWizardOpenExecutionFlow(){
 function kitWizardIsNewUnpublished(){
  const publication=prepared?.publication||{};
  const state=String(publication.status||'local_draft').toLowerCase();
- return Boolean(prepared?.kit&&!kitItemId&&!publication.itemId&&
-  !prepared?.optimization?.itemId&&
+ return Boolean(prepared?.kit&&!kitWizardConfirmedItemId(prepared.kit.kitSku)&&
+  !kitItemId&&!publication.itemId&&!prepared?.optimization?.itemId&&
   !['publishing','uncertain','published_pending','published','discount_confirmed'].includes(state));
 }
 function kitWizardExecutionFeedback(message,state='info'){
@@ -1061,8 +1063,12 @@ function kitWizardInit(){
    await kitWizardOpenExecutionFlow();
    return;
   }
-  // Um rascunho novo NÃO tem Item ID. Entrar na criação comercial normal,
-  // sem exigir anúncios dos complementares e sem tentar otimizar outra SKU.
+  // Anúncio original confirmado: reabrir o Item ID, não criar outro anúncio.
+  if(confirmedId){
+   await kitWizardResumeTargetForExecution();
+   return;
+  }
+  // Somente kits sem Item ID confirmado podem criar anúncio comercial.
   if(kitWizardIsNewUnpublished()){
    kitWizardExecutionIntent=false;
    await kitWizardExecuteNewListingDirect();
