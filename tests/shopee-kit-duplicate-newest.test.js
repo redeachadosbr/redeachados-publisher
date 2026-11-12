@@ -32,5 +32,5 @@ test('ficha de kit usa descoberta exclusiva do kit e informa preenchimento real'
  assert.match(existing,/\/api\/shopee\/kits\/optimization\/find\?/);
  assert.match(existing,/data\.preferredVerifiedTarget/);
  assert.match(server,/selectNewestVerifiedSkuTarget\(matches\)/);
- assert.match(ui,/preenchido\(s\) no rascunho com dados da WeDrop/);
+ assert.match(ui,/preenchido\(s\) no rascunho com fontes da própria SKU/);
 });
