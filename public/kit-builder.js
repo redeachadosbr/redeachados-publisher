@@ -2351,7 +2351,9 @@ async function kitReadinessCheck({throwOnError=false}={}){
    for(const [slot,id] of kitShopeePhotoSlots)if(!uploaded.has(id))kitShopeePhotoSlots.delete(slot);
    $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
     ' de 9 imagens confirmadas nesta sessão. As restantes serão reenviadas do rascunho.';
-   const main=String(result.mainSku||kitCurrentMain(prepared.kit));
+   // A consulta da Shopee pode devolver a preferência antiga antes do autosave.
+   // O SKU principal escolhido pelo vendedor não pode ser sobrescrito.
+   const main=String(kitCurrentMain(prepared.kit)||result.mainSku||'');
    if([...$('#kitMainSku').options].some(o=>o.value===main))$('#kitMainSku').value=main;
    kitCommercialCategoryUi(result);
   }else if($('#kitCommercialForm'))$('#kitCommercialForm').hidden=true;
