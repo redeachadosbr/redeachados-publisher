@@ -2316,9 +2316,16 @@ function kitCommercialCategoryUi(result){
  });
 }
 
-async function kitReadinessCheck(){
- if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit antes de consultar a Shopee.','error');
- if(kitPublishBusy)return;
+async function kitReadinessCheck({throwOnError=false}={}){
+ if(!prepared||!kitSaved){
+  kitPublishStatus('Salve o kit antes de consultar a Shopee.','error');
+  if(throwOnError)throw Error('Rascunho não salvo no servidor.');
+  return;
+ }
+ if(kitPublishBusy){
+  if(throwOnError)throw Error('A verificação Shopee ainda está em andamento.');
+  return;
+ }
  kitPublishBusy=true;$('#kitPublishCheck').disabled=true;clearKitPublishApproval();
  kitPublishStatus('Validando itens, variações, canais e limites do Kit Formal na Shopee...');
  try{
@@ -2365,17 +2372,26 @@ async function kitReadinessCheck(){
     '✓ Identifiquei e vinculei automaticamente '+result.autoRecovered.map(x=>x.product).join(' e ')+'. ': '')+
     'Produtos da Shopee conferidos. Preparando a publicação do kit.',
    result.blockers?.length?'error':'success');
- }catch(error){kitPublishStatus('Falha na conferência: '+error.message,'error');}
+ }catch(error){
+  kitPublishStatus('Falha na conferência: '+error.message,'error');
+  if(throwOnError)throw error;
+ }
  finally{kitPublishBusy=false;$('#kitPublishCheck').disabled=false;}
 }
-async function kitSendPhotos(){
- if(!prepared||!kitSaved)return kitPublishStatus('Salve o rascunho antes de enviar imagens.','error');
- if(kitPublishBusy)return;
- if(!kitReadiness||kitReadiness.blockers?.length)
-  return kitPublishStatus('Conclua primeiro a verificação dos componentes Shopee.','error');
- if(!images.size)return kitPublishStatus('Importe ao menos uma foto do kit gerada no ChatGPT Plus.','error');
- if(!$('#kitPhotosReviewed').checked)
-  return kitPublishStatus('Confirme que todas as imagens representam fielmente os componentes.','error');
+async function kitSendPhotos({throwOnError=false}={}){
+ const rejection=!prepared||!kitSaved?'Salve o rascunho antes de enviar imagens.':
+  !kitReadiness||kitReadiness.blockers?.length?'Conclua primeiro a verificação dos componentes Shopee.':
+  !images.size?'Importe as imagens revisadas do kit.':
+  !$('#kitPhotosReviewed').checked?'Confirme as imagens já conferidas.':'';
+ if(rejection){
+  kitPublishStatus(rejection,'error');
+  if(throwOnError)throw Error(rejection);
+  return;
+ }
+ if(kitPublishBusy){
+  if(throwOnError)throw Error('O envio de mídia Shopee ainda está em andamento.');
+  return;
+ }
  kitPublishBusy=true;$('#kitSendPhotos').disabled=true;clearKitPublishApproval();
  try{
   for(const [slot,photo] of [...images.entries()].sort((a,b)=>a[0]-b[0])){
@@ -2391,18 +2407,32 @@ async function kitSendPhotos(){
     ' foto(s) armazenada(s) na galeria Shopee, ainda SEM publicação.';
   }
   kitPublishStatus('Fotos enviadas. Gere a prévia final para verificar preços, IDs, composição e logística.','success');
- }catch(error){kitPublishStatus('Envio interrompido: '+error.message+
-  '. Fotos confirmadas permanecem na galeria; retome sem reenviar as mesmas posições.','error');}
+ }catch(error){
+  kitPublishStatus('Envio interrompido: '+error.message+
+   '. Fotos confirmadas permanecem na galeria.','error');
+  if(throwOnError)throw error;
+ }
  finally{kitPublishBusy=false;$('#kitSendPhotos').disabled=false;}
 }
-async function kitPreparePublishPreview(){
- if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit primeiro.','error');
+async function kitPreparePublishPreview({throwOnError=false}={}){
+ if(!prepared||!kitSaved){
+  kitPublishStatus('Salve o kit primeiro.','error');
+  if(throwOnError)throw Error('Rascunho ainda não está salvo no servidor.');
+  return;
+ }
  // Vídeo opcional pendente não bloqueia a publicação pelo botão único.
  if(kitVideoData&&!kitVideoRemote?.ready&&!kitWizardDirectPublishing&&
   !window.confirm('O vídeo deste kit está salvo localmente, mas NÃO foi confirmado pela Shopee. Gerar a prévia SEM o vídeo?'))return;
- if(kitPublishBusy)return;
- if(!kitReadiness||kitReadiness.blockers?.length)
-  return kitPublishStatus('Resolva todos os vínculos de SKU e logística antes da prévia.','error');
+ if(kitPublishBusy){
+  if(throwOnError)throw Error('Outra verificação da Shopee está em andamento.');
+  return;
+ }
+ if(!kitReadiness||kitReadiness.blockers?.length){
+  const reason='Conferência Shopee incompleta: '+(kitReadiness?.blockers?.join(' | ')||'sem dados');
+  kitPublishStatus(reason,'error');
+  if(throwOnError)throw Error(reason);
+  return;
+ }
  kitPublishBusy=true;$('#kitPublishPreview').disabled=true;clearKitPublishApproval();
  try{
   const commercial=kitCommercialMode();
@@ -2442,7 +2472,10 @@ async function kitPreparePublishPreview(){
   ].join('\n');
   $('#kitPublishPreviewBox').hidden=false;
   kitPublishStatus('Prévia segura gerada. Confira os dados e confirme a publicação com o botão destacado abaixo.','success');
- }catch(error){kitPublishStatus('Prévia bloqueada: '+error.message,'error');}
+ }catch(error){
+  kitPublishStatus('Prévia bloqueada: '+error.message,'error');
+  if(throwOnError)throw error;
+ }
  finally{kitPublishBusy=false;$('#kitPublishPreview').disabled=false;}
 }
 // Fluxo guiado: automatiza conferência e envio de mídia, mas NUNCA o botão
@@ -2713,6 +2746,35 @@ async function kitWizardExecuteNewListingDirect(){
   progress('Conferindo os dados salvos e a SKU principal...');
   if(!kitSaved&&!await saveDraft())throw Error('Não foi possível salvar o rascunho.');
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
+  const principalForDraft=kitCurrentMain(prepared.kit);
+  if(!principalForDraft)throw Error('A SKU principal não foi identificada.');
+  const previousMain=String(prepared?.logistics?.mainSku||kitLogisticsKeeper.read().mainSku||'');
+  const oldQuote=Number(prepared.kit.quote?.priceEndingRuleVersion||0);
+  // Rascunhos antigos mantêm descontos, margem e SKU desatualizados após
+  // uma nova versão da calculadora. Atualizar APENAS o rascunho; preservar
+  // títulos, descrições, imagens e os checks das etapas já aprovadas.
+  if(oldQuote!==6||previousMain!==principalForDraft){
+   progress('Atualizando margem real e SKU principal salvas no kit...');
+   if(oldQuote!==6){
+    const updated=await api('/api/shopee/kits/prepare',{body:{
+     skus:prepared.kit.components.map(p=>p.sku),...currentSettings()
+    }});
+    if(!updated?.kit||updated.kit.kitSku!==kitSku||
+       updated.kit.components.map(p=>String(p.sku)).join('|')!==
+       prepared.kit.components.map(p=>String(p.sku)).join('|'))
+     throw Error('A WeDrop retornou outra composição. Nenhuma publicação iniciada.');
+    prepared={...prepared,kit:updated.kit};
+   }
+   const mainField=$('#kitMainSku');
+   if(!mainField||![...mainField.options].some(o=>o.value===principalForDraft))
+    throw Error('Não foi possível restaurar a SKU principal validada.');
+   mainField.value=principalForDraft;
+   if(!await saveDraft())throw Error('Não consegui salvar os valores atualizados do kit.');
+   prepared.logistics={...(prepared.logistics||{}),mainSku:principalForDraft};
+   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
+   refreshKitPrices(prepared.kit);
+   progress('✓ Rascunho sincronizado com a margem atual e a SKU principal.');
+  }
 
   // Preserve a categoria previamente revisada; se não houve revisão,
   // só usar uma categoria recomendada pela API oficial da Shopee.
@@ -2720,7 +2782,7 @@ async function kitWizardExecuteNewListingDirect(){
   const categoryPreviouslyApproved=$('#kitCommercialCategoryApproved')?.checked===true;
   // A Shopee valida novamente preço, estoque, categoria e duplicidade no backend.
   kitReadiness=null;
-  await kitReadinessCheck();
+  await kitReadinessCheck({throwOnError:true});
   if(!kitReadiness)throw Error('A consulta das opções oficiais da Shopee não foi concluída.');
   if(kitReadiness.blockers?.length)throw Error(kitReadiness.blockers.join(' | '));
   let categoryId=Number($('#kitCommercialCategoryId')?.value||0);
@@ -2728,7 +2790,7 @@ async function kitWizardExecuteNewListingDirect(){
   if(Number(kitReadiness.requestedCategoryId||0)!==categoryId){
    progress('Obtendo os atributos oficiais da categoria sugerida pela Shopee...');
    kitReadiness=null;
-   await kitReadinessCheck();
+   await kitReadinessCheck({throwOnError:true});
    if(!kitReadiness||Number(kitReadiness.requestedCategoryId)!==categoryId)
     throw Error('Não foi possível carregar os atributos oficiais da categoria.');
   }
@@ -2775,14 +2837,14 @@ async function kitWizardExecuteNewListingDirect(){
   if(images.size!==9)throw Error('O kit precisa das nove imagens revisadas antes de publicar.');
   if(kitShopeePhotoSlots.size<9){
    progress('Sincronizando as imagens já aprovadas com a Shopee...');
-   await kitSendPhotos();
+   await kitSendPhotos({throwOnError:true});
    if(kitShopeePhotoSlots.size!==9)throw Error('A Shopee não confirmou as nove imagens. Nenhuma publicação foi iniciada.');
   }
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
   // O vídeo é opcional: quando pendente, não será enviado nem bloqueará o anúncio.
   progress('Validando a prévia internamente e verificando duplicidades...');
-  await kitPreparePublishPreview();
-  if(!kitPublishToken)throw Error('A Shopee não aprovou a prévia. Nenhuma publicação foi iniciada.');
+  await kitPreparePublishPreview({throwOnError:true});
+  if(!kitPublishToken)throw Error('Não foi retornada uma autorização de prévia pela Shopee. Nenhuma publicação foi iniciada.');
   const token=kitPublishToken;
   const fields=kitCommercialFields();
   progress('Criando o anúncio da SKU principal na Shopee...');
