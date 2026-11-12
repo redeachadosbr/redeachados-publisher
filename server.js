@@ -1889,7 +1889,8 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
   // não criar/usar o anúncio duplicado identificado na Shopee.
   // O ID ainda deve passar por leitura oficial de status, SKU e modelo.
   const userConfirmedItemId=kitSku==='KIT-TX24505K-TX24508E'&&sku==='TX24505K'
-   ?'58222633999':'';
+   ?'58222633999':kitSku==='KIT-894182-894939'&&sku==='894182'
+   ?'58222834055':'';
   const prior=saved.optimization;
   // Preferir a leitura oficial por Item ID. A pesquisa por SKU é uma busca
   // de descoberta, portanto não pode invalidar um anúncio já persistido.
@@ -2063,6 +2064,9 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   if(kitSku==='KIT-TX24505K-TX24508E'&&
      (sku!=='TX24505K'||String(itemId)!=='58222633999'))
    throw Error('Anúncio original incorreto. Use somente Item ID 58222633999; nenhum envio foi iniciado.');
+  if(kitSku==='KIT-894182-894939'&&
+     (sku!=='894182'||String(itemId)!=='58222834055'))
+   throw Error('Este kit só pode otimizar o Item ID original 58222834055 da Escova 894182. Nenhuma criação foi iniciada.');
   const saved=await loadKitDraft(auth.shopId,kitSku);
   if(!saved?.kit)throw Error('Salve o rascunho do kit antes de vincular um anúncio.');
   const kit=await composeKit(auth.shopId,saved.skus,{
@@ -3853,6 +3857,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   // duplicado ou para um job antigo ainda salvo no navegador.
   if(linkedKit?.kitSku==='KIT-TX24505K-TX24508E'&&String(itemId)!=='58222633999')
    throw Error('Execução bloqueada: este kit só pode atualizar o Item ID 58222633999. O anúncio duplicado não será alterado.');
+  if(linkedKit?.kitSku==='KIT-894182-894939'&&
+     (String(itemId)!=='58222834055'||String(sku)!=='894182'))
+   throw Error('Execução bloqueada: o kit PET só pode atualizar o Item ID 58222834055 da SKU 894182.');
   let verifiedExecutionKit=null;
   if(linkedKit){
    verifiedExecutionKit=await verifiedLinkedKitQuote(auth,linkedKit);
