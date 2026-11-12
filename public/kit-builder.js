@@ -1442,7 +1442,7 @@ function renderKitPricingSummary(kit=prepared?.kit){
  $('#kitPriceVisible').textContent=money(kit.quote.marketplacePrice);
  $('#kitPriceCoupon').textContent='Com cupom de '+pct(kit.quote.couponPct)+': '+money(kit.quote.afterCoupon);
  $('#kitPriceProfit').textContent=money(kit.quote.netProfit);
- $('#kitPriceMargin').textContent=pct(kit.quote.netMarginPct)+' de margem líquida';
+ $('#kitPriceMargin').textContent=pct(kit.quote.netMarginPct)+' margem líquida real · meta '+pct(kit.quote.targetMarginPct);
  const heading=document.createElement('span');heading.className='kit-price-cost-heading';
  heading.textContent='Custos WeDrop';costs.append(heading);
  for(const p of displayParts){
@@ -1467,8 +1467,8 @@ async function repriceKitMargin(revision){
  let completed=false;
  try{
   const settings=currentSettings();
-  const calls=[];
-  const context=suggestionContext;
+  const calls=[],kinds=[],context=suggestionContext;
+  const activeKitSku=prepared?.kit?.kitSku||null;
   if(suggestions.length&&context&&context.category===$('#kitCategory').value&&context.size===Number($('#kitSize').value)){
    if(context.idea){
     calls.push(api('/api/shopee/kits/idea-search',{body:{
@@ -1480,14 +1480,31 @@ async function repriceKitMargin(revision){
      category:context.category,size:context.size,kits:current,...settings
     }}).then(data=>({kind:'suggestions',data})));
    }
+   kinds.push('suggestions');
   }
   if(prepared){
    calls.push(api('/api/shopee/kits/prepare',{body:{
     skus:prepared.kit.components.map(x=>x.sku),...settings
    }}).then(data=>({kind:'prepared',data})));
+   kinds.push('prepared');
   }
-  const outcomes=await Promise.all(calls);
-  if(revision!==marginRevision)return;
+  if(!calls.length)throw Error('Nenhum kit ativo para recalcular. Selecione ou pesquise um kit.');
+  // Recalcular o kit aberto mesmo quando a pesquisa das sugestões falhar.
+  const settled=await Promise.allSettled(calls);
+  if(revision!==marginRevision||activeKitSku!==(prepared?.kit?.kitSku||null))return;
+  const outcomes=[],failures=[];
+  for(let i=0;i<settled.length;i++){
+   if(settled[i].status==='fulfilled')outcomes.push(settled[i].value);
+   else{
+    failures.push(settled[i].reason);
+    if(kinds[i]==='suggestions'){
+     suggestions=[];
+     $('#kitSuggestions').replaceChildren(
+      elt('p','','Não foi possível recalcular as sugestões. Pesquise novamente para ver novos preços.'));
+    }
+   }
+  }
+  if(!outcomes.length)throw failures[0]||Error('Não foi possível recalcular o kit.');
   for(const outcome of outcomes){
    if(outcome.kind==='suggestions'){
     const reasons=new Map(suggestions.map(k=>[k.components.map(p=>p.sku).sort().join('|'),k.businessReason]));
@@ -1505,17 +1522,19 @@ async function repriceKitMargin(revision){
     if(selectedMain&&[...$('#kitOptimizeMainSku').options].some(x=>x.value===selectedMain))
      $('#kitOptimizeMainSku').value=selectedMain;
     kitSaved=false;clearKitPublishApproval();
-    kitPublishStatus('Custo ou margem alterados. Salve novamente o rascunho e refaça a prévia antes de publicar.','info');
-    refreshKitPrices(prepared.kit); // Preserva textos já editados e imagens importadas.
+    kitPublishStatus('Custo ou margem alterados. Salve novamente o rascunho antes de publicar.','info');
+    refreshKitPrices(prepared.kit); // Mantém título, descrição e imagens já importadas.
     $('#kitWarning').textContent=prepared.kit.warning+
      ' Os preços foram recalculados para a margem escolhida e NÃO foram enviados à Shopee.';
    }
   }
   completed=true;
-  status('✓ Margem manual '+$('#kitMargin').value+'% aplicada aos kits. Preços, descontos e lucro líquido recalculados com centavos 0/9.','success');
+  status('✓ Meta de margem '+$('#kitMargin').value+
+   '% aplicada ao preço anunciado. Lucro líquido real recalculado com cupom e taxas.'+
+   (failures.length?' As outras sugestões não puderam ser atualizadas.':''),failures.length?'warning':'success');
  }catch(error){
   if(revision===marginRevision){
-   status('Não foi possível recalcular a margem: '+error.message+'. Tente pesquisar novamente; valores antigos não devem ser publicados.','error');
+   status('Não foi possível recalcular a margem: '+error.message+'. Valores antigos não devem ser publicados.','error');
    const el=$('#kitPriceCost');if(el){el.hidden=false;el.dataset.state='error';el.textContent='Falha no recálculo: '+error.message+'. Não utilize o preço anterior.';}
    $('#kitPriceKpis').hidden=true;
    $('#kitPriceComponentCosts').hidden=true;
