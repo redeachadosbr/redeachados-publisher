@@ -133,7 +133,8 @@ test('Etapa 10 utiliza somente a SKU principal Shopee, sem exigir anuncio dos co
  assert.doesNotMatch(click,/kitPublicationReadiness|add_kit_item/);
  const flow=builder.slice(builder.indexOf('async function kitWizardResumeTargetForExecution()'),
   builder.indexOf('let kitWizardExecutionOpening='));
- assert.match(flow,/const principal=String\(prepared\.kit\.components\?\.\[0\]\?\.sku\|\|''\)/);
+ // A principal pode diferir da ordem alfabética do kit; respeitar a escolha persistida.
+ assert.match(flow,/const principal=kitCurrentMain\(prepared\.kit\)/);
  assert.match(flow,/kitWizardEnsureExecutionLink/);
  assert.match(flow,/kitExistingOptimizer\.resumeLiveVerifiedTarget/);
  assert.ok(flow.indexOf('kitWizardEnsureExecutionLink')<flow.indexOf('kitExistingOptimizer.resumeLiveVerifiedTarget'));
