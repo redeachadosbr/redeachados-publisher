@@ -188,8 +188,8 @@ test('Otimização: margem da barra muda cálculo e não ultrapassa desconto má
 test('Otimização: referência de mercado inviável rejeita sem inventar desconto',()=>{
  const settings=normalizeShopeePricingSettings({marginPct:15,minMarginPct:5,couponPct:1,
   sellerType:'cnpj',taxPct:4,flashPct:3});
- // Sem média de mercado, o motor produz um plano seguro.
- const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings});
+ // No modo de margem manual, o motor produz uma cotação segura.
+ const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marginOverride:true});
  assert.ok(q.netMarginPct>=15);
  assert.ok(q.discountPct>0&&q.discountPct<=50);
  for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
