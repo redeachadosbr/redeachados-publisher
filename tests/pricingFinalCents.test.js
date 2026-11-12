@@ -185,17 +185,16 @@ test('Otimização: margem da barra muda cálculo e não ultrapassa desconto má
  assert.notEqual(a.customerPrice,b.customerPrice,'Margem deve alterar preço final');
  assert.ok(a.discountPct<=50&&b.discountPct<=50);
 });
-test('Otimização: mercado viável calcula e referência inviável rejeita sem inventar desconto',()=>{
+test('Otimização: referência de mercado inviável rejeita sem inventar desconto',()=>{
  const settings=normalizeShopeePricingSettings({marginPct:15,minMarginPct:5,couponPct:1,
   sellerType:'cnpj',taxPct:4,flashPct:3});
- const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:250});
- assert.ok(['COMPETITIVO','MERCADO_ABAIXO_DO_PISO'].includes(q.status));
- assert.ok(q.netMarginPct>=5);
+ // Sem média de mercado, o motor produz um plano seguro.
+ const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings});
+ assert.ok(q.netMarginPct>=15);
  assert.ok(q.discountPct>0&&q.discountPct<=50);
  for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10));
- // A referência R$ 180 não admite preço que preserve simultaneamente
- // desconto, margem e as terminações exigidas: a rejeição é segura.
+ // O mercado abaixo da margem/terminações não deve gerar cotação falsa.
  assert.throws(()=>quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:180}),
   /Desconto variável inviável/);
 });
