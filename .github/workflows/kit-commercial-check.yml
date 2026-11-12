@@ -8,6 +8,12 @@ on:
       - 'shopeeKitDraftStore.js'
       - 'shopeeKitPublicationService.js'
       - 'public/kit-builder.js'
+      - 'shopeePricing.js'
+      - 'shopeeKitBuilder.js'
+      - 'shopeeKitDiscountService.js'
+      - 'tests/pricingFinalCents.test.js'
+      - 'tests/shopeeKitDiscountQuoteV5.test.js'
+      - 'tests/shopeeKitBuilder.test.js'
       - 'server.js'
       - 'tests/shopeeKitCommercial.test.js'
       - 'tests/shopeeKitPublish.test.js'
@@ -27,4 +33,4 @@ jobs:
       - name: Validar sintaxe
         run: npm run check
       - name: Regressão criação comercial de kits
-        run: node --test tests/shopeeKitCommercial.test.js tests/shopeeKitPublish.test.js tests/kitPublicationGuide.test.js
+        run: node --test tests/shopeeKitCommercial.test.js tests/shopeeKitPublish.test.js tests/kitPublicationGuide.test.js tests/pricingFinalCents.test.js tests/shopeeKitDiscountQuoteV5.test.js tests/shopeeKitBuilder.test.js
