@@ -69,7 +69,7 @@ test('etapa 10 não manda rascunho novo ao find de otimizador nem ao Kit Formal'
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  const store=readFileSync(new URL('../shopeeKitDraftStore.js',import.meta.url),'utf8');
- assert.match(ui,/if\(kitWizardIsNewUnpublished\(\)\)\{[\s\S]*?await kitPublishGuideNext\(\)/);
+ assert.match(ui,/if\(kitWizardIsNewUnpublished\(\)\)\{[\s\S]*?await kitWizardExecuteNewListingDirect\(\)/);
  assert.match(ui,/commercial\/readiness/);
  assert.match(ui,/commercial\/preview/);
  assert.match(ui,/commercial\/execute/);
