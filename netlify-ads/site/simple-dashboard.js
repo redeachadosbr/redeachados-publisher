@@ -27,6 +27,8 @@ const isoToday=()=>{
 const priorDate=(iso,offset)=>new Date(Date.parse(iso+'T12:00:00Z')+offset*86400000).toISOString().slice(0,10);
 const records=()=>getHistory().filter(r=>r&&r.data&&r.data.kind===KIND);
 const getStatus=product=>typeof effectiveAdsStatus==='function'?effectiveAdsStatus(product):String(product.adsStatus||'unknown');
+const marketText=product=>typeof product.market==='number'&&Number.isFinite(product.market)&&product.market>0?currency(product.market):'Não informado';
+const curveTextSaved=product=>/^[ABCDE]$/.test(String(product.curve||''))?'Curva '+product.curve:'Não informada';
 const resultOf=d=>Math.round((d.revenueNet-d.wedropCost-d.adsSpend-d.otherCosts)*100)/100;
 const dateBR=iso=>String(iso||'').split('-').reverse().join('/');
 const css=document.createElement('style');
@@ -54,7 +56,7 @@ css.textContent=[
  '.simple-finance .s-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}',
  '.simple-finance .s-muted{font-size:12px;color:#c8c1b7;line-height:1.5}',
  '.simple-finance .s-table{overflow-x:auto;margin-top:12px}',
- '.simple-finance .s-table table{min-width:740px;width:100%;border-collapse:collapse}',
+ '.simple-finance .s-table table{min-width:920px;width:100%;border-collapse:collapse}',
  '.simple-finance .s-table th,.simple-finance .s-table td{padding:11px 9px;text-align:left;border-bottom:1px solid #4a4541}',
  '.simple-finance .s-table th{text-transform:none;font-size:12px;color:#ded2c0}',
  '.simple-finance .s-table td small{display:block;color:#c6bfb6}',
@@ -73,11 +75,11 @@ panel.innerHTML=
 '<div class="s-toolbar"><div class="s-field"><label for="simplePeriod">Período financeiro</label><select id="simplePeriod"><option value="all">Todo o histórico</option><option value="month">Este mês</option><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option></select></div><div class="s-field"><label for="simpleSearch">Buscar produto</label><input id="simpleSearch" type="search" placeholder="SKU ou nome" autocomplete="off"></div></div>'+
 '<div class="s-grid"><div class="s-card"><small>Receita líquida informada</small><strong id="sRevenue">—</strong></div><div class="s-card"><small>Gasto Ads informado</small><strong id="sAds">—</strong></div><div class="s-card"><small>Lucro/prejuízo apurado</small><strong id="sNet">—</strong></div><div class="s-card"><small>Produtos sem apuração completa</small><strong class="s-amber" id="sPending">—</strong></div></div>'+
 '<p class="s-muted" id="sCoverage">Os totais incluem apenas períodos completos e conferidos. Não são uma conciliação automática com a Shopee.</p>'+
-'<div class="s-table"><table><thead><tr><th>Produto</th><th>Ads (R$)</th><th>Lucro/prejuízo (R$)</th><th>Situação</th><th></th></tr></thead><tbody id="simpleProductRows"></tbody></table></div>'+
+'<div class="s-table"><table><thead><tr><th>Produto</th><th>Curva</th><th>Média do mercado</th><th>Ads (R$)</th><th>Lucro/prejuízo (R$)</th><th>Situação</th><th></th></tr></thead><tbody id="simpleProductRows"></tbody></table></div>'+
 '<details id="simpleFinanceDetails"><summary id="simpleFormHeading">+ Registrar resultado financeiro por produto</summary>'+
 '<p class="s-muted">Preencha valores relativos ao mesmo período. A receita líquida deve vir da Shopee após taxas e descontos; não desconte essas taxas novamente. Use custo efetivo WeDrop e Ads de todas as campanhas do SKU no período. Não rateie automaticamente pedidos com vários SKUs.</p>'+
 '<form id="simpleFinanceForm" autocomplete="off"><div class="s-form">'+
-'<div class="s-field wide"><label for="sSku">Produto / SKU *</label><select id="sSku" required></select></div>'+
+'<div class="s-field wide"><label for="sSku">Produto / SKU *</label><select id="sSku" required></select><small class="s-muted" id="sProductMarketCurve" aria-live="polite">Selecione um produto para ver a curva e a média do mercado cadastradas.</small></div>'+
 '<div class="s-field"><label for="sStart">Início do período *</label><input type="date" id="sStart" required></div>'+
 '<div class="s-field"><label for="sEnd">Fim do período *</label><input type="date" id="sEnd" required></div>'+
 '<div class="s-field"><label for="sRevenueInput">Receita líquida Shopee (R$) *</label><input id="sRevenueInput" inputmode="decimal" placeholder="Ex.: 150,00" required></div>'+
@@ -119,11 +121,16 @@ function reset(){
  $('simpleSaveFinance').textContent='Salvar resultado';
  $('sFinanceMessage').textContent='';
 }
+function productMarketCurveSummary(){
+ const p=readProducts().find(x=>x.sku===$('sSku').value);
+ $('sProductMarketCurve').textContent=p?'Classificação do cadastro: '+curveTextSaved(p)+' · Preço médio do mercado: '+marketText(p):'Selecione um produto para ver a curva e a média do mercado cadastradas.';
+}
 function options(){
  const select=$('sSku'),previous=select.value;
  select.innerHTML='<option value="">Selecione o produto</option>'+readProducts().map(p=>
   '<option value="'+escapeHtml(p.sku)+'">'+escapeHtml(p.sku+' · '+p.name)+'</option>').join('');
  if([...select.options].some(o=>o.value===previous))select.value=previous;
+ productMarketCurveSummary();
 }
 function filterStart(){
  const p=$('simplePeriod').value,today=isoToday();
@@ -150,9 +157,10 @@ function render(){
   if(ok){revenue+=approved.reduce((s,r)=>s+r.data.revenueNet,0);ads+=totals.ads;net+=totals.net;completed++;}
   const situation=!ok?'Pendente':missing?'Parcial':totals.net>0?'Lucro':totals.net<0?'Prejuízo':'Equilíbrio';
   return '<tr><td><strong>'+escapeHtml(p.name)+'</strong><small>'+escapeHtml(p.sku)+' · '+escapeHtml(getStatus(p)==='active'?'Em Ads':getStatus(p)==='removed'?'Retirado dos Ads':'Status Ads não confirmado')+'</small></td>'+
+  '<td><span class="s-tag">'+escapeHtml(curveTextSaved(p))+'</span></td><td>'+escapeHtml(marketText(p))+'</td>'+
   '<td>'+(ok?currency(totals.ads):'—')+'</td><td class="'+(totals.net<0?'s-red':totals.net>0?'s-green':'')+'">'+(ok?currency(totals.net):'—')+'</td>'+
   '<td><span class="s-tag">'+situation+'</span></td><td><button type="button" class="btn-secondary mini" data-simple-new="'+escapeHtml(p.sku)+'">Lançar</button></td></tr>';
- }).join('')||'<tr><td colspan="5">Nenhum produto cadastrado ou correspondente à busca.</td></tr>';
+ }).join('')||'<tr><td colspan="7">Nenhum produto cadastrado ou correspondente à busca.</td></tr>';
  $('sRevenue').textContent=completed?currency(revenue):'—';
  $('sAds').textContent=completed?currency(ads):'—';
  $('sNet').textContent=completed?currency(net):'—';
@@ -173,14 +181,14 @@ $('simplePeriod').addEventListener('change',render);
 $('simpleSearch').addEventListener('input',render);
 panel.addEventListener('click',event=>{
  const newButton=event.target.closest('[data-simple-new]');
- if(newButton){reset();options();$('sSku').value=newButton.dataset.simpleNew;$('simpleFinanceDetails').open=true;$('simpleFinanceDetails').scrollIntoView({behavior:'smooth',block:'start'});return;}
+ if(newButton){reset();options();$('sSku').value=newButton.dataset.simpleNew;productMarketCurveSummary();$('simpleFinanceDetails').open=true;$('simpleFinanceDetails').scrollIntoView({behavior:'smooth',block:'start'});return;}
  const edit=event.target.closest('[data-simple-edit]');
  if(edit){
   const rec=records().find(x=>x.id===edit.dataset.simpleEdit);
   if(!rec)return;
   reset();editingId=rec.id;options();
   const d=rec.data;
-  $('sSku').value=d.sku;$('sStart').value=d.periodStart;$('sEnd').value=d.periodEnd;
+  $('sSku').value=d.sku;productMarketCurveSummary();$('sStart').value=d.periodStart;$('sEnd').value=d.periodEnd;
   $('sRevenueInput').value=String(d.revenueNet).replace('.',',');
   $('sCostInput').value=String(d.wedropCost).replace('.',',');
   $('sAdsInput').value=String(d.adsSpend).replace('.',',');
@@ -215,6 +223,7 @@ $('simpleFinanceForm').addEventListener('submit',event=>{
  reset();$('simpleFinanceDetails').open=false;render();
 });
 $('simpleCancelFinance').addEventListener('click',reset);
+$('sSku').addEventListener('change',productMarketCurveSummary);
 const previousSetHistory=setHistory;
 setHistory=function(rows){const ok=previousSetHistory(rows);render();return ok;};
 reset();render();switchTab('painel');
