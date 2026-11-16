@@ -208,6 +208,20 @@ function render(){
 $('simplePeriod').addEventListener('change',render);
 $('simpleSearch').addEventListener('input',render);
 $('simpleRecent').addEventListener('change',render);
+const recentHistory=$('historyRecentFilter');
+if(recentHistory){
+ recentHistory.addEventListener('change',()=>{
+  const value=recentHistory.value,today=isoToday();
+  if(value==='custom')return;
+  $('historyFromDate').value=value==='all'?'':value==='today'?today:priorDate(today,1-Number(value));
+  $('historyToDate').value=value==='all'?'':today;
+  renderChangeHistory();
+ });
+ for(const id of ['historyFromDate','historyToDate']){
+  $(id).addEventListener('change',()=>{recentHistory.value='custom'});
+ }
+ $('historyClearDatesBtn').addEventListener('click',()=>{recentHistory.value='all'});
+}
 panel.addEventListener('click',event=>{
  const historyButton=event.target.closest('[data-simple-history]');
  if(historyButton){
