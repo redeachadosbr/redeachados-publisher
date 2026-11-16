@@ -4,6 +4,9 @@
 Usar o aplicativo somente para: **Painel geral**, **Produtos** e **Alterações**. A análise estratégica dos Ads continua sob responsabilidade do operador.
 
 ## O que mudou
+- O Painel geral mostra **Curva A/B/C/D/E** e **Média do mercado (R$)** em colunas separadas, lendo `products[].curve` e `products[].market` do cadastro existente, sem duplicar valores nem solicitar novo preenchimento.
+- A ficha de lançamento financeiro mostra esses dois dados ao selecionar o SKU, mantendo o mesmo cadastro como fonte única.
+- Ausência de valores exibe **Não informada** / **Não informado**, sem inventar curva ou média.
 - Criado `site/simple-dashboard.js`, sem apagar o módulo antigo.
 - Modo simples é padrão. **Modo completo** reabre as funcionalidades anteriores quando necessário.
 - A aba Alterações continua registrando capa, título, preço, ROAS alvo, orçamento e impulsão com data e hora de Brasília.
@@ -30,6 +33,8 @@ Usar o aplicativo somente para: **Painel geral**, **Produtos** e **Alterações*
 ## Checklist manual antes de publicar
 - [ ] Fazer backup JSON no app atual e confirmar arquivo do Google Drive atualizado.
 - [ ] Em ambiente de teste, abrir modo simples e verificar 3 abas.
+- [ ] Conferir no Painel geral as colunas Curva e Média do mercado para produtos cadastrados, inclusive os sem informação.
+- [ ] Alterar a curva e a média em Produtos e confirmar que o Painel geral e a ficha financeira passam a mostrar os novos dados, sem recadastramento.
 - [ ] Criar dois lançamentos não sobrepostos do mesmo SKU; verificar soma.
 - [ ] Tentar salvar lançamento sobreposto; deve bloquear.
 - [ ] Salvar lançamento sem conferência; deve ficar pendente, fora do lucro apurado.
