@@ -26,6 +26,25 @@ const isoToday=()=>{
 };
 const priorDate=(iso,offset)=>new Date(Date.parse(iso+'T12:00:00Z')+offset*86400000).toISOString().slice(0,10);
 const records=()=>getHistory().filter(r=>r&&r.data&&r.data.kind===KIND);
+const brazilDay=stamp=>{
+ const d=new Date(stamp);if(!Number.isFinite(d.getTime()))return '';
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+ const v=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+ return v.year+'-'+v.month+'-'+v.day;
+};
+const brazilStamp=stamp=>{
+ const d=new Date(stamp);
+ return Number.isFinite(d.getTime())?d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+};
+const lastChanges=()=>{
+ const latest=new Map();
+ for(const change of getChanges()){
+  const sku=String(change?.sku||'').trim().toUpperCase(),value=Date.parse(change?.timestamp||'');
+  if(!sku||!Number.isFinite(value))continue;
+  if(!latest.has(sku)||Date.parse(latest.get(sku).timestamp)<value)latest.set(sku,change);
+ }
+ return latest;
+};
 const getStatus=product=>typeof effectiveAdsStatus==='function'?effectiveAdsStatus(product):String(product.adsStatus||'unknown');
 const marketText=product=>typeof product.market==='number'&&Number.isFinite(product.market)&&product.market>0?currency(product.market):'Não informado';
 const curveTextSaved=product=>/^[ABCDE]$/.test(String(product.curve||''))?'Curva '+product.curve:'Não informada';
@@ -56,7 +75,7 @@ css.textContent=[
  '.simple-finance .s-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}',
  '.simple-finance .s-muted{font-size:12px;color:#c8c1b7;line-height:1.5}',
  '.simple-finance .s-table{overflow-x:auto;margin-top:12px}',
- '.simple-finance .s-table table{min-width:920px;width:100%;border-collapse:collapse}',
+ '.simple-finance .s-table table{min-width:1090px;width:100%;border-collapse:collapse}',
  '.simple-finance .s-table th,.simple-finance .s-table td{padding:11px 9px;text-align:left;border-bottom:1px solid #4a4541}',
  '.simple-finance .s-table th{text-transform:none;font-size:12px;color:#ded2c0}',
  '.simple-finance .s-table td small{display:block;color:#c6bfb6}',
@@ -72,10 +91,10 @@ const panel=document.createElement('section');
 panel.id='painel';panel.className='view simple-finance';
 panel.innerHTML=
 '<div class="panel"><div class="row-between"><div><div class="overline">Controle financeiro manual · somente leitura Shopee</div><h2>Resultado dos anúncios</h2><p class="subtle">Lucro ou prejuízo por SKU, com histórico de períodos e alterações.</p></div><button class="btn-secondary mini" type="button" id="simpleOpenChanges">Registrar alteração</button></div>'+
-'<div class="s-toolbar"><div class="s-field"><label for="simplePeriod">Período financeiro</label><select id="simplePeriod"><option value="all">Todo o histórico</option><option value="month">Este mês</option><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option></select></div><div class="s-field"><label for="simpleSearch">Buscar produto</label><input id="simpleSearch" type="search" placeholder="SKU ou nome" autocomplete="off"></div></div>'+
+'<div class="s-toolbar"><div class="s-field"><label for="simplePeriod">Período financeiro</label><select id="simplePeriod"><option value="all">Todo o histórico</option><option value="month">Este mês</option><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option></select></div><div class="s-field"><label for="simpleRecent">Últimas alterações dos anúncios</label><select id="simpleRecent"><option value="all">Todos os produtos (mais recentes primeiro)</option><option value="today">Alterados hoje</option><option value="7">Alterados nos últimos 7 dias</option><option value="15">Alterados nos últimos 15 dias</option><option value="30">Alterados nos últimos 30 dias</option><option value="none">Sem alterações registradas</option></select></div><div class="s-field"><label for="simpleSearch">Buscar produto</label><input id="simpleSearch" type="search" placeholder="SKU ou nome" autocomplete="off"></div></div>'+
 '<div class="s-grid"><div class="s-card"><small>Receita líquida informada</small><strong id="sRevenue">—</strong></div><div class="s-card"><small>Gasto Ads informado</small><strong id="sAds">—</strong></div><div class="s-card"><small>Lucro/prejuízo apurado</small><strong id="sNet">—</strong></div><div class="s-card"><small>Produtos sem apuração completa</small><strong class="s-amber" id="sPending">—</strong></div></div>'+
 '<p class="s-muted" id="sCoverage">Os totais incluem apenas períodos completos e conferidos. Não são uma conciliação automática com a Shopee.</p>'+
-'<div class="s-table"><table><thead><tr><th>Produto</th><th>Curva</th><th>Média do mercado</th><th>Ads (R$)</th><th>Lucro/prejuízo (R$)</th><th>Situação</th><th></th></tr></thead><tbody id="simpleProductRows"></tbody></table></div>'+
+'<div class="s-table"><table><thead><tr><th>Produto</th><th>Curva</th><th>Média do mercado</th><th>Última alteração</th><th>Ads (R$)</th><th>Lucro/prejuízo (R$)</th><th>Situação</th><th></th></tr></thead><tbody id="simpleProductRows"></tbody></table></div>'+
 '<details id="simpleFinanceDetails"><summary id="simpleFormHeading">+ Registrar resultado financeiro por produto</summary>'+
 '<p class="s-muted">Preencha valores relativos ao mesmo período. A receita líquida deve vir da Shopee após taxas e descontos; não desconte essas taxas novamente. Use custo efetivo WeDrop e Ads de todas as campanhas do SKU no período. Não rateie automaticamente pedidos com vários SKUs.</p>'+
 '<form id="simpleFinanceForm" autocomplete="off"><div class="s-form">'+
@@ -144,8 +163,16 @@ function filteredRows(){
 }
 function render(){
  options();
- const search=$('simpleSearch').value.trim().toLocaleLowerCase('pt-BR'),all=filteredRows();
- const products=readProducts().filter(p=>(p.sku+' '+p.name).toLocaleLowerCase('pt-BR').includes(search));
+ const search=$('simpleSearch').value.trim().toLocaleLowerCase('pt-BR'),all=filteredRows(),latest=lastChanges();
+ const recent=$('simpleRecent').value,today=isoToday();
+ const start=recent==='today'?today:/^(7|15|30)$/.test(recent)?priorDate(today,1-Number(recent)):null;
+ const products=readProducts().filter(p=>{
+  if(!(p.sku+' '+p.name).toLocaleLowerCase('pt-BR').includes(search))return false;
+  const change=latest.get(p.sku);
+  if(recent==='none')return !change;
+  if(start){const date=change?brazilDay(change.timestamp):'';return !!date&&date>=start&&date<=today;}
+  return true;
+ }).sort((a,b)=>(Date.parse(latest.get(b.sku)?.timestamp||'')||0)-(Date.parse(latest.get(a.sku)?.timestamp||'')||0)||a.name.localeCompare(b.name,'pt-BR'));
  let revenue=0,ads=0,net=0,completed=0,pending=0;
  $('simpleProductRows').innerHTML=products.map(p=>{
   const entries=all.filter(r=>r.data.sku===p.sku),approved=entries.filter(r=>r.data.confirmed);
@@ -158,15 +185,16 @@ function render(){
   const situation=!ok?'Pendente':missing?'Parcial':totals.net>0?'Lucro':totals.net<0?'Prejuízo':'Equilíbrio';
   return '<tr><td><strong>'+escapeHtml(p.name)+'</strong><small>'+escapeHtml(p.sku)+' · '+escapeHtml(getStatus(p)==='active'?'Em Ads':getStatus(p)==='removed'?'Retirado dos Ads':'Status Ads não confirmado')+'</small></td>'+
   '<td><span class="s-tag">'+escapeHtml(curveTextSaved(p))+'</span></td><td>'+escapeHtml(marketText(p))+'</td>'+
+  '<td>'+(latest.has(p.sku)?'<strong>'+escapeHtml(brazilStamp(latest.get(p.sku).timestamp))+'</strong><small>'+escapeHtml((latest.get(p.sku).changes||[]).join(' + ')||'Alteração registrada')+'</small>':'<span class="s-muted">Sem registro</span>')+'</td>'+
   '<td>'+(ok?currency(totals.ads):'—')+'</td><td class="'+(totals.net<0?'s-red':totals.net>0?'s-green':'')+'">'+(ok?currency(totals.net):'—')+'</td>'+
-  '<td><span class="s-tag">'+situation+'</span></td><td><button type="button" class="btn-secondary mini" data-simple-new="'+escapeHtml(p.sku)+'">Lançar</button></td></tr>';
- }).join('')||'<tr><td colspan="7">Nenhum produto cadastrado ou correspondente à busca.</td></tr>';
+  '<td><span class="s-tag">'+situation+'</span></td><td><div class="s-actions"><button type="button" class="btn-secondary mini" data-simple-history="'+escapeHtml(p.sku)+'">Histórico</button><button type="button" class="btn-secondary mini" data-simple-new="'+escapeHtml(p.sku)+'">Lançar</button></div></td></tr>';
+ }).join('')||'<tr><td colspan="8">Nenhum produto cadastrado ou correspondente aos filtros.</td></tr>';
  $('sRevenue').textContent=completed?currency(revenue):'—';
  $('sAds').textContent=completed?currency(ads):'—';
  $('sNet').textContent=completed?currency(net):'—';
  $('sNet').className=net<0?'s-red':net>0?'s-green':'';
  $('sPending').textContent=String(pending)+' de '+products.length;
- $('sCoverage').textContent='Somente '+completed+' produto(s) com registros financeiros conferidos no período. Valores ausentes ou não conferidos não são tratados como lucro zero. Filtros por data consideram lançamentos totalmente dentro da janela, sem rateio.';
+ $('sCoverage').textContent='Totais referentes aos '+products.length+' produto(s) exibidos nos filtros, dos quais '+completed+' têm lançamentos financeiros conferidos. Sem dados não significa lucro zero. O filtro de últimas alterações usa a data de registro da mudança no anúncio; o filtro financeiro usa o período das vendas. Nenhum valor é rateado.';
  const showing=all.filter(r=>(r.data.sku+' '+(readProducts().find(p=>p.sku===r.data.sku)?.name||'')).toLocaleLowerCase('pt-BR').includes(search));
  showing.sort((a,b)=>b.data.periodEnd.localeCompare(a.data.periodEnd));
  $('simpleLedgerRows').innerHTML=showing.map(r=>{
@@ -179,7 +207,17 @@ function render(){
 }
 $('simplePeriod').addEventListener('change',render);
 $('simpleSearch').addEventListener('input',render);
+$('simpleRecent').addEventListener('change',render);
 panel.addEventListener('click',event=>{
+ const historyButton=event.target.closest('[data-simple-history]');
+ if(historyButton){
+  $('apiHistoryFilter').value='changes';
+  $('historyFromDate').value='';$('historyToDate').value='';
+  const filter=$('historyRecentFilter');if(filter)filter.value='all';
+  switchTab('historico');
+  $('changeFilter').value=historyButton.dataset.simpleHistory;
+  renderChangeHistory();return;
+ }
  const newButton=event.target.closest('[data-simple-new]');
  if(newButton){reset();options();$('sSku').value=newButton.dataset.simpleNew;productMarketCurveSummary();$('simpleFinanceDetails').open=true;$('simpleFinanceDetails').scrollIntoView({behavior:'smooth',block:'start'});return;}
  const edit=event.target.closest('[data-simple-edit]');
