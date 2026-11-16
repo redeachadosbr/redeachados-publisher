@@ -498,6 +498,14 @@
         <div class="field"><label for="apiHistoryFilter">Origem dos dados</label><select id="apiHistoryFilter"><option value="changes">Modificações manuais</option><option value="ads">Consultas da API (blocos)</option></select></div>
       </div>
       <div class="hist-period-filter">
+       <div class="field"><label for="historyRecentFilter">Últimas alterações</label><select id="historyRecentFilter">
+        <option value="all">Todas as alterações</option>
+        <option value="today">Alteradas hoje</option>
+        <option value="7">Últimos 7 dias</option>
+        <option value="15">Últimos 15 dias</option>
+        <option value="30">Últimos 30 dias</option>
+        <option value="custom">Período personalizado</option>
+       </select></div>
        <div class="field"><label for="historyFromDate">Histórico a partir de</label><input id="historyFromDate" type="date"></div>
        <div class="field"><label for="historyToDate">Até</label><input id="historyToDate" type="date"></div>
        <button type="button" id="historyClearDatesBtn" class="btn-secondary mini">Todas as datas</button>
@@ -1910,9 +1918,9 @@ function renderChangeHistory(){
   return;
  }
  head.innerHTML='<tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr>';
- const a=getChanges().filter(keep).sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
+ const a=getChanges().filter(keep).sort((a,b)=>document.body.classList.contains('simple-mode')?b.timestamp.localeCompare(a.timestamp):a.timestamp.localeCompare(b.timestamp));
  if(!badRange)summary.textContent=a.length+' modificação(ões)'+(from?' desde '+apiDate(from):'')+
-  (to?' até '+apiDate(to):'')+'. Exibidas em ordem cronológica.';
+  (to?' até '+apiDate(to):'')+'. '+(document.body.classList.contains('simple-mode')?'Mais recentes primeiro.':'Exibidas em ordem cronológica.') ;
  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><div class="hist-action-buttons"><button class="btn-secondary mini" data-analyze-change="'+safe(x.id)+'" type="button">Analisar fases</button><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></div></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
  for(const btn of body.querySelectorAll('[data-analyze-change]'))btn.addEventListener('click',()=>{
   const record=getChanges().find(x=>x.id===btn.dataset.analyzeChange);
