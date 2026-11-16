@@ -30,7 +30,19 @@ Usar o aplicativo somente para: **Painel geral**, **Produtos** e **Alterações*
 - Arquivos originais de catálogo, sincronização, finanças e histórico: preservados.
 - Mudanças estão somente na branch `feat/ads-painel-simples-lucro-historico-20261116`. **Não publicado**.
 
+## Filtro de últimas alterações
+- **Painel Geral:** exibe última modificação manual registrada de cada SKU (tipo, data e hora no fuso America/Sao_Paulo), ordena por mais recente primeiro e filtra: todos, hoje, 7, 15, 30 dias ou sem registros.
+- O botão **Histórico** da linha abre as alterações daquele SKU e limpa o filtro de datas para não ocultar registros anteriores.
+- **Aba Alterações:** seletor rápido de todos, hoje, 7, 15 ou 30 dias, mantendo também o intervalo personalizado.
+- O filtro de alterações utiliza `changes[].timestamp` e **não altera** datas ou lançamentos financeiros.
+- Os totais do painel correspondem somente aos produtos exibidos nos filtros; o texto abaixo dos indicadores informa essa limitação.
+
 ## Checklist manual antes de publicar
+- [ ] Criar alterações em SKUs distintos hoje, há 8 dias e há 31 dias; conferir filtros 7, 15 e 30 dias e ordenação por data.
+- [ ] Com produto sem alteração, conferir filtro Sem alterações registradas.
+- [ ] Conferir o botão Histórico por SKU, inclusive datas anteriores aos últimos 7 dias.
+- [ ] Testar ajuste manual do intervalo na aba Alterações, seleção Período personalizado e botão Todas as datas.
+- [ ] Confirmar que o filtro de últimas alterações não modifica valores salvos nem a data-base dos lançamentos financeiros.
 - [ ] Fazer backup JSON no app atual e confirmar arquivo do Google Drive atualizado.
 - [ ] Em ambiente de teste, abrir modo simples e verificar 3 abas.
 - [ ] Conferir no Painel geral as colunas Curva e Média do mercado para produtos cadastrados, inclusive os sem informação.
