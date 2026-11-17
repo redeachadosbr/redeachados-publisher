@@ -9552,6 +9552,38 @@ function shPriceRender(q){
     :'Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
       '. Margem mínima '+shPricePercent(q.minMarginPct)+'.';
 }
+function shPriceShowUnavailable(sku,message,{missingCost=false}={}){
+  if(shPriceSelection)return; // plano do anúncio validado segue seu fluxo próprio
+  shPriceSupplierQuote=null;
+  shPriceCurrentQuote=null;
+  const values=$('#optimizerQuickValues');
+  if(values)values.hidden=false;
+  for(const id of ['#optimizerQuickGross','#optimizerQuickDiscount','#optimizerQuickFinal',
+    '#optimizerQuickProfit','#optimizerQuickMarginPercent']){
+    const field=$(id);if(field)field.textContent='—';
+  }
+  const coupon=$('#optimizerQuickAfterCoupon');
+  if(coupon)coupon.textContent='Aguardando custo válido';
+  pricingResetQuote();
+  const supplier=$('#optimizerSupplierResult');
+  if(supplier){
+    supplier.hidden=false;
+    supplier.replaceChildren();
+    supplier.append(document.createTextNode(message));
+    if(missingCost){
+      const link=document.createElement('a');
+      link.href='/app/wedrop';
+      link.textContent=' Conferir ou vincular custo na WeDrop →';
+      link.className='optimizer-v15-action-link';
+      supplier.append(document.createTextNode(' '),link);
+    }
+  }
+  const status=missingCost?
+    'SKU '+sku+': preço indisponível porque falta o custo WeDrop. Confira a importação ou o vínculo do produto; nenhum valor foi inventado.':
+    'SKU '+sku+': não foi possível consultar o custo. '+message+' Tente novamente.';
+  shQuickSetStatus(status,'error');
+  $('#priceSaveInfo').textContent='Prévia não calculada: não existe custo WeDrop confirmado para esta SKU.';
+}
 async function shPricePreviewSupplierSku(sku,lookupSerial=null){
   if(!sku||sku.length>120)return;
   const serial=++shPricePreviewSerial;
@@ -9573,8 +9605,8 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
     if(serial!==shPricePreviewSerial||$('#optimizerSku').value.trim()!==sku)return;
     $('#optimizerSupplierResult').hidden=false;
     if(!result.found){
-      $('#optimizerSupplierResult').textContent='WeDrop · SKU '+sku+
-        ' sem custo disponível no catálogo salvo. Confira a importação do fornecedor.';
+      shPriceShowUnavailable(sku,'WeDrop · SKU '+sku+
+        ' sem custo disponível no catálogo salvo.',{missingCost:true});
       return;
     }
     // Custo sempre aparece, inclusive quando não houver solução matemática
@@ -9594,9 +9626,8 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
     }
   }catch(e){
     if(serial===shPricePreviewSerial&&$('#optimizerSku').value.trim()===sku){
-      $('#optimizerSupplierResult').hidden=false;
-      $('#optimizerSupplierResult').textContent='Consulta do custo WeDrop falhou: '+e.message+
-        '. A identificação do anúncio Shopee segue independente.';
+      shPriceShowUnavailable(sku,'Consulta do custo WeDrop falhou: '+e.message+
+        '. A identificação do anúncio Shopee segue independente.');
     }
   }
 }
@@ -9723,6 +9754,10 @@ $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
     shQuickMarginTimer=setTimeout(()=>void shPricePrepare(),380);
   }else if(shPriceSupplierQuote){
     shQuickMarginTimer=setTimeout(()=>void shPricePreviewSupplierSku(shPriceSupplierQuote.sku),380);
+  }else if($('#optimizerSku').value.trim().length>=4){
+    // Após importar um custo, a barra permite tentar novamente sem trocar a SKU.
+    shQuickMarginTimer=setTimeout(()=>
+      void shPricePreviewSupplierSku($('#optimizerSku').value.trim()),380);
   }
 });
 $('#priceMargin')?.addEventListener?.('input',()=>{
