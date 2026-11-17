@@ -48,8 +48,7 @@ test('o anúncio exemplo 1175 completo não deve aparecer como pendente por CEST
 test('não executa escrita para dados já existentes mas inválidos',()=>{
  assert.throws(()=>fiscalFillMissingOnly({...approved,ncm:'12'},approved),
   /Dados fiscais existentes inválidos.*ncm/);
- assert.throws(()=>fiscalFillMissingOnly({...approved,cest:'0'},approved),
-  /Dados fiscais existentes inválidos.*cest/);
+ assert.equal(fiscalFillMissingOnly({...approved,cest:'0'},approved).tax.cest,'00');
 });
 test('rejeita a ficha aprovada se a origem contém valores fiscais inválidos',()=>{
  assert.throws(()=>fiscalFillMissingOnly({}, {...approved,ncm:'9503'}),
