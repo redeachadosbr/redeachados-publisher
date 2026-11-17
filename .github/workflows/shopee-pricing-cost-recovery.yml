@@ -1,0 +1,30 @@
+name: Validar recuperação do preço WeDrop
+
+on:
+  push:
+    branches:
+      - fix/optimizer-price-cost-lookup-20261117
+  pull_request:
+    branches:
+      - shopee-service
+
+jobs:
+  pricing-recovery:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install
+      - name: Verificar sintaxe de precificação e interface
+        run: node --check shopeePricing.js && node --check shopeePricingStore.js && node --check public/app.js
+      - name: Rodar regressões de SKU, custo, margem e preço
+        run: >-
+          node --test
+          tests/shopee-optimizer-cost-link-recovery-20261117.test.js
+          tests/shopee-optimizer-modern-supplier-preview.test.js
+          tests/shopee-margin-slider-live.test.js

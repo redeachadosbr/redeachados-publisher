@@ -40,18 +40,32 @@ export async function saveShopeePricingPreferences(shopId,settings){
 export async function shopeePricingDirectSupplierCost(shopId,sku){
   const id=validShop(shopId),code=String(sku??'').trim();
   if(!code||code.length>120||/[\x00-\x1F]/.test(code))throw Error('SKU WeDrop inválida.');
-  const rows=await request('shopee_wedrop_costs',
-    '?shop_id=eq.'+id+'&supplier_sku=eq.'+encodeURIComponent(code)+
-    '&select=supplier_sku,unit_cost,imported_at&limit=2');
-  // The imported supplier SKU is authoritative. Only permit a case-insensitive
-  // fallback when it identifies exactly one supplier record; never guess a cost
-  // from a different SKU, substring, Shopee product or model.
-  let matches=rows;
+  const select='&select=supplier_sku,unit_cost,imported_at&limit=2';
+  let matches=await request('shopee_wedrop_costs',
+    '?shop_id=eq.'+id+'&supplier_sku=eq.'+encodeURIComponent(code)+select);
+  // Somente uma equivalência exata, ignorando caixa, é segura.
   if(matches.length===0&&/^[a-zA-Z0-9-]+$/.test(code)){
     const candidates=await request('shopee_wedrop_costs',
       '?shop_id=eq.'+id+'&supplier_sku=ilike.'+encodeURIComponent(code)+
       '&select=supplier_sku,unit_cost,imported_at&limit=20');
     matches=candidates.filter(row=>String(row.supplier_sku).toUpperCase()===code.toUpperCase());
+  }
+  // SKU da Shopee pode ser diferente da SKU WeDrop. Reutilizar APENAS
+  // vínculos já revisados nesta loja e sem ambiguidade entre fornecedores.
+  // Isto não autoriza publicação nem trata o vínculo como anúncio ativo.
+  if(matches.length===0){
+    const links=await request('shopee_wedrop_sku_links',
+      '?shop_id=eq.'+id+'&shopee_sku=eq.'+encodeURIComponent(code)+
+      '&select=shopee_sku,supplier_sku&limit=50');
+    const linkedSkus=[...new Set(links
+      .filter(row=>String(row.shopee_sku)===code)
+      .map(row=>String(row.supplier_sku||'').trim()).filter(Boolean))];
+    // Uma lista no limite não permite provar unicidade.
+    if(links.length<50&&linkedSkus.length===1){
+      matches=await request('shopee_wedrop_costs',
+        '?shop_id=eq.'+id+'&supplier_sku=eq.'+
+        encodeURIComponent(linkedSkus[0])+select);
+    }
   }
   if(matches.length!==1)return null;
   const cost=Number(matches[0].unit_cost);
@@ -63,28 +77,22 @@ export async function shopeePricingDirectSupplierCost(shopId,sku){
 export async function shopeePricingSupplierCost(shopId,{sku,itemId,modelId}){
   const id=validShop(shopId),code=String(sku||'').trim();
   if(!code||code.length>120)throw Error('SKU inválida.');
-  // An exact match is authoritative. A manual link is used only when it still
-  // names this exact item, model, and current Shopee SKU.
-  let supplierSku=code;
-  let rows=await request('shopee_wedrop_costs',
-    '?shop_id=eq.'+id+'&supplier_sku=eq.'+encodeURIComponent(supplierSku)+
-    '&select=supplier_sku,unit_cost,imported_at&limit=2');
-  if(rows.length===0){
-    const link=await request('shopee_wedrop_sku_links',
-      '?shop_id=eq.'+id+'&item_id=eq.'+Number(itemId)+
-      '&model_id=eq.'+Number(modelId||0)+'&select=shopee_sku,supplier_sku&limit=2');
-    const choice=link.length===1&&String(link[0].shopee_sku)===code
-      ?String(link[0].supplier_sku||'').trim():'';
-    if(choice){
-      supplierSku=choice;
-      rows=await request('shopee_wedrop_costs','?shop_id=eq.'+id+
-        '&supplier_sku=eq.'+encodeURIComponent(supplierSku)+
-        '&select=supplier_sku,unit_cost,imported_at&limit=2');
-    }
+  // O preço preparado exige custo da SKU exata ou vínculo validado para o
+  // item/modelo atual; jamais usar um vínculo de outro anúncio.
+  const direct=await shopeePricingDirectSupplierCost(id,code);
+  if(direct&&direct.supplierSku.toUpperCase()===code.toUpperCase())return direct;
+  const link=await request('shopee_wedrop_sku_links',
+    '?shop_id=eq.'+id+'&item_id=eq.'+Number(itemId)+
+    '&model_id=eq.'+Number(modelId||0)+
+    '&select=shopee_sku,supplier_sku&limit=2');
+  const choice=link.length===1&&String(link[0].shopee_sku)===code?
+    String(link[0].supplier_sku||'').trim():'';
+  if(choice){
+    const linked=await shopeePricingDirectSupplierCost(id,choice);
+    if(linked&&linked.supplierSku.toUpperCase()===choice.toUpperCase())return linked;
   }
-  if(rows.length!==1||!Number.isFinite(Number(rows[0].unit_cost))||Number(rows[0].unit_cost)<=0)
-    throw Error('Custo WeDrop não vinculado à SKU '+code+'. Faça o vínculo na área Fornecedor WeDrop antes de calcular.');
-  return {supplierSku,unitCost:Number(rows[0].unit_cost),costUpdatedAt:rows[0].imported_at||null};
+  throw Error('Custo WeDrop não vinculado à SKU '+code+
+    '. Confira a importação ou faça o vínculo na área Fornecedor WeDrop antes de calcular.');
 }
 export async function saveShopeePricePlan(shopId,{itemId,modelId,sku,supplierSku,quote}){
   const id=validShop(shopId);

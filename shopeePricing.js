@@ -346,7 +346,9 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   throw Error('Média de mercado inválida.');
  const desired=Math.max(c.marginPct,c.minMarginPct);
  // Mesma regra efetiva dos kits: bruto de ate 3x custos, desconto 0..50%,
- // lucro protegido e terminacoes 0/9 no bruto, vitrine e apos cupom.
+ // lucro protegido e terminacoes 0/9 no bruto e na vitrine.
+ // Cupom e condicional: seu valor reduz lucro, mas seus centavos nao
+ // invalidam o preco anunciado (politica de terminacao v6).
  const base=marginOverride?null:quoteShopeeKitPrice({unitCost:cost,settings:c});
  let chosen=marginOverride?closestManualOptimizationQuote(cost,c,desired):
   {grossCents:money(base.grossPrice),discountPct:base.discountPct,
@@ -376,8 +378,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
      const financial=calculateShopeeSale(grossCents,{...c,discountPct},money(cost));
      if(financial.saleCents>target||
        financial.marginPct+1e-8<c.minMarginPct||
-       !validEnding(money(financial.marketplaceDisplayPrice))||
-       !validEnding(financial.saleCents))continue;
+       !validEnding(money(financial.marketplaceDisplayPrice)))continue;
      if(!best||financial.saleCents>best.financial.saleCents||
         (financial.saleCents===best.financial.saleCents&&
          discountPct>best.discountPct))
@@ -408,8 +409,7 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
    'Ajustar a meta dentro do mesmo intervalo pode conservar o valor por arredondamento.';
  if(chosen.discountPct<=0||chosen.discountPct>50||
     f.marginPct+1e-8<desired||
-    !(marginOverride?[chosen.grossCents,money(f.marketplaceDisplayPrice)]:
-      [chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents]).every(validEnding))
+    ![chosen.grossCents,money(f.marketplaceDisplayPrice)].every(validEnding))
   throw Error('Desconto variável inviável com a margem e terminações exigidas. Nenhum preço foi alterado.');
  const minGross=minimumGrossForNetMargin(cost,{...c,discountPct:chosen.discountPct},c.minMarginPct);
  const floor=minGross===null?null:
@@ -420,8 +420,8 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   buyerAfterCoupon:f.finalPrice,customerPrice:f.finalPrice,
   customerPriceBeforeRounding:f.finalPrice,
   attractiveEndingApplied:true,attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
-  priceEndingRuleVersion:marginOverride?6:4,
-  priceEndingPolicy:marginOverride?'listed_price_coupon_conditional':'both_checkout_and_visible',
+  priceEndingRuleVersion:6,
+  priceEndingPolicy:'listed_price_coupon_conditional',
   netProfit:f.profit,netMarginPct:Number(f.marginPct.toFixed(3)),
   minMarginPct:c.minMarginPct,targetMarginPct:c.marginPct,
   marketAverage:market,marketGapPct:market===null?null:
