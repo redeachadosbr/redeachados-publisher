@@ -74,6 +74,26 @@ export async function shopeePricingDirectSupplierCost(shopId,sku){
     costUpdatedAt:matches[0].imported_at||null};
 }
 
+// Diagnóstico de leitura para distinguir ausência do SKU e ausência do custo.
+// Catálogo salvo e última importação são a fonte da verdade; nunca estimar preço.
+export async function shopeePricingSupplierCatalogStatus(shopId,sku){
+  const id=validShop(shopId),code=String(sku??'').trim();
+  if(!code||code.length>120||/[\x00-\x1F]/.test(code))
+    throw Error('SKU WeDrop inválida.');
+  const [products,states]=await Promise.all([
+    request('shopee_wedrop_products','?shop_id=eq.'+id+
+      '&supplier_sku=eq.'+encodeURIComponent(code)+
+      '&select=supplier_sku&limit=1'),
+    request('shopee_wedrop_sync_state','?shop_id=eq.'+id+
+      '&select=source_name,last_success_at,status&limit=1')
+  ]);
+  return {
+    skuInStoredCatalog:products.some(x=>String(x.supplier_sku)===code),
+    lastCatalogImportAt:states[0]?.last_success_at||null,
+    catalogSourceName:states[0]?.source_name||null
+  };
+}
+
 export async function shopeePricingSupplierCost(shopId,{sku,itemId,modelId}){
   const id=validShop(shopId),code=String(sku||'').trim();
   if(!code||code.length>120)throw Error('SKU inválida.');

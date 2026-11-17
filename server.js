@@ -110,7 +110,7 @@ import {marketFloorDiscountEligibility,unresearchedMarginApprovalEligible} from 
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
 import {scanLiveNormalSku,catalogCandidatesIfNoActive,selectNewestVerifiedSkuTarget} from './shopeeSkuActiveResolver.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
-  shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
+  shopeePricingSupplierCost,shopeePricingDirectSupplierCost,shopeePricingSupplierCatalogStatus,
   saveShopeePricePlan,recentShopeePricePlans,
   savedShopeePricePlan,shopeeAdsReservedPricePlans} from './shopeePricingStore.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
@@ -5190,8 +5190,25 @@ app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDro
       req.body?.settings===undefined?shopeePricingPreferences(auth.shopId):
         Promise.resolve(normalizeShopeePricingSettings(req.body.settings))
     ]);
-    if(!cost)return res.json({ok:true,found:false,sku,
-      message:'Esta SKU ainda não possui custo WeDrop salvo. Consulte a área Fornecedor WeDrop.'});
+    if(!cost){
+      // SKU ausente do catálogo e produto sem custo são situações diferentes.
+      // Falha na leitura do diagnóstico nunca autoriza estimativa de custo.
+      let catalog=null;
+      try{catalog=await shopeePricingSupplierCatalogStatus(auth.shopId,sku);}
+      catch(error){console.warn('[optimizer-pricing] Diagnóstico do catálogo indisponível:',String(error.message||error).slice(0,100));}
+      const missingReason=catalog
+        ?(catalog.skuInStoredCatalog?'COST_NOT_IMPORTED':'SKU_NOT_IN_STORED_CATALOG')
+        :'CATALOG_STATUS_UNAVAILABLE';
+      return res.json({ok:true,found:false,sku,missingReason,
+        skuInStoredCatalog:catalog?.skuInStoredCatalog??null,
+        lastCatalogImportAt:catalog?.lastCatalogImportAt||null,
+        catalogSourceName:catalog?.catalogSourceName||null,
+        message:missingReason==='SKU_NOT_IN_STORED_CATALOG'
+          ?'SKU '+sku+' não consta no catálogo WeDrop salvo. Confira o código ou atualize a importação.'
+          :missingReason==='COST_NOT_IMPORTED'
+            ?'SKU '+sku+' consta no catálogo WeDrop, mas seu custo unitário não está registrado.'
+            :'Não foi possível confirmar o custo da SKU na base WeDrop salva.'});
+    }
     const settings=req.body?.marginOverride===true&&req.body.marginPct!==undefined
       ?normalizeShopeePricingSettings({...baseSettings,marginPct:req.body.marginPct}):baseSettings;
     const marketAverage=req.body?.marketAverage===undefined?null:req.body.marketAverage;
