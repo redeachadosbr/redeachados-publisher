@@ -5851,11 +5851,28 @@ app.post('/api/shopee/finance/order-cost',mustLogin,requireWeDropAdmin,async(req
     x=>String(x.order_sn)===input.orderSn))
    return res.status(404).json({ok:false,error:'Pedido não encontrado na Shopee autenticada; custo não gravado.'});
   const saved=await saveFinanceOrderCost(auth.shopId,input);
+  // Custo real alterado: invalidar imediatamente todos os períodos dessa loja.
+  for(const key of financeSnapshotCache.keys())
+    if(key.startsWith(String(auth.shopId)+'|'))financeSnapshotCache.delete(key);
   res.json({ok:true,saved,source:'declarado com referência de compra; não verificado automaticamente pela WeDrop'});
  }catch(error){
   res.status(400).json({ok:false,error:String(error.message||error).slice(0,250)});
  }
 });
+// Cache limitado por loja + janela: mantém os números visíveis sem refazer
+// centenas de requisições ao abrir o painel. Atualizar financeiro ignora o TTL.
+const financeSnapshotCache=new Map();
+const financeSnapshotInflight=new Map();
+const FINANCE_SNAPSHOT_TTL_MS=120000;
+function financeSnapshotKey(shopId,range){
+  return String(shopId)+'|'+range.mode+'|'+range.from+'|'+range.label;
+}
+function financeSnapshotStore(key,body){
+  financeSnapshotCache.delete(key);
+  financeSnapshotCache.set(key,{body,updatedAt:Date.now()});
+  while(financeSnapshotCache.size>24)
+    financeSnapshotCache.delete(financeSnapshotCache.keys().next().value);
+}
 app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -5866,21 +5883,47 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
       start:String(req.query.start||''),
       end:String(req.query.end||'')
     },to);
-    const dates=financeAdsDates(range);
-    // Consultas em paralelo, sem permitir que a negação de Ads esconda o
-    // financeiro de repasse/custos. Nunca atribuir zero quando não autorizado.
-    const [finance,adsResult]=await Promise.all([
-      loadShopeeFinance(cfg,auth,callShopeeShopApi,{now:to,timeRange:range}),
-      loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates)
-        .then(value=>({ok:true,value}))
-        .catch(error=>({ok:false,error:String(error.message||error).slice(0,250)}))
-    ]);
-    const adsSweep=adsResult.ok
-      ?{...matchFinanceAds(finance,adsResult.value),dates}
-      :{status:'unavailable',dates,error:adsResult.error,
-        message:'Não foi possível concluir a varredura de Ads. O custo de publicidade e o resultado após Ads continuam indisponíveis; NÃO considere R$ 0.'};
-    const paidProfit=buildPaidOrderProfitLedger(finance,adsSweep);
-    res.json({ok:true,...finance,adsSweep,paidProfit});
+    const key=financeSnapshotKey(auth.shopId,range);
+    const cached=financeSnapshotCache.get(key);
+    const refresh=String(req.query.refresh||'')==='1';
+    if(!refresh&&cached&&Date.now()-cached.updatedAt<FINANCE_SNAPSHOT_TTL_MS){
+      return res.json({...cached.body,cache:{
+        status:'cached',updatedAt:new Date(cached.updatedAt).toISOString()}});
+    }
+    let pending=financeSnapshotInflight.get(key);
+    if(!pending){
+      pending=(async()=>{
+        const dates=financeAdsDates(range);
+        // Shopee Orders e Ads em paralelo; negar Ads não apaga os repasses.
+        const [finance,adsResult]=await Promise.all([
+          loadShopeeFinance(cfg,auth,callShopeeShopApi,{now:to,timeRange:range}),
+          loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates)
+            .then(value=>({ok:true,value}))
+            .catch(error=>({ok:false,error:String(error.message||error).slice(0,250)}))
+        ]);
+        const adsSweep=adsResult.ok
+          ?{...matchFinanceAds(finance,adsResult.value),dates}
+          :{status:'unavailable',dates,error:adsResult.error,
+            message:'Não foi possível concluir a varredura de Ads. O custo de publicidade e o resultado após Ads continuam indisponíveis; NÃO considere R$ 0.'};
+        const paidProfit=buildPaidOrderProfitLedger(finance,adsSweep);
+        return {ok:true,...finance,adsSweep,paidProfit};
+      })();
+      financeSnapshotInflight.set(key,pending);
+    }
+    try{
+      const body=await pending;
+      if(financeSnapshotInflight.get(key)===pending)financeSnapshotStore(key,body);
+      res.json({...body,cache:{status:'fresh',updatedAt:new Date().toISOString()}});
+    }catch(error){
+      if(!cached)throw error;
+      res.json({...cached.body,cache:{
+        status:'stale',updatedAt:new Date(cached.updatedAt).toISOString(),
+        warning:'Consulta Shopee indisponível. Exibindo a última apuração, não os valores atuais.'
+      }});
+    }finally{
+      if(financeSnapshotInflight.get(key)===pending)
+        financeSnapshotInflight.delete(key);
+    }
   }catch(e){
     const error=String(e.message||e).slice(0,360);
     const forbidden=/permission|denied|403|forbidden/i.test(error);
