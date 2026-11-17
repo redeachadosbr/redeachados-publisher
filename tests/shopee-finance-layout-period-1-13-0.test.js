@@ -43,7 +43,7 @@ test('todos os endpoints usam o mesmo range e listagem paginada de pedidos',()=>
  assert.match(backend,/for\(let chunkFrom=periodFrom;chunkFrom<=periodTo;chunkFrom\+=CHUNK\)/);
  assert.match(backend,/time_range_field:'create_time'/);
  assert.match(backend,/String\(x\.order_status\|\|''\)\.toUpperCase\(\)==='COMPLETED'/);
- assert.equal(MAX_FINANCE_ORDERS,100);
+ assert.equal(MAX_FINANCE_ORDERS,null);
 });
 test('somente SKUs vendidos e pendências estão na lista financeira',()=>{
  assert.match(js,/const wanted=new Set\(\[\.\.\.sold\.keys\(\),\.\.\.pending\]\)/);
