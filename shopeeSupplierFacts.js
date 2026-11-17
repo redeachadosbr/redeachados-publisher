@@ -2,8 +2,8 @@
 import {fiscalStoreDefaults} from './shopeeMatrixRules.js';
 const clean=value=>String(value||'').trim();
 // Fonte de sugestão fiscal local: o catálogo WeDrop vinculado à SKU.
-// O CEST já publicado pela Shopee prevalece em toda execução de anúncio existente.
-// Sem código de sete dígitos confirmado na planilha, guardar somente o marcador interno 00.
+// O CEST antigo da Shopee nunca é fonte; vale o CEST da SKU exata WeDrop.
+// Sem código de sete dígitos confirmado na planilha, usar "00" na proposta fiscal.
 export function wedropCestForSku(supplier){
  const linked=Boolean(supplier&&(!supplier.matchedBy||['exact-sku','reviewed-link'].includes(supplier.matchedBy)));
  const value=linked?String(supplier.product_data?.cest??'').trim():'';
@@ -75,5 +75,5 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
   taxSuggestionSources:Object.fromEntries(Object.keys(taxSuggestion).map(key=>[key,
    ['ncm','measure_unit'].includes(key)||key==='cest'&&taxSuggestion.cest!=='00'?(source||'Ficha técnica do produto'):
     key==='pis_cofins_cst'?'Motor Matriz · padrão fiscal da loja: 99 — Outras Operações':
-    key==='cest'&&taxSuggestion.cest==='00'?'Motor Matriz · marcador 00 (sem CEST confirmado; não enviar à Shopee)':'Regras fiscais salvas da loja']))};
+    key==='cest'&&taxSuggestion.cest==='00'?'Motor Matriz · padrão 00 (sem CEST WeDrop confirmado; enviar após aprovação)':'Regras fiscais salvas da loja']))};
 }

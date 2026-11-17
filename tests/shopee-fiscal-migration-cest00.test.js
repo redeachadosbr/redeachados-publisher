@@ -7,8 +7,8 @@ test('CEST 00 é padrão de cadastro e passa para prévia, não é confirmação
  assert.equal(fiscalStoreDefaults().cest,'00');
  assert.equal(compileTax({...base,cest:'00'},{tax_info:{}}).cest,'00');
 });
-test('CEST de sete dígitos publicado na Shopee é preservado mesmo com rascunho 00',()=>{
- assert.equal(compileTax({...base,cest:'00'},{tax_info:{cest:'1234567'}}).cest,'1234567');
+test('CEST publicado na Shopee é corrigido para 00 sem CEST WeDrop',()=>{
+ assert.equal(compileTax({...base,cest:'00'},{tax_info:{cest:'1234567'}}).cest,'00');
 });
 test('unidades KIT JOGO UN são aceitas na preparação fiscal',()=>{
  for(const unit of ['KIT','JOGO','UN'])assert.equal(compileTax({...base,measure_unit:unit},{tax_info:{}}).measure_unit,unit);
@@ -29,6 +29,6 @@ test('CEST de rascunho vem do catálogo da SKU exata e não da Shopee',async()=>
  assert.equal(wedropCestForSku({...exact,matchedBy:'unreviewed',
   product_data:{ncm:'42029200',cest:'2806100'}}),'00');
  assert.equal(oldShopee.tax_info.cest,'2806100','nenhuma escrita na Shopee');
- assert.equal(compileTax({...base,cest:'00'},oldShopee).cest,'2806100',
+ assert.equal(compileTax({...base,cest:'00'},oldShopee).cest,'00',
   'transmissão existente só muda com autorização fiscal específica');
 });

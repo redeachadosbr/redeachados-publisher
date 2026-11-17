@@ -41,6 +41,13 @@ export function fiscalMatrixSource({sku,supplier,tax,reviewSource=null}={}){
  if(tax&&!proof)throw Error('Motor Matriz: informe a fonte fiscal do NCM desta SKU.');
  if(tax&&!supplier&&/\bwedrop\b/i.test(proof))
   throw Error('Motor Matriz: a fonte WeDrop citada não está vinculada à SKU atual. Reimporte ou confirme o vínculo.');
+ // Não reutilizar CEST da Shopee: a única classificação aceita é a da SKU WeDrop vinculada.
+ const sourceCest=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy)?
+  normal(supplier.product_data?.cest):'';
+ const expectedCest=/^\d{7}$/.test(sourceCest)?sourceCest:'00';
+ if(tax&&normal(tax.cest)&&normal(tax.cest)!==expectedCest)
+  throw Error('Motor Matriz: CEST diferente da WeDrop da SKU '+listingSku+
+   '. Valor esperado: '+expectedCest+'. Reprepare a ficha fiscal.');
  if(reviewSource&&tax){
   if(normal(reviewSource.sku)!==listingSku)
    throw Error('Motor Matriz: aprovação fiscal pertence a outra SKU.');

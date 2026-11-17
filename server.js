@@ -1677,7 +1677,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
             csosn:String(savedTax.csosn||'102'),
             pis_cofins_cst:String(savedTax.pis_cofins_cst||'99'),
             ...(savedTax.operation_type?{operation_type:savedTax.operation_type}:{}),
-            cest:cestForShopeeField(fiscalById.get(itemId)),
+            cest:wedropCestForSku(supplier),
             ncm
           };
           fiscal=inspectShopeeFiscalGap(fiscalById.get(itemId),reference);
@@ -1785,7 +1785,8 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
   const savedTax=existing.review_state?.tax;
   if(!savedTax)throw Error('Rascunho fiscal ausente.');
   const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
-  const tax={...savedTax,cest:cestForShopeeField(fiscalLive.tax_info)};
+  cestForShopeeField(fiscalLive.tax_info);
+  const tax={...savedTax,cest:wedropCestForSku(supplier)};
   const source=fiscalMatrixSource({sku,supplier,tax});
   const unit=suggestFiscalMeasureUnit(record.title||'',supplier.product_data?.title||'');
   if(!tax.measure_unit)throw Error('Unidade de medida fiscal ausente.');
@@ -3224,10 +3225,12 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      throw Error('Etapa 06: não existem variações aprovadas e elegíveis para esta SKU.');
     if(['discount','discount_adjust'].includes(selectedStage)&&kitLink&&!kitDiscountPlan)
      throw Error('Etapa 08 ainda não preparada: abra Desconto do kit e registre a prévia da campanha.');
-    if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
-      // Kit e SKU simples usam o mesmo vínculo auditado. Nunca descartar
-      // a fonte WeDrop ao preparar a autorização da SKU principal.
+    if(['all','fiscal','remaining','media_fiscal'].includes(selectedStage)&&
+      reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
+      // Antes de criar o plano, atualizar a proposta com o CEST da SKU WeDrop.
+      // Nunca reutilizar o CEST atual da Shopee ou de uma revisão antiga.
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      reviewState.tax={...reviewState.tax,cest:wedropCestForSku(supplier)};
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
@@ -3388,9 +3391,9 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    csosn:previousTax.csosn||'102',
    pis_cofins_cst:previousTax.pis_cofins_cst||'99',
    ...(previousTax.operation_type?{operation_type:previousTax.operation_type}:{}),
-   cest:cestForShopeeField(live.tax_info),measure_unit:measureUnit,evidence};
-  // WeDrop sugere CEST apenas no rascunho; no envio prevalece a leitura
-  // oficial atual do anúncio Shopee, com 00 somente se o campo está vazio.
+   cest:wedropCestForSku(supplierLinked?supplier:null),measure_unit:measureUnit,evidence};
+  // Na execução fiscal, a fonte é a SKU WeDrop; ausência ou formato inválido -> 00.
+  // A leitura do anúncio serve somente para detectar divergências e confirmar o resultado.
   compileTax(tax,{tax_info:{}});
   const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
   // Campos preenchidos também precisam coincidir com a tabela fiscal aprovada.
@@ -3398,20 +3401,20 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   if(!String(previousTax.operation_type||'').trim())
    delete referenceTax.operation_type;
   const comparison=inspectShopeeFiscalGap(live.tax_info,referenceTax);
-  if(missingOnly&&comparison.invalid.length)
+  if(missingOnly&&comparison.invalid.some(k=>k!=='cest'))
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'Campo exigido pela tabela tem formato inválido na Shopee: '+
-     comparison.invalid.join(', ')+'. Revisar sem sobrescrever.'});
+     comparison.invalid.filter(k=>k!=='cest').join(', ')+'. Revisar sem sobrescrever.'});
   if(missingOnly&&comparison.unverified.length)
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'A tabela de referência não tem NCM confirmado para esta SKU.'});
   if(missingOnly&&comparison.status==='complete')
    return res.json({ok:true,sku,itemId,modelId,status:'already_current',
     message:'Campos fiscais comparados à tabela aprovada e confirmados na Shopee.'});
-  if(missingOnly&&comparison.mismatched.length)
+  if(missingOnly&&comparison.mismatched.some(k=>k!=='cest'))
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'Campos preenchidos, mas divergentes da referência fiscal: '+
-     comparison.mismatched.join(', ')+'. Revisar antes de alterar dados existentes.'});
+     comparison.mismatched.filter(k=>k!=='cest').join(', ')+'. Revisar antes de alterar dados existentes.'});
   // Completar campos ausentes até mesmo nas fichas já marcadas como
   // revisadas, sem sobrescrever um único valor manual preexistente.
   const needsSave=!existing?.review_state?.stages?.fiscal?.reviewed||
@@ -3478,7 +3481,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',
     message:plan.blocked.join(' · ')||'Informação fiscal não elegível para envio.'});
   if(missingOnly&&Object.entries(plan.proposed?.tax_info||{}).some(([k,v])=>
-     String(live.tax_info?.[k]??'').trim()&&
+     k!=='cest'&&String(live.tax_info?.[k]??'').trim()&&
      String(live.tax_info[k])!==String(v)))
    throw Error('Motor Matriz: campo fiscal já preenchido não pode ser sobrescrito em execução de pendências.');
   confirmShopeeExecution(plan,{sku,confirmation:'EXECUTAR '+sku});
@@ -3534,13 +3537,13 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
     if(!review||review.sku!==sku||review.review_state?.stages?.fiscal?.reviewed!==true||
       !review.review_state?.tax)throw Error('Informações fiscais ainda não conferidas para esta SKU.');
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-    fiscalMatrixSource({sku,supplier,tax:review.review_state.tax,
-      reviewSource:review.review_state.matrixFiscal});
-    // A prévia fiscal de lote sempre relê a Shopee antes de decidir o CEST.
-    // O CEST salvo na revisão local não é uma autorização para sobrescrever a loja.
+    const reviewForPlan={...review.review_state,tax:{
+      ...review.review_state.tax,cest:wedropCestForSku(supplier)}};
+    fiscalMatrixSource({sku,supplier,tax:reviewForPlan.tax,
+      reviewSource:reviewForPlan.matrixFiscal});
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
-      record,review:review.review_state,live,selectedStage:'fiscal'});
+      record,review:reviewForPlan,live,selectedStage:'fiscal'});
     const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
     const disposition=fiscalPreviewDisposition({plan,
       previousError:prior?.last_error,previousPlan:prior?.plan});
@@ -3617,12 +3620,14 @@ app.post('/api/shopee/optimizer/batch/fiscal/execute',mustLogin,requireWeDropAdm
     if(review?.sku!==sku||!review.review_state?.stages?.fiscal?.reviewed||!review.review_state?.tax)
      throw Error('Revisão fiscal ausente ou alterada.');
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-    fiscalMatrixSource({sku,supplier,tax:review.review_state.tax,
-      reviewSource:review.review_state.matrixFiscal});
+    const reviewForPlan={...review.review_state,tax:{
+      ...review.review_state.tax,cest:wedropCestForSku(supplier)}};
+    fiscalMatrixSource({sku,supplier,tax:reviewForPlan.tax,
+      reviewSource:reviewForPlan.matrixFiscal});
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     assertLiveShopeeUnchanged(job.plan,live);
     const recalculated=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
-      record,review:review.review_state,live,selectedStage:'fiscal'});
+      record,review:reviewForPlan,live,selectedStage:'fiscal'});
     if(!recalculated.canExecute||recalculated.fingerprint!==job.plan.fingerprint)
       throw Error('Valores fiscais diferentes da prévia. Revise a SKU novamente.');
     const disposition=fiscalPreviewDisposition({plan:job.plan,
@@ -4020,14 +4025,20 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   if((plan.selectedStage==='fiscal'||plan.finalFiscal)&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
     const supplier=await readWeDropProduct(auth.shopId,linkedKit?
       {sku:linkedKit.mainSku}:{sku,itemId,modelId});
+    reviewState.tax={...reviewState.tax,cest:wedropCestForSku(supplier)};
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
-    // Nunca validar o CEST contra a WeDrop antes da leitura oficial:
-    // CEST que já existe na Shopee não pode ser substituído por "00".
+    // O CEST WeDrop é revalidado novamente no momento de executar.
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const plannedTax=plan.finalFiscal||plan.proposed?.tax_info;
-  if(plannedTax&&String(plannedTax.cest??'')!==cestForShopeeField(live.tax_info))
-    throw Error('CEST mudou na Shopee desde a prévia. Reprepare para preservar o valor atual; nada foi enviado.');
+  if(plannedTax){
+    const currentCest=cestForShopeeField(live.tax_info);
+    const originalCest=String(plan.original?.tax_info?.cest??'').trim()||'00';
+    if(currentCest!==originalCest&&currentCest!==String(plannedTax.cest??'').trim())
+     throw Error('CEST mudou na Shopee desde a prévia. Reprepare e confira a alteração; nada foi enviado.');
+    if(String(plannedTax.cest??'')!==String(reviewState.tax?.cest??''))
+     throw Error('CEST da WeDrop mudou desde a prévia. Reprepare com o código correto da SKU; nada foi enviado.');
+   }
   const supplierForBrand=await readWeDropProduct(auth.shopId,linkedKit?
     {sku:linkedKit.mainSku}:{sku,itemId,modelId});
   const singleProductName=!linkedKit?.kitSku&&

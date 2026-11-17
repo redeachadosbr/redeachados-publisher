@@ -19,26 +19,26 @@ const record={shopId:852701218,itemId:'58221348619',selectedModelId:'0',
  sku:'2392',status:'NORMAL',categoryId:101724,attributeAudit:{attributes:[],missingMandatory:0}};
 const options={shopId:852701218,itemId:'58221348619',modelId:'0',sku:'2392',record,live,
  review:{stages:{fiscal:{reviewed:true}},tax},selectedStage:'fiscal'};
-test('SKU 2392: WeDrop sugere 00, mas Shopee com CEST preenchido permanece intacta',()=>{
+test('SKU 2392: WeDrop sem CEST prepara 00 embora Shopee tenha código antigo',()=>{
  assert.equal(wedropCestForSku(supplier),'00');
  assert.equal(supplierWorkflowFacts(supplier,record).taxSuggestion.cest,'00');
- assert.equal(compileTax(tax,live).cest,'2806100');
+ assert.equal(compileTax(tax,live).cest,'00');
  assert.equal(compileTax(tax,live).ncm,'87120010');
  assert.equal(live.tax_info.cest,'2806100','leitura Shopee continua factual');
 });
-test('preservar o CEST 2806100 publicado na execução fiscal',()=>{
+test('substituir o CEST antigo 2806100 por 00 em execução autorizada',()=>{
  const p=compileShopeeExecutionPlan(options);
  assert.equal(p.canExecute,true);
- assert.equal(p.proposed.tax_info.cest,'2806100');
- assert.notEqual(p.proposed.tax_info.cest,'00');
+ assert.equal(p.proposed.tax_info.cest,'00');
+ assert.notEqual(p.proposed.tax_info.cest,'2806100');
  assert.notEqual(p.fingerprint,'');
 });
-test('CEST já preenchido na Shopee prevalece; em branco usa 00',()=>{
+test('CEST WeDrop de 7 dígitos prevalece mesmo com Shopee preenchida',()=>{
  const withReal={...supplier,product_data:{...supplier.product_data,cest:'1234567'}};
  assert.equal(wedropCestForSku(withReal),'1234567');
  const quote=compileTax({...tax,cest:wedropCestForSku(withReal)},live);
- assert.equal(quote.cest,'2806100');
- assert.equal(compileTax({...tax,cest:'1234567'},{tax_info:{}}).cest,'00');
+ assert.equal(quote.cest,'1234567');
+ assert.equal(compileTax({...tax,cest:'1234567'},{tax_info:{}}).cest,'1234567');
  assert.equal(wedropCestForSku({...supplier,matchedBy:'unreviewed'}),'00');
 });
 test('execução aprovada revalida CEST real da Shopee antes de gravar',()=>{
@@ -56,6 +56,6 @@ test('formulário fiscal usa catálogo da SKU e mantém Shopee como leitura inde
  assert.match(client,/DIVERGÊNCIA DE CEST:/);
  assert.match(client,/CEST já preenchido na Shopee:/);
  assert.match(server,/change.tax=\{\.\.\.change.tax,cest:wedropCestForSku\(taxSupplier\)\}/);
- assert.match(server,/cest:wedropCestForSku\(supplier\),measure_unit:measureUnit/);
+ assert.match(server,/cest:wedropCestForSku\(supplierLinked\?supplier:null\),measure_unit:measureUnit/);
  assert.match(server,/CEST mudou na Shopee desde a prévia/);
 });
