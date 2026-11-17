@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/shopee-finance-paid-bottomline-20261117
+      - fix/financeiro-rapido-20261117
   workflow_dispatch:
 jobs:
   finance:
@@ -22,6 +23,7 @@ jobs:
           node --check server.js
           node --check public/app.js
           node --check tests/shopee-finance-paid-bottomline-20261117.test.js
+          node --check tests/shopee-finance-fast-20261117.test.js
       - name: Run finance tests
         run: |
-          node --test tests/shopee-finance-paid-bottomline-20261117.test.js tests/shopeeFinancePaid.test.js tests/shopee-finance-order-costs.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-dashboard-1-11-0.test.js tests/shopee-finance-ads-sweep-1-12-0.test.js tests/finance-ads-readonly.test.js
+          node --test tests/shopee-finance-fast-20261117.test.js tests/shopee-finance-paid-bottomline-20261117.test.js tests/shopeeFinancePaid.test.js tests/shopee-finance-order-costs.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-dashboard-1-11-0.test.js tests/shopee-finance-ads-sweep-1-12-0.test.js tests/finance-ads-readonly.test.js
