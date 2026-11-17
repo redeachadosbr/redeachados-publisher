@@ -6306,8 +6306,10 @@ function financeExportRows(report){
   ['Ads com vínculo seguro',adsReady?sw.spendAllocatedToSoldSku:'Não verificado'],
   ['Ads sem conversão',adsReady?sw.spendWithoutDirectConversions:'Não verificado'],
   ['Ads sem vínculo seguro',adsReady?sw.spendUnassigned:'Não verificado'],
-  ['Resultado após Ads',adsReady&&Number.isFinite(Number(t.balanceBeforeAds))?
-   Math.round((Number(t.balanceBeforeAds)-Number(sw.spendTotal))*100)/100:'Não verificado'],
+  ['Resultado após Ads',report.shopOutcome?.amount??'Não verificado'],
+  ['Classificação',report.shopOutcome?.status==='loss'?'Prejuízo operacional estimado':
+    report.shopOutcome?.status==='profit'?'Lucro operacional estimado':
+    report.shopOutcome?.status==='even'?'Equilíbrio operacional estimado':'Resultado incompleto'],
   ['Lucro líquido fiscal','Em apuração'],[],
   ['SKU','Produto','Unidades','Repasse Shopee','Custo WeDrop','Ads SKU','Resultado após Ads','Situação']
  ];
@@ -6331,7 +6333,34 @@ $('#financeExportCsv')?.addEventListener?.('click',()=>{
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 
+
+function renderFinanceOutcome(report){
+ const card=$('#financeBottomline');
+ if(!card)return;
+ const title=$('#financeBottomlineTitle'),value=$('#financeBottomlineValue'),
+   equation=$('#financeBottomlineEquation'),note=$('#financeBottomlineNote');
+ const result=report?.shopOutcome;
+ if(!result||result.status==='incomplete'||!Number.isFinite(result.amount)){
+   card.dataset.state='pending';
+   title.textContent='RESULTADO INCOMPLETO';
+   value.textContent='—';
+   equation.textContent='Repasse Shopee − custo WeDrop − Ads';
+   note.textContent=result?.reason||'Atualize para calcular o resultado do período sem presumir Ads zero.';
+   return;
+ }
+ const kind=result.amount<0?'loss':result.amount>0?'profit':'even';
+ card.dataset.state=kind;
+ const adjective=result.complete?'ESTIMADO':'PARCIAL ESTIMADO';
+ title.textContent=(kind==='loss'?'PREJUÍZO':kind==='profit'?'LUCRO':'SEM LUCRO NEM PREJUÍZO')+' · '+adjective;
+ value.textContent=wdMoney(result.amount);
+ equation.textContent=wdMoney(result.received)+' (repasse) − '+
+   wdMoney(result.supplierCost)+' (WeDrop) − '+wdMoney(result.adsSpend)+
+   ' (Ads) = '+wdMoney(result.amount);
+ note.textContent=result.reason;
+}
+
 function renderFinanceAdsScan(report){
+ renderFinanceOutcome(report);
  const sweep=report.adsSweep||{};
  const good=sweep.status==='verified_campaign_period';
  $('#financeSkuAdsKpi').textContent=good?wdMoney(sweep.spendAllocatedToSoldSku):'—';
@@ -6562,6 +6591,7 @@ function financeSelectionChanged(){
   $('#shopeeFinanceData').hidden=true;
   $('#financeExportCsv').disabled=true;
   renderFinanceTrend(null);renderFinanceDistribution(null);
+  renderFinanceOutcome(null);
   $('#financeVerifiedCaption').textContent='Aguardando consulta';
   for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout','#shopeeFinanceCosts',
     '#shopeeFinanceBalance','#financeSkuAdsKpi','#financeAdsNoConversion',
@@ -6588,6 +6618,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
   $('#financeExportCsv').disabled=true;
   renderFinanceTrend(null);renderFinanceDistribution(null);
+  renderFinanceOutcome(null);
   $('#financeVerifiedCaption').textContent='Consultando pedidos...';
   for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
     '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',

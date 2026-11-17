@@ -88,6 +88,7 @@
 .optimizer-exec-resume-bar #optimizerExecutionLaunch[hidden]{display:none!important}
 @media(max-width:700px){.optimizer-exec-resume-bar{padding:13px;gap:12px}.optimizer-exec-resume-bar #optimizerExecutionLaunch{width:100%;flex:1 1 100%}}
 </style>
+<link rel="stylesheet" href="/finance-result-summary.css?v=20261117">
 </head>
 <body>
 <div class="shell app-layout">
@@ -2174,6 +2175,12 @@
               <button id="financeExportCsv" type="button" class="secondary" disabled>⇩ &nbsp; Exportar resumo</button>
             </div>
           </div>
+          <section class="finance-bottomline" id="financeBottomline" data-state="pending" role="status" aria-live="polite">
+            <div class="finance-bottomline-label" id="financeBottomlineTitle">RESULTADO FINANCEIRO DO PERÍODO</div>
+            <strong id="financeBottomlineValue">—</strong>
+            <p id="financeBottomlineEquation">Repasse Shopee − custo WeDrop − Ads</p>
+            <small id="financeBottomlineNote">Atualize o financeiro para conferir lucro ou prejuízo estimado.</small>
+          </section>
           <div class="finance-kpis" aria-label="Resumo financeiro do período">
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-blue">▣</span><div><span>Pedidos conferidos</span><strong id="shopeeFinanceVerified">—</strong><small id="financeVerifiedCaption">Aguardando consulta</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Pedidos concluídos criados no período, com repasse Payment e custo WeDrop conciliados. O número mostra verificados sobre elegíveis.">?</span></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-green">↗</span><div><span>Repasse Shopee</span><strong id="shopeeFinancePayout">—</strong><small>Valor repassado dos pedidos conferidos</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Repasse líquido obtido na API de pagamento da Shopee; as taxas informadas já estão refletidas neste valor.">?</span></article>
@@ -2185,7 +2192,7 @@
             <article class="finance-kpi finance-kpi-result"><span class="finance-kpi-icon finance-tone-muted">◇</span><div><span>Resultado após Ads · loja*</span><strong id="financeSkuNetKpi">—</strong><small id="financeResultCompleteness">Aguardando conciliação</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Saldo antes Ads menos TODOS os gastos Ads verificados do período. Resultado operacional parcial, antes de impostos, despesas externas e outras limitações de cobertura.">?</span></article>
             <article class="finance-kpi finance-kpi-net"><span class="finance-kpi-icon finance-tone-muted">⌁</span><div><span>Lucro líquido final</span><strong id="financeTaxNetKpi">Em apuração</strong><small>Impostos e despesas externas pendentes</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Lucro líquido fiscal não é exibido até que impostos e despesas externas estejam conciliados. Resultado após Ads não deve ser chamado de lucro final.">?</span></article>
           </div>
-          <div class="finance-visual-row" aria-label="Gráficos e análise do período">
+          <details class="finance-optional-details"><summary>Ver gráficos e análise detalhada</summary><div class="finance-visual-row" aria-label="Gráficos e análise do período">
             <section class="finance-visual-card finance-trend-card">
               <h3>Evolução do resultado <small id="financePeriodCaption">Últimos 15 dias (pedidos criados)</small></h3>
               <div class="finance-trend-legend"><span class="finance-legend-payout">Repasse</span><span class="finance-legend-cost">Custos WeDrop</span><span class="finance-legend-balance">Saldo antes Ads</span></div>
@@ -2205,7 +2212,7 @@
                 <p>Ads com vínculo seguro ao SKU são comparados às vendas do produto. Ads sem conversão permanecem como despesa da loja, não de uma venda individual.</p>
               </div>
             </aside>
-          </div>
+          </div></details>
           <div id="shopeeFinanceData" hidden>
             <div class="finance-products-card">
             <div class="finance-results-head">
@@ -2313,7 +2320,7 @@
 <script src="/fiscal-modern-layout.js?v=1.0.3-compact-help"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=3.5.13-kit-discount-check"></script>
+<script src="/app.js?v=1.20.25-finance-result"></script>
 <script type="module" src="/kit-builder.js?v=3.9.10-kit-discount-check"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
