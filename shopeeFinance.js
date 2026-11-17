@@ -408,8 +408,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   // em formação, não repasse recebido. COMPLETED continua prioritário.
   const detailTargets=[...limited,...listed.filter(x=>
     String(x.order_status||'').toUpperCase()!=='COMPLETED'&&
-    !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase()))]
-    ;
+    !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase()))];
   const detailMap=new Map();
   for(let i=0;i<detailTargets.length;i+=50){
     const d=await callApi(cfg,{
