@@ -5,7 +5,7 @@ import {readWeDropCosts,readWeDropSkuLinks,readFinanceCatalogProfiles} from './w
 import {isFinancePaid} from './shopeeFinancePaid.js';
 import {readFinanceOrderCosts} from './shopeeFinanceOrderCosts.js';
 
-export const MAX_FINANCE_ORDERS=100;
+export const MAX_FINANCE_ORDERS=null; // Sem corte artificial; mantido para compatibilidade.
 export function finiteMoney(raw){
   if(raw===null||raw===undefined||raw==='')return null;
   const value=Number(raw);
@@ -402,14 +402,14 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     if(!finished)throw Error('Pedidos demais no intervalo. Consulte uma data mais curta.');
   }
   const completed=[...found.values()].filter(x=>String(x.order_status||'').toUpperCase()==='COMPLETED');
-  const limited=completed.slice(0,MAX_FINANCE_ORDERS);
+  const limited=completed; // Todos os pedidos concluídos da janela selecionada.
   const listed=[...found.values()];
   // Inclui itens dos pedidos ainda não concluídos: eles geram faturamento
   // em formação, não repasse recebido. COMPLETED continua prioritário.
   const detailTargets=[...limited,...listed.filter(x=>
     String(x.order_status||'').toUpperCase()!=='COMPLETED'&&
     !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase()))]
-    .slice(0,MAX_FINANCE_ORDERS);
+    ;
   const detailMap=new Map();
   for(let i=0;i<detailTargets.length;i+=50){
     const d=await callApi(cfg,{
@@ -460,7 +460,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
    if(!returnsBySn.has(key))returnsBySn.set(key,[]);
    returnsBySn.get(key).push(item);
   }
-  for(const order of orderedPaid.slice(0,MAX_FINANCE_ORDERS)){
+  for(const order of orderedPaid){
    const sn=String(order.order_sn||''),detail=detailMap.get(sn);
    const status=String(detail?.order_status||order.order_status||'');
    let finance=completedBySn.get(sn);
@@ -543,7 +543,6 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
       rows.every(x=>x.ready)&&salesPipeline.awaitingSettlement===0&&
       salesPipeline.goodsComplete),
     adsAttribution:'not_available',
-    caveat:'Pedidos pagos e concluídos criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
-      ' pedidos concluídos por consulta. Não equivale ao extrato bancário.'
+    caveat:'Pedidos pagos e concluídos criados entre as datas selecionadas; consulta paginada sem corte de 100 pedidos. Repasse previsto ou confirmado não equivale ao extrato bancário.'
   };
 }
