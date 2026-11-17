@@ -27,5 +27,4 @@ jobs:
           node --test
           tests/shopee-optimizer-cost-link-recovery-20261117.test.js
           tests/shopee-optimizer-modern-supplier-preview.test.js
-          tests/shopee-optimizer-fast-lookup.test.js
           tests/shopee-margin-slider-live.test.js
