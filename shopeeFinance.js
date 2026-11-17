@@ -3,7 +3,7 @@
 // Ads não são deduzidos até existir atribuição comprovada sem duplicidades.
 import {readWeDropCosts,readWeDropSkuLinks,readFinanceCatalogProfiles} from './wedropCosts.js';
 
-export const MAX_FINANCE_ORDERS=100;
+export const MAX_FINANCE_ORDERS=null; // Sem limite artificial; mantido para compatibilidade.
 export function finiteMoney(raw){
   if(raw===null||raw===undefined||raw==='')return null;
   const value=Number(raw);
@@ -232,7 +232,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     if(!finished)throw Error('Pedidos demais no intervalo. Consulte uma data mais curta.');
   }
   const completed=[...found.values()].filter(x=>String(x.order_status||'').toUpperCase()==='COMPLETED');
-  const limited=completed.slice(0,MAX_FINANCE_ORDERS);
+  const limited=completed; // Todos os pedidos concluídos, com paginação completa.
   const detailMap=new Map();
   for(let i=0;i<limited.length;i+=50){
     const d=await callApi(cfg,{
@@ -277,7 +277,43 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     complete:Boolean(!paymentAccessWarning&&completed.length===rows.length&&
       rows.every(x=>x.ready)),
     adsAttribution:'not_available',
-    caveat:'Somente pedidos COMPLETED criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
-      ' pedidos concluídos por consulta. Não equivale ao extrato bancário.'
+    caveat:'Somente pedidos COMPLETED criados entre as datas selecionadas, sem corte artificial de 100 pedidos. Não equivale ao extrato bancário.'
   };
+}
+
+/**
+ * Resultado operacional da loja: cálculo agregado independente do rateio Ads
+ * por campanha/SKU. Não incluir comissões/frete que já reduziram o repasse.
+ * A classificação permanece ESTIMADA por falta de impostos e despesas externas.
+ */
+export function calculateFinanceOutcome(finance,adsSweep){
+  const totals=finance?.totals||{};
+  const received=finiteMoney(totals.received);
+  const supplierCost=finiteMoney(totals.supplierCost);
+  const spend=adsSweep?.status==='verified_campaign_period'
+    ?finiteMoney(adsSweep.spendTotal):null;
+  const validNumbers=received!==null&&received>=0&&supplierCost!==null&&supplierCost>=0&&
+    spend!==null&&spend>=0;
+  const eligible=Number(totals.eligible),verified=Number(totals.verified);
+  const validCounts=Number.isSafeInteger(eligible)&&eligible>=0&&
+    Number.isSafeInteger(verified)&&verified>=0&&verified<=eligible;
+  const observed=validCounts&&(verified>0||(eligible===0&&finance?.complete===true));
+  const complete=Boolean(validCounts&&finance?.complete===true&&
+    eligible===verified&&!totals.incompletePeriod);
+  if(!validNumbers||!observed){
+    const reason=spend===null
+      ?'Publicidade não confirmada. Não foi usado R$ 0,00 como gasto presumido.'
+      :!observed?'Repasses ou custos de pedidos ainda não foram conciliados.'
+      :'Dados financeiros insuficientes para calcular o resultado.';
+    return {status:'incomplete',amount:null,received,supplierCost,adsSpend:spend,
+      complete:false,verified:validCounts?verified:0,eligible:validCounts?eligible:0,
+      reason};
+  }
+  const amount=Math.round((received-supplierCost-spend)*100)/100;
+  const status=amount<0?'loss':amount>0?'profit':'even';
+  return {status,amount,received,supplierCost,adsSpend:spend,
+    complete,verified,eligible,
+    reason:complete
+      ?'Repasses e custos dos pedidos conferidos; resultado antes de impostos, despesas externas e possíveis fontes de Ads fora da consulta.'
+      :'Resultado parcial dos pedidos conciliados; há pedidos pendentes ou cobertura incompleta, antes de impostos e despesas externas.'};
 }

@@ -10,7 +10,7 @@ import {mergeShopeeOrderDates,mergeShopeeOrderSummaries} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview,brazilAdsToday} from './adsReport.js';
 import {adsSevenDayWindows,buildAdsMonitor} from './shopeeAdsInsights.js';
-import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
+import {loadShopeeFinance,calculateFinanceOutcome} from './shopeeFinance.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
@@ -4456,7 +4456,7 @@ installFinanceBridge(app,async(req)=>{
       ads={status:'confirmed',amount:Math.round(Number(report.total.expense)*100)/100,source:'Shopee Ads API · campanhas de produtos'};
   }catch(_){/* sem acesso Ads, não inventar R$0 */}
   return {schema:'ra-finance-bridge-v1',platform:'shopee',generatedAt:new Date().toISOString(),
-    orders,ads,coverage:{note:'Somente pedidos COMPLETED criados na janela de 30 dias; enviados sem repasse confirmado permanecem pendentes; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
+    orders,ads,coverage:{note:'Somente pedidos COMPLETED criados na janela de 30 dias; enviados sem repasse confirmado permanecem pendentes; consulta paginada sem corte de 100 pedidos. Repasse nao equivale ao saldo sacavel.'},
     diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
       permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
 });
@@ -4502,7 +4502,7 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
       ?{...matchFinanceAds(finance,adsResult.value),dates}
       :{status:'unavailable',dates,error:adsResult.error,
         message:'Não foi possível concluir a varredura de Ads. O custo de publicidade e o resultado após Ads continuam indisponíveis; NÃO considere R$ 0.'};
-    res.json({ok:true,...finance,adsSweep});
+    res.json({ok:true,...finance,adsSweep,shopOutcome:calculateFinanceOutcome(finance,adsSweep)});
   }catch(e){
     const error=String(e.message||e).slice(0,360);
     const forbidden=/permission|denied|403|forbidden/i.test(error);
