@@ -424,7 +424,8 @@ test('execucao completa do kit usa fonte WeDrop auditada na preparação',()=>{
  assert.match(server,/if\(kitLink\)\{[\s\S]*?await verifiedLinkedKitQuote\(auth,kitLink\)/);
 });
 test('execucao fiscal isolada do kit também usa a fonte ligada ao Item ID',()=>{
- assert.match(server,/if\(selectedStage==='fiscal'&&reviewState\.stages\?\.fiscal\?\.reviewed&&reviewState\.tax\)\{\s*\/\/ Kit e SKU simples usam o mesmo vínculo auditado\.[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);/);
+ assert.match(server,/if\(\['all','fiscal','remaining','media_fiscal'\]\.includes\(selectedStage\)&&[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);/);
+ assert.match(server,/reviewState.tax=\{\.\.\.reviewState.tax,cest:wedropCestForSku\(supplier\)\}/);
  assert.match(server,/const taxSupplier=change\.tax\?await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\):null/);
  assert.match(server,/if\(\(plan\.selectedStage==='fiscal'\|\|plan\.finalFiscal\)&&reviewState\.stages\?\.fiscal\?\.reviewed&&reviewState\.tax\)\{/);
 });
