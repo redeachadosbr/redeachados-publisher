@@ -26,11 +26,11 @@
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(3) .finance-paid-icon{color:#0a9852;background:linear-gradient(140deg,#e8faef,#c9f0da);border-color:#c8efdc}
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(4) .finance-paid-icon,
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(8) .finance-paid-icon{color:#8050c9;background:linear-gradient(140deg,#f5efff,#e4d7ff);border-color:#eaddff}
-#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(6){border-color:#43c787;background:linear-gradient(145deg,#f8fffb,#e8f9f1);box-shadow:inset 0 1px #fff,0 0 0 1px #61d39933,0 8px 20px -13px #11ab618c}
-#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(6)::after{content:"PROJEÇÃO";position:absolute;top:7px;right:8px;padding:3px 8px;background:#0b9b5a;border-radius:20px;color:#fff;font-size:9px;font-weight:850;letter-spacing:.035em;box-shadow:0 3px 7px #109d6c35}
-#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(6) .finance-paid-icon{color:white;background:linear-gradient(145deg,#2ad780,#04964e);border-color:#2bbf72;box-shadow:inset 0 1px #ffffff77,0 7px 12px #00aa6238}
-#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(7){border-color:#63a8fb;background:linear-gradient(145deg,#f9fcff,#e2f1ff);box-shadow:inset 0 1px #fff,0 8px 18px -13px #2e8cfdb0}
-#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(7) .finance-paid-icon{color:#fff;background:linear-gradient(140deg,#54b5ff,#116ee1);border-color:#53a4f8}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-result{border-color:#43c787;background:linear-gradient(145deg,#f8fffb,#e8f9f1);box-shadow:inset 0 1px #fff,0 0 0 1px #61d39933,0 8px 20px -13px #11ab618c}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-result::after{content:"PROJEÇÃO";position:absolute;top:7px;right:8px;padding:3px 8px;background:#0b9b5a;border-radius:20px;color:#fff;font-size:9px;font-weight:850;letter-spacing:.035em;box-shadow:0 3px 7px #109d6c35}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-result .finance-paid-icon{color:white;background:linear-gradient(145deg,#2ad780,#04964e);border-color:#2bbf72;box-shadow:inset 0 1px #ffffff77,0 7px 12px #00aa6238}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-finalized{border-color:#63a8fb;background:linear-gradient(145deg,#f9fcff,#e2f1ff);box-shadow:inset 0 1px #fff,0 8px 18px -13px #2e8cfdb0}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-finalized .finance-paid-icon{color:#fff;background:linear-gradient(140deg,#54b5ff,#116ee1);border-color:#53a4f8}
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:nth-child(10) .finance-paid-icon{color:#637a96;background:linear-gradient(140deg,#f2f5f9,#e7ebf3);border-color:#e0e7ef}
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:has(>strong.negative){border-color:#f0aaaa;background:linear-gradient(145deg,#fff8f8,#ffeded)}
 #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article:has(>strong.negative) .finance-paid-icon{background:linear-gradient(145deg,#ffe5e5,#ffc8c8);border-color:#f6c2c2;color:#b72436}
@@ -81,3 +81,9 @@
 @media(hover:none),(prefers-reduced-motion:reduce){
  #tab-finance .finance-paid-premium-v2 .finance-paid-metrics article{transition:none;transform:none!important}
 }
+
+/* Resultado financeiro antes das métricas secundárias. */
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-result>strong,
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-finalized>strong{font-size:clamp(26px,2.6vw,38px)}
+#tab-finance .finance-paid-premium-v2 .finance-paid-metrics article.finance-paid-finalized{border-color:#7db5ef;background:linear-gradient(145deg,#f9fcff,#eaf3ff)}
+#tab-finance .finance-paid-premium-v2 .finance-paid-equation{margin:14px 0 0;padding:12px 15px;border:1px solid #cbdfec;border-radius:13px;background:#f6fbff;color:#22456b;font-weight:700;font-size:13px;line-height:1.55}
