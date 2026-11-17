@@ -43,10 +43,10 @@ test('motor e tela priorizam WeDrop e validam concorrencia do anuncio',()=>{
  const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(api,/need_tax_info:true/);
  assert.match(api,/CEST mudou na Shopee desde a prévia/);
- assert.match(api,/cestForShopeeField\\(live.tax_info\\)/);
- assert.match(api,/cest:wedropCestForSku\\(supplierLinked\\?supplier:null\\)/);
+ assert.match(api,/cestForShopeeField\(live.tax_info\)/);
+ assert.match(api,/cest:wedropCestForSku\(supplierLinked\?supplier:null\)/);
  assert.match(ui,/draft.cest=catalogCest;/);
- assert.doesNotMatch(ui,/draft.cest=liveCest\\|\\|'00'/);
+ assert.doesNotMatch(ui,/draft.cest=liveCest\|\|'00'/);
 });
 test('sem leitura oficial tax_info, nao prepara escrita',()=>{
  for(const missing of [undefined,null,false,[],''])
