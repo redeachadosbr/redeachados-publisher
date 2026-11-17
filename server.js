@@ -3401,10 +3401,10 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   if(!String(previousTax.operation_type||'').trim())
    delete referenceTax.operation_type;
   const comparison=inspectShopeeFiscalGap(live.tax_info,referenceTax);
-  if(missingOnly&&comparison.invalid.length)
+  if(missingOnly&&comparison.invalid.some(k=>k!=='cest'))
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'Campo exigido pela tabela tem formato inválido na Shopee: '+
-     comparison.invalid.join(', ')+'. Revisar sem sobrescrever.'});
+     comparison.invalid.filter(k=>k!=='cest').join(', ')+'. Revisar sem sobrescrever.'});
   if(missingOnly&&comparison.unverified.length)
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'A tabela de referência não tem NCM confirmado para esta SKU.'});
