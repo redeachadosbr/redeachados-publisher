@@ -4,6 +4,7 @@
 import {loadKitDraft} from './shopeeKitDraftStore.js';
 import {readWeDropProduct} from './wedropCosts.js';
 import {REDE_ACHADOS_FISCAL_DEFAULTS} from './shopeeMatrixRules.js';
+import {wedropCestForSku} from './shopeeSupplierFacts.js';
 
 const raw=v=>String(v??'').trim();
 const fields=['origin','same_state_cfop','diff_state_cfop','csosn','measure_unit','operation_type','pis_cofins_cst'];
@@ -55,7 +56,7 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
   const exactNcm=raw(exact.ncm);
   if(/^\d{8}$/.test(supplierNcm))suggestion.ncm=supplierNcm;
   else if(/^\d{8}$/.test(exactNcm))suggestion.ncm=exactNcm;
-  suggestion.cest=/^\d{7}$/.test(raw(product.cest))?raw(product.cest):REDE_ACHADOS_FISCAL_DEFAULTS.cest;
+  suggestion.cest=wedropCestForSku(supplier);
   const saved=Object.fromEntries(Object.entries(exact).filter(([key,v])=>
    [...fields,'ncm','evidence'].includes(key)&&typeof v==='string'&&v.length<=300));
   const confirmedOrigin=raw(draft.creative?.fiscalBySku?.[sku]?.origin);
