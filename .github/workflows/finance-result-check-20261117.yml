@@ -1,0 +1,21 @@
+name: Validar resultado financeiro Shopee 2026-11-17
+on:
+  push:
+    branches:
+      - fix/shopee-finance-resultado-20261117
+  workflow_dispatch:
+jobs:
+  validate-finance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Verificar sintaxe
+        run: npm run check
+      - name: Executar testes
+        run: npm test
