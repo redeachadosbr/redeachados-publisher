@@ -84,24 +84,51 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
  const eligible=rows.filter(x=>x.payout!==null&&x.totalCost!==null);
  const confirmed=eligible.filter(x=>!x.provisional);
  const subtotal=(field,source=rows)=>money(source.reduce((sum,r)=>sum+(valid(r[field])?Number(r[field]):0),0));
- const numbersComplete=rows.length>0&&rows.every(x=>x.afterAds!==null)&&
-  finance?.paidOrderCoverage?.complete!==false;
+ // O resultado global usa todos os Ads UMA vez. O rateio por pedido e
+ // somente informativo e nao deve bloquear o resultado consolidado.
+ const amountsComplete=rows.length>0&&finance?.paidOrderCoverage?.complete!==false&&
+   rows.every(x=>x.payout!==null&&x.totalCost!==null)&&spend!==null;
+ const periodRevenue=subtotal('payout');
+ const periodSupplierCost=subtotal('totalCost');
+ const periodSupplierCredit=subtotal('supplierCredit');
+ const periodExternalExpense=subtotal('externalExpense');
+ const periodBeforeAds=amountsComplete?
+   money(periodRevenue-periodSupplierCost+periodSupplierCredit-periodExternalExpense):null;
+ const periodOperatingResult=periodBeforeAds!==null?
+   money(periodBeforeAds-spend):null;
+ // Margem sobre o repasse liquido, mesmo com valores de produtos ausentes.
+ const periodOperatingMargin=periodOperatingResult!==null&&periodRevenue>0?
+   money(periodOperatingResult/periodRevenue*100):null;
  const costsEstimated=rows.filter(x=>x.costSource==='wedrop_catalog_estimate').length;
- const complete=numbersComplete&&
-  finance?.returnsCoverage?.complete===true&&
-  rows.every(x=>!x.provisional&&!x.refundPending)&&costsEstimated===0;
+ const complete=amountsComplete&&finance?.returnsCoverage?.complete===true&&
+   rows.every(x=>!x.provisional&&!x.refundPending)&&costsEstimated===0;
  const adjusted=rows.filter(x=>x.refundStatus!=='sem devolução').length;
- const finalized=rows.filter(x=>!x.provisional&&x.afterAds!==null);
- const finalizedTotal=finalized.length?subtotal('afterAds',finalized):null;
- const finalizedGross=finalized.length&&finalized.every(x=>x.grossProductSales!==null)?subtotal('grossProductSales',finalized):null;
- const operational=complete?subtotal('afterAds'):null;
- const projectedOperatingProfit=numbersComplete?subtotal('afterAds'):null;
+ const finalizedCandidates=rows.filter(x=>
+   x.status.toUpperCase()==='COMPLETED'&&x.payoutConfirmed&&!x.refundPending);
+ const finalized=finalizedCandidates.filter(x=>x.payout!==null&&x.totalCost!==null);
+ const finalizedCoverageComplete=finance?.paidOrderCoverage?.complete!==false&&
+   finalizedCandidates.length===finalized.length;
+ const finalizedRevenue=subtotal('payout',finalized);
+ const finalizedSupplierCost=subtotal('totalCost',finalized);
+ const finalizedSupplierCredit=subtotal('supplierCredit',finalized);
+ const finalizedExternalExpense=subtotal('externalExpense',finalized);
+ const finalizedBeforeAds=finalized.length>0&&finalizedCoverageComplete?
+   money(finalizedRevenue-finalizedSupplierCost+
+     finalizedSupplierCredit-finalizedExternalExpense):null;
+ // Cenario conservador: o resultado dos finalizados subtrai TODOS os Ads
+ // da loja no periodo, inclusive campanhas sem conversao. Nao e rateio.
+ const finalizedTotal=finalizedBeforeAds!==null&&spend!==null?
+   money(finalizedBeforeAds-spend):null;
+ const finalizedMargin=finalizedTotal!==null&&finalizedRevenue>0?
+   money(finalizedTotal/finalizedRevenue*100):null;
+ const operational=complete?periodOperatingResult:null;
+ const projectedOperatingProfit=periodOperatingResult;
  const allGross=rows.length>0&&rows.every(x=>x.grossProductSales!==null)?
    subtotal('grossProductSales'):null;
  const allBuyer=rows.length>0&&rows.every(x=>x.buyerTotal!==null)?
    subtotal('buyerTotal'):null;
  return {
-  definition:'Resultado operacional dos pedidos pagos = repasse ajustado (ou previsto) - custo WeDrop + créditos do fornecedor - despesas externas registradas - Ads rateados; tributos não conciliados não incluídos.',
+  definition:'Resultado operacional dos pedidos pagos = repasse ajustado (ou previsto) - custo WeDrop + créditos do fornecedor - despesas externas registradas - Ads do período; tributos não conciliados não incluídos.',
   basis:'Pedidos pagos por criação no período; Ads do mesmo período de calendário. Não há correspondência financeira individual por clique.',
   paidOrders:rows.length,closedOrders:confirmed.length,
   projectedOrders:rows.filter(x=>x.provisional).length,
@@ -116,10 +143,15 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
   adsAllocationComplete:shares!==null,adsMethod:shares?'proportional_paid_sales':'insufficient_sales_or_ads_data',
   operationalKnown:subtotal('afterAds',rows.filter(x=>x.afterAds!==null)),
   operationalCoverage:rows.filter(x=>x.afterAds!==null).length,
+  periodRevenue,periodSupplierCost,periodSupplierCredit,periodExternalExpense,
+  periodBeforeAds,periodOperatingResult,periodOperatingMargin,
+  periodCoverageComplete:amountsComplete,
   operatingProfit:operational,projectedOperatingProfit,
-  finalizedResultKnown:finalizedTotal,
-  finalizedMarginKnown:finalizedGross>0?money(finalizedTotal/finalizedGross*100):null,
-  finalizedOrdersAnalyzed:finalized.length,costEstimatedOrders:costsEstimated,
+  finalizedRevenue,finalizedSupplierCost,finalizedSupplierCredit,
+  finalizedExternalExpense,finalizedBeforeAds,
+  finalizedResultKnown:finalizedTotal,finalizedMarginKnown:finalizedMargin,
+  finalizedCoverageComplete,finalizedOrdersAnalyzed:finalized.length,
+  costEstimatedOrders:costsEstimated,
   operatingMargin:operational!==null&&allGross>0?money(operational/allGross*100):null,
   projectedOperatingMargin:projectedOperatingProfit!==null&&allGross>0?
    money(projectedOperatingProfit/allGross*100):null,
@@ -130,7 +162,9 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
     !complete?'O resultado das vendas pagas ainda é PROVISÓRIO: parte dos pedidos não teve repasse final, custo real, ou há devoluções/valores a confirmar.':null,
     costsEstimated?'Há '+costsEstimated+' pedido(s) com custo estimado do catálogo WeDrop, não comprovado pela compra efetiva.':null,
     spend===null?'Gasto Ads não retornado: é impossível computar o resultado depois da publicidade.':null,
-    spend!==null&&!shares?'Faltam valores de produtos para distribuir o gasto Ads entre todos os pedidos; não atribuir custos fictícios.':null,
+    spend!==null&&!shares?'Valores brutos de produtos ausentes impedem apenas o rateio individual dos Ads; o total da loja desconta todos os Ads do período uma vez.':null,
+    spend!==null&&!amountsComplete?'Repasses, custos ou cobertura incompletos: não exibir o resultado geral como completo.':null,
+    finalizedTotal!==null?'Resultado dos finalizados: descontados TODOS os Ads do período, inclusive sem conversão. Não é atribuição de Ads por pedido.':null,
     'O gasto Ads por pedido é rateio gerencial, nunca atribuição comprovada pelo anúncio. Não é lucro líquido fiscal: tributos e outras despesas externas ainda precisam ser conciliados.'
   ].filter(Boolean)
  };
