@@ -6,6 +6,20 @@ import {isFinancePaid} from './shopeeFinancePaid.js';
 import {readFinanceOrderCosts} from './shopeeFinanceOrderCosts.js';
 
 export const MAX_FINANCE_ORDERS=null; // Sem corte artificial; mantido para compatibilidade.
+/** Limita chamadas simultâneas à Shopee, preservando a ordem dos pedidos. */
+export async function mapFinanceConcurrent(items,limit,worker){
+  const source=Array.isArray(items)?items:[];
+  const output=new Array(source.length);
+  const workers=Math.min(source.length,Math.max(1,Math.floor(Number(limit)||1)));
+  let cursor=0;
+  await Promise.all(Array.from({length:workers},async()=>{
+    while(cursor<source.length){
+      const index=cursor++;
+      output[index]=await worker(source[index],index);
+    }
+  }));
+  return output;
+}
 export function finiteMoney(raw){
   if(raw===null||raw===undefined||raw==='')return null;
   const value=Number(raw);
@@ -356,8 +370,11 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   const range=timeRange||financeRange({days},now);
   days=range.days;
   if(!Number.isSafeInteger(Number(auth.shopId)))throw Error('Loja inválida.');
-  const [supplierCosts,confirmedLinks,orderCostRows]=await Promise.all([
-    readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId),readFinanceOrderCosts(auth.shopId)
+  const [supplierCosts,confirmedLinks,orderCostRows,catalog]=await Promise.all([
+    readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId),readFinanceOrderCosts(auth.shopId),
+    readFinanceCatalogProfiles(auth.shopId)
+      .then(products=>({products,error:null}))
+      .catch(()=>({products:[],error:'Miniaturas do catálogo temporariamente indisponíveis.'}))
   ]);
   const actualCostByOrder=new Map(orderCostRows.map(x=>[String(x.order_sn),x]));
   const costs=new Map(supplierCosts.map(c=>
@@ -367,9 +384,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   ]));
   // A consulta visual não pode impedir a conciliação caso o catálogo
   // de imagens esteja temporariamente indisponível.
-  let catalogProducts=[],catalogError=null;
-  try{catalogProducts=await readFinanceCatalogProfiles(auth.shopId);}
-  catch(e){catalogError='Miniaturas do catálogo temporariamente indisponíveis.';}
+  const catalogProducts=catalog.products,catalogError=catalog.error;
   const found=new Map();
   // A Shopee limita a janela de Order List; dividir intervalos de 30 dias
   // em períodos menores e paginar cada um integralmente.
@@ -410,49 +425,69 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     String(x.order_status||'').toUpperCase()!=='COMPLETED'&&
     !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase()))];
   const detailMap=new Map();
-  for(let i=0;i<detailTargets.length;i+=50){
+  const detailBatches=[];
+  for(let i=0;i<detailTargets.length;i+=50)detailBatches.push(detailTargets.slice(i,i+50));
+  const detailResponses=await mapFinanceConcurrent(detailBatches,3,async batch=>{
     const d=await callApi(cfg,{
       path:'/api/v2/order/get_order_detail',accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{order_sn_list:detailTargets.slice(i,i+50).map(x=>x.order_sn).join(','),
+      query:{order_sn_list:batch.map(x=>x.order_sn).join(','),
         response_optional_fields:'item_list,total_amount,pay_time'}
     });
     if(!Array.isArray(d?.response?.order_list))
       throw Error('Não foi possível obter itens dos pedidos da Shopee.');
-    for(const item of d.response.order_list){
-      if(item.order_sn)detailMap.set(String(item.order_sn),item);
-    }
+    return d.response.order_list;
+  });
+  for(const batch of detailResponses)for(const item of batch){
+    if(item.order_sn)detailMap.set(String(item.order_sn),item);
   }
-  const rows=[];
-  let paymentAccessWarning=null;
-  for(const item of limited){
-    let escrow;
+  // Pagamentos pagos e concluídos são consultados uma única vez por pedido.
+  // Não bloquear o painel com centenas de requisições sequenciais.
+  const orderedPaid=listed.filter(x=>isFinancePaid(x.order_status,
+    detailMap.get(String(x.order_sn||''))?.pay_time));
+  const paidTargets=[...new Map([...limited,...orderedPaid].map(item=>
+    [String(item.order_sn),item])).values()];
+  const paymentBySn=new Map();
+  let paymentAccessWarning=null,permissionDenied=null;
+  // Devoluções são independentes do Payment: iniciar as duas leituras juntas.
+  const returnsPromise=readFinanceReturns(cfg,auth,callApi,range,{now});
+  await mapFinanceConcurrent(paidTargets,4,async item=>{
+    const sn=String(item.order_sn);
+    if(permissionDenied){
+      paymentBySn.set(sn,{error:permissionDenied});
+      return;
+    }
     try{
-      escrow=await callApi(cfg,{
+      const escrow=await callApi(cfg,{
         path:'/api/v2/payment/get_escrow_detail',
         accessToken:auth.accessToken,shopId:auth.shopId,
         query:{order_sn:String(item.order_sn)}
       });
+      paymentBySn.set(sn,{escrow});
     }catch(error){
-      // Não declarar que repasse é zero quando a permissão Payment é negada.
       const why=String(error.message||error).slice(0,200);
-      paymentAccessWarning=paymentAccessWarning||why;
-      rows.push({orderSn:String(item.order_sn),status:'COMPLETED',createdAt:Number(item.create_time)||null,ready:false,
-        reason:'Detalhamento de pagamento indisponível: '+why,
-        payout:null,totalCost:null,balanceBeforeAds:null,netProfit:null,netMargin:null});
-      if(/permission|denied|403|no.?auth|forbidden/i.test(why))break;
-      continue;
+      paymentBySn.set(sn,{error:why});
+      if(String(item.order_status||'').toUpperCase()==='COMPLETED')
+        paymentAccessWarning=paymentAccessWarning||why;
+      if(/permission|denied|403|no.?auth|forbidden/i.test(why))
+        permissionDenied=why;
     }
-    rows.push(applyActualFinanceCost(
-      normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap),
-      actualCostByOrder.get(String(item.order_sn))));
-  }
-  // Pedidos PAGOS incluem SHIPPED/READY_TO_SHIP mesmo antes de COMPLETED.
-  // Consultar escrow previsto de cada um, mas nunca chamá-lo repasse recebido.
+  });
+  const rows=limited.map(item=>{
+    const sn=String(item.order_sn),payment=paymentBySn.get(sn);
+    if(!payment?.escrow){
+      const why=payment?.error||'Payment não retornou o repasse.';
+      paymentAccessWarning=paymentAccessWarning||why;
+      return {orderSn:sn,status:'COMPLETED',createdAt:Number(item.create_time)||null,
+        ready:false,reason:'Detalhamento de pagamento indisponível: '+why,
+        payout:null,totalCost:null,balanceBeforeAds:null,netProfit:null,netMargin:null};
+    }
+    return applyActualFinanceCost(
+      normalizeEscrowOrder(item,detailMap.get(sn),payment.escrow,costs,linkMap),
+      actualCostByOrder.get(sn));
+  });
   const paidOrders=[];
   const completedBySn=new Map(rows.map(x=>[String(x.orderSn),x]));
-  const orderedPaid=listed.filter(x=>isFinancePaid(x.order_status,
-    detailMap.get(String(x.order_sn||''))?.pay_time));
-  const allReturns=await readFinanceReturns(cfg,auth,callApi,range,{now});
+  const allReturns=await returnsPromise;
   const returnsBySn=new Map();
   for(const item of allReturns.records){
    const key=String(item.orderSn);
@@ -464,11 +499,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
    const status=String(detail?.order_status||order.order_status||'');
    let finance=completedBySn.get(sn);
    if(!finance){
-    let escrow;
-    try{
-     escrow=await callApi(cfg,{path:'/api/v2/payment/get_escrow_detail',
-      accessToken:auth.accessToken,shopId:auth.shopId,query:{order_sn:sn}});
-    }catch(_){escrow=null;}
+    const escrow=paymentBySn.get(sn)?.escrow||null;
     finance=applyActualFinanceCost(
       normalizeEscrowOrder(order,detail,escrow,costs,linkMap,{allowProvisional:true}),
       actualCostByOrder.get(sn));
