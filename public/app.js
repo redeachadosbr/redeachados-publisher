@@ -9552,7 +9552,7 @@ function shPriceRender(q){
     :'Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
       '. Margem mínima '+shPricePercent(q.minMarginPct)+'.';
 }
-function shPriceShowUnavailable(sku,message,{missingCost=false}={}){
+function shPriceShowUnavailable(sku,message,{missingCost=false,missingReason=null}={}){
   if(shPriceSelection)return; // plano do anúncio validado segue seu fluxo próprio
   shPriceSupplierQuote=null;
   shPriceCurrentQuote=null;
@@ -9573,16 +9573,21 @@ function shPriceShowUnavailable(sku,message,{missingCost=false}={}){
     if(missingCost){
       const link=document.createElement('a');
       link.href='/app/wedrop';
-      link.textContent=' Conferir ou vincular custo na WeDrop →';
+      link.textContent=missingReason==='SKU_NOT_IN_STORED_CATALOG'
+        ?' Atualizar catálogo WeDrop →':' Conferir ou vincular custo na WeDrop →';
       link.className='optimizer-v15-action-link';
       supplier.append(document.createTextNode(' '),link);
     }
   }
   const status=missingCost?
-    'SKU '+sku+': preço indisponível porque falta o custo WeDrop. Confira a importação ou o vínculo do produto; nenhum valor foi inventado.':
+    (missingReason==='SKU_NOT_IN_STORED_CATALOG'||missingReason==='COST_NOT_IMPORTED'
+      ?message
+      :'SKU '+sku+': preço indisponível porque falta o custo WeDrop. Confira a importação ou o vínculo do produto; nenhum valor foi inventado.'):
     'SKU '+sku+': não foi possível consultar o custo. '+message+' Tente novamente.';
   shQuickSetStatus(status,'error');
-  $('#priceSaveInfo').textContent='Prévia não calculada: não existe custo WeDrop confirmado para esta SKU.';
+  $('#priceSaveInfo').textContent=missingReason==='SKU_NOT_IN_STORED_CATALOG'
+    ?'SKU ausente do catálogo atualmente importado. Revise o código e a data da importação na área WeDrop.'
+    :'Prévia não calculada: não existe custo WeDrop confirmado para esta SKU.';
 }
 async function shPricePreviewSupplierSku(sku,lookupSerial=null){
   if(!sku||sku.length>120)return;
@@ -9605,8 +9610,19 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
     if(serial!==shPricePreviewSerial||$('#optimizerSku').value.trim()!==sku)return;
     $('#optimizerSupplierResult').hidden=false;
     if(!result.found){
-      shPriceShowUnavailable(sku,'WeDrop · SKU '+sku+
-        ' sem custo disponível no catálogo salvo.',{missingCost:true});
+      const imported=result.lastCatalogImportAt
+        ?new Date(result.lastCatalogImportAt).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})
+        :null;
+      const detail=result.missingReason==='SKU_NOT_IN_STORED_CATALOG'
+        ?'SKU '+sku+' não aparece no catálogo WeDrop salvo.'+
+          (imported?' Última importação: '+imported+'.':'')+
+          ' Confira o SKU ou importe uma versão atualizada do fornecedor.'
+        :result.missingReason==='COST_NOT_IMPORTED'
+          ?'SKU '+sku+' existe no catálogo salvo, mas não há custo unitário confirmado.'+
+            (imported?' Última importação: '+imported+'.':'')
+          :'SKU '+sku+' sem custo confirmado. Não foi possível verificar se consta no catálogo salvo.';
+      shPriceShowUnavailable(sku,'WeDrop · '+detail,{
+        missingCost:true,missingReason:result.missingReason});
       return;
     }
     // Custo sempre aparece, inclusive quando não houver solução matemática
