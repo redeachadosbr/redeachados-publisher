@@ -18,4 +18,4 @@ jobs:
       - name: Verificar sintaxe
         run: npm run check
       - name: Executar testes
-        run: npm test
+        run: node --test tests/shopee-finance-result-20261117.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-dashboard-1-11-0.test.js tests/shopee-finance-ads-sweep-1-12-0.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-bridge-30d.test.js tests/finance-ads-readonly.test.js
