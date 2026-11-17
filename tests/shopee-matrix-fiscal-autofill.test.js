@@ -55,6 +55,6 @@ test('fiscal é pré-preenchido no aplicativo, mas não declara dados publicados
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/const draft=\{\.\.\.\(data\.taxCurrent\|\|\{\}\),\.\.\.defaults,\.\.\.saved\}/);
  assert.match(app,/a Central do Vendedor só muda após execução e confirmação da API/);
- assert.match(app,/draft.cest=liveCest\|\|'00'/);
+ assert.match(app,/draft.cest=catalogCest;/);
  assert.match(app,/Pré-preenchido automaticamente/);
 });
