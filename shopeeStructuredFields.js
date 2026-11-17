@@ -126,9 +126,11 @@ export function compileTax(input,live){
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
   tax[key]=value;
  }
- // Preservar exatamente o CEST publicado; só preencher "00" quando estiver vazio.
- // O marcador 00 será submetido apenas por execução expressamente autorizada.
- tax.cest=cestForShopeeField(live?.tax_info);
+ // A leitura oficial verifica concorrência, mas não determina o CEST da SKU.
+ // Código não confirmado no catálogo da WeDrop permanece como "00".
+ cestForShopeeField(live?.tax_info);
+ const sourceCest=String(input.cest??'').trim();
+ tax.cest=/^\d{7}$/.test(sourceCest)?sourceCest:'00';
  if(!patterns.ncm.test(String(tax.ncm||'')))throw Error('NCM confirmado com 8 dígitos é obrigatório para preparar o fiscal.');
  if(input.measure_unit){
   const unit=String(input.measure_unit).toUpperCase().trim();
