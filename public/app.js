@@ -8619,23 +8619,31 @@ function financePaidLedgerRender(report){
     'Rateado entre '+ledger.paidOrders+' pedidos por valor de venda; não é custo individual comprovado.':
     'Gasto do período; rateio não disponível sem valores completos.':
     'Rateio é gerencial, não atribuição por pedido');
-  set('financePaidNet',known&&ledger.operationalCoverage?
-    (ledger.complete?wdMoney(ledger.operatingProfit):
-     ledger.projectedOperatingProfit!==null?
-      '≈ '+wdMoney(ledger.projectedOperatingProfit):
-      wdMoney(ledger.operationalKnown)+' (parcial)'):'—');
+  const result=known?ledger.periodOperatingResult:null;
+  const resultAvailable=result!==null&&result!==undefined&&Number.isFinite(Number(result));
+  set('financePaidNet',resultAvailable?(ledger.complete?'':'≈ ')+wdMoney(result):'—');
   const netNode=$('#financePaidNet');
-  if(netNode)netNode.classList.toggle('negative',known&&ledger.operationalKnown<0&&
-    ledger.operationalCoverage>0);
+  if(netNode){
+    netNode.classList.toggle('negative',resultAvailable&&result<0);
+    netNode.classList.toggle('positive',resultAvailable&&result>=0);
+  }
   set('financePaidNetHelp',known?
-    ledger.operationalCoverage+' de '+ledger.paidOrders+
-    ' pedidos calculados. '+(ledger.complete?'Repasses conciliados.':
-      ledger.projectedOperatingProfit!==null?
-      'Projeção com repasses ainda previstos; não é lucro líquido definitivo.':
-      'Resultado apenas dos pedidos com dados; NÃO é total.') :
+    resultAvailable?
+      (ledger.complete?'Apuração operacional conciliada. ':'Resultado estimado: repasses recebidos + previstos. ')+
+      ledger.escrowCoverage+' de '+ledger.paidOrders+' repasses; '+
+      ledger.costCoverage+' custos identificados. '+
+      ledger.costEstimatedOrders+' custos ainda estimados do catálogo WeDrop.':
+      'Ainda não é possível calcular o total: confira repasses, custos, cobertura e Ads.':
     'Sem impostos e despesas externas não cadastradas');
-  const marginToDisplay=ledger?.complete?ledger.operatingMargin:
-    ledger?.projectedOperatingMargin;
+  set('financePaidEquation',known&&resultAvailable?
+    wdMoney(ledger.periodRevenue)+' (repasse líquido) − '+
+    wdMoney(ledger.periodSupplierCost)+' (WeDrop) + '+
+    wdMoney(ledger.periodSupplierCredit)+' (créditos) − '+
+    wdMoney(ledger.periodExternalExpense)+' (despesas registradas) − '+
+    wdMoney(ledger.adsTotal)+' (todos os Ads) = '+wdMoney(result)+
+    '. '+(ledger.complete?'Consolidado conciliado.':'Provisório: repasses e/ou custos podem mudar.'):
+    'Resultado geral: repasse Shopee − WeDrop + créditos − despesas registradas − todos os Ads. Aguarde dados suficientes.');
+  const marginToDisplay=ledger?.periodOperatingMargin;
   set('financePaidMargin',known&&marginToDisplay!==null&&marginToDisplay!==undefined?
     (ledger.complete?'':'≈ ')+
     Number(marginToDisplay).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
@@ -8645,10 +8653,13 @@ function financePaidLedgerRender(report){
     '≈ '+wdMoney(ledger.finalizedResultKnown):'—');
   set('financeFinalizedMargin',known&&ledger.finalizedMarginKnown!==null&&
     ledger.finalizedMarginKnown!==undefined?
-    '≈ '+Number(ledger.finalizedMarginKnown).toLocaleString('pt-BR')+'%':'—');
+    '≈ '+Number(ledger.finalizedMarginKnown).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
   set('financeFinalizedNetHelp',known?
-    (ledger.finalizedOrdersAnalyzed||0)+' de '+ledger.closedOrders+
-    ' finalizados com cálculo após Ads, com rateio estimado.':'Aguardando consulta');
+    (ledger.finalizedOrdersAnalyzed||0)+' repasses finalizados calculados. '+
+    (ledger.finalizedResultKnown!==null?
+      'Repasse confirmado − WeDrop + créditos − despesas − TODOS os Ads do período (estimativa conservadora).':
+      'Resultado indisponível enquanto houver repasse/custo ou Ads sem confirmação.')+
+    ' Não equivale ao saldo bancário.':'Aguardando consulta');
   set('financeActualCostCount',known?
     (ledger.rows||[]).filter(x=>x.costSource==='wedrop_order_recorded').length+
     ' de '+ledger.paidOrders:'—');

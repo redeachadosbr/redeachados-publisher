@@ -1,0 +1,27 @@
+name: Validar lucro das vendas pagas Shopee
+on:
+  push:
+    branches:
+      - fix/shopee-finance-paid-bottomline-20261117
+  workflow_dispatch:
+jobs:
+  finance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check syntax of changed code
+        run: |
+          node --check shopeeFinancePaid.js
+          node --check shopeeFinance.js
+          node --check server.js
+          node --check public/app.js
+          node --check tests/shopee-finance-paid-bottomline-20261117.test.js
+      - name: Run finance tests
+        run: |
+          node --test tests/shopee-finance-paid-bottomline-20261117.test.js tests/shopeeFinancePaid.test.js tests/shopee-finance-order-costs.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-dashboard-1-11-0.test.js tests/shopee-finance-ads-sweep-1-12-0.test.js tests/finance-ads-readonly.test.js
