@@ -9618,11 +9618,17 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
     shPriceSupplierQuote=result.quote||null;
     if(result.quote&&!shPriceSelection)shPriceRender(result.quote);
     else if(!result.quote&&!shPriceSelection){
+      shPriceShowUnavailable(sku,'Custo WeDrop '+shPriceMoney(cost)+
+        ' confirmado, mas o cálculo não foi concluído: '+(result.pricingError||'Revise as configurações.'));
       pricingShowSelection({sku});
       $('#pricingSummaryCost').textContent=shPriceMoney(cost);
+      $('#optimizerSupplierResult').textContent='✓ WeDrop · '+sku+' · Custo '+
+        shPriceMoney(cost)+' confirmado. Simulação pendente: '+
+        (result.pricingError||'Revise configurações e taxas.');
       shQuickSetStatus('Custo WeDrop '+shPriceMoney(cost)+
         ' confirmado. Não foi possível concluir a simulação: '+result.pricingError,'warning');
       shPriceSetStatus('Custo identificado; ajuste a precificação antes de preparar desconto.','warning');
+      $('#priceSaveInfo').textContent='Custo confirmado, porém nenhum preço viável foi calculado. Nenhum valor foi publicado.';
     }
   }catch(e){
     if(serial===shPricePreviewSerial&&$('#optimizerSku').value.trim()===sku){
@@ -9698,12 +9704,17 @@ async function shPricePrepare({silent=false}={}){
       return; // Falha de resposta antiga não pode apagar uma cotação mais nova.
     }
     if(shPriceSelection?.sku===selected.sku&&shPriceSelection?.itemId===selected.itemId){
-      $('#optimizerQuickValues').hidden=true;shPriceCurrentQuote=null;
+      $('#optimizerQuickValues').hidden=false;shPriceCurrentQuote=null;
+      for(const id of ['#optimizerQuickGross','#optimizerQuickDiscount','#optimizerQuickFinal',
+        '#optimizerQuickProfit','#optimizerQuickMarginPercent']){
+        const field=$(id);if(field)field.textContent='—';
+      }
+      $('#optimizerQuickAfterCoupon').textContent='Cotação indisponível';
       pricingResetQuote();
       shPriceSetStatus('SKU '+selected.sku+': '+e.message,'error');
-      shQuickSetStatus('SKU '+selected.sku+': '+e.message,'error');
+      shQuickSetStatus('SKU '+selected.sku+': preço não calculado. '+e.message,'error');
     }
-    $('#priceSaveInfo').textContent='Sem custo WeDrop confirmado, não é permitido sugerir preço ou desconto.';
+    $('#priceSaveInfo').textContent='Não foi possível validar a cotação desta SKU. Nenhum preço ou desconto foi publicado.';
   }finally{
     shPricePrepareBusy=false;btn.disabled=false;
     if(shPricePrepareAgain){shPricePrepareAgain=false;void shPricePrepare({silent:false});}
