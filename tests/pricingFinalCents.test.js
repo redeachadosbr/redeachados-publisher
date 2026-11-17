@@ -195,7 +195,11 @@ test('Otimização: referência de mercado inviável rejeita sem inventar descon
  for(const value of [q.grossPrice,q.marketplaceDisplayPrice])
   assert.ok([0,9].includes(Math.round(value*100)%10));
  assert.ok(q.customerPrice<q.marketplaceDisplayPrice);
- // O mercado abaixo da margem/terminações não deve gerar cotação falsa.
- assert.throws(()=>quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:180}),
-  /Desconto variável inviável/);
+ // O cupom é condicional: centavos do checkout não bloqueiam uma vitrine
+ // válida. Uma média realmente abaixo do piso não pode forçar prejuízo.
+ const lowerMarket=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:90});
+ assert.equal(lowerMarket.status,'MERCADO_ABAIXO_DO_PISO');
+ assert.ok(lowerMarket.netMarginPct>=15);
+ assert.ok(lowerMarket.marketplaceDisplayPrice>90);
+ assert.equal(lowerMarket.appliedInShopee,false);
 });
