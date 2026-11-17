@@ -109,7 +109,14 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(name==='kits')void window.RAKitBuilderLoad?.();
   if(name==='curves')void window.RACurvesAB?.onOpen?.();
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
-  else if(name==='finance'){refreshWeDropCoverage();}
+  else if(name==='finance'){
+    void refreshWeDropCoverage().catch(()=>{});
+    // Abrir o Financeiro deve mostrar dados sem exigir um segundo clique.
+    queueMicrotask(()=>{
+      if(activeAppPage==='finance'&&!financeReport&&!shopeeFinanceBusy)
+        void financeLoad({force:false});
+    });
+  }
   else if(name==='orders')ordersEnsureLoaded();
   else if(name==='ads'){
     void adsPricingLoad();
@@ -8777,6 +8784,7 @@ function financeReconciliationRender(report){
   set('financeReconciliationNote',note);
 }
 function financeSelectionChanged(){
+  financeLoadVersion++;
   const selected=$('#shopeeFinanceDays').value;
   $('#financeCustomDates').hidden=selected!=='custom';
   financeReport=null;financeSkuShown=24;renderFinanceSkuList();
@@ -8801,27 +8809,35 @@ $('#shopeeFinanceDays').onchange=financeSelectionChanged;
 $('#financePeriodStart').onchange=financeSelectionChanged;
 $('#financePeriodEnd').onchange=financeSelectionChanged;
 
-let shopeeFinanceBusy=false;
-$('#shopeeFinanceLoad').onclick=async()=>{
+let shopeeFinanceBusy=false,financeLoadVersion=0;
+async function financeLoad({force=false}={}){
   if(shopeeFinanceBusy)return;
   shopeeFinanceBusy=true;
+  const requestVersion=financeLoadVersion;
+  const lastValidReport=financeReport;
   const button=$('#shopeeFinanceLoad');
-  button.disabled=true;button.textContent='Consultando repasses reais...';
-  // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
-  financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
-  financeReconciliationRender(null);
-  $('#financeExportCsv').disabled=true;
-  renderFinanceTrend(null);renderFinanceDistribution(null);
-  $('#financeVerifiedCaption').textContent='Consultando pedidos...';
-  for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
-    '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',
-    '#financeAdsTotal','#financeAdsNoConversion','#financeSkuNetKpi'])
-    $(id).textContent='—';
-  $('#financeSkuNetKpi').classList.remove('negative','positive');
-  $('#financeResultCompleteness').textContent='Aguardando conciliação';
-  $('#shopeeFinanceData').hidden=true;
+  button.disabled=true;button.textContent='Consultando Shopee...';
+  // Conservar o último resumo da MESMA janela durante uma atualização manual.
+  // Em uma janela nova, nunca misturar valores do período anterior.
+  if(!lastValidReport){
+    financeSkuBalances.clear();renderFinanceSkuList();
+    financeReconciliationRender(null);
+    $('#financeExportCsv').disabled=true;
+    renderFinanceTrend(null);renderFinanceDistribution(null);
+    $('#financeVerifiedCaption').textContent='Consultando pedidos...';
+    for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
+      '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',
+      '#financeAdsTotal','#financeAdsNoConversion','#financeSkuNetKpi'])
+      $(id).textContent='—';
+    $('#financeSkuNetKpi').classList.remove('negative','positive');
+    $('#financeResultCompleteness').textContent='Consultando Shopee';
+    $('#shopeeFinanceData').hidden=true;
+    $('#financePaidCoverage').textContent='Consultando pedidos pagos, repasses, WeDrop e Ads...';
+  }
   wdSetNotice('#shopeeFinanceStatus',
-    'Buscando pedidos concluídos e detalhes de pagamento da Shopee. Não estamos presumindo taxas ou despesas.','info');
+    lastValidReport?
+      'Atualizando a Shopee. Os valores anteriores continuam visíveis até a nova consulta terminar.':
+      'Consultando repasses, custos e Ads oficiais. O resumo aparecerá assim que a Shopee responder.','info');
   try{
     const selected=$('#shopeeFinanceDays').value;
     const params=new URLSearchParams();
@@ -8830,9 +8846,11 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       if(!from||!to)throw Error('Selecione as datas inicial e final.');
       params.set('start',from);params.set('end',to);
     }else params.set('days',selected);
+    if(force)params.set('refresh','1');
     const report=await json('/api/shopee/finance/orders?'+params.toString(),{
       signal:AbortSignal.timeout(180000)
     });
+    if(requestVersion!==financeLoadVersion)return; // Período alterado durante a consulta.
     const t=report.totals||{};
     financeReport=report;financeSkuShown=24;
     renderFinanceTrend(report);renderFinanceDistribution(report);
@@ -8916,23 +8934,35 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       wdNum(report.salesPipeline?.awaitingSettlement||0)+
       ' pedido(s) aguardando liquidação. '+
       'Varredura de Ads '+(report.adsSweep?.status==='verified_campaign_period'
-        ?'concluída':'pendente')+'. Máximo de 100 pedidos concluídos por consulta.'+
-      ' Prejuízos são mostrados em vermelho. O resultado após Ads não inclui tributos.',
-      report.complete?'success':'warning');
-    // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
-    await refreshWeDropCoverage();
+        ?'concluída':'pendente')+'. Sem corte fixo de 100 pedidos.'+
+      ' Prejuízos são mostrados em vermelho. O resultado após Ads não inclui tributos.'+
+      (report.cache?.status==='stale'?
+        ' ATENÇÃO: consulta atual falhou; valores da última atualização em '+
+        new Date(report.cache.updatedAt).toLocaleString('pt-BR')+'.':''),
+      report.cache?.status==='stale'?'warning':report.complete?'success':'warning');
+    // Miniaturas e cobertura WeDrop não podem anular a conciliação principal.
+    void refreshWeDropCoverage().catch(()=>{});
   }catch(error){
-    $('#financeExportCsv').disabled=true;renderFinanceTrend(null);renderFinanceDistribution(null);
-    financeReport=null;financeSkuBalances.clear();
-    financeReconciliationRender(null);
-    $('#shopeeFinanceData').hidden=true;renderFinanceSkuList();
-    wdSetNotice('#shopeeFinanceStatus','Não foi possível verificar os dados financeiros: '+
-      error.message+'. Lucro líquido e margem permanecem indisponíveis.','error');
+    if(requestVersion!==financeLoadVersion)return;
+    if(!lastValidReport){
+      $('#financeExportCsv').disabled=true;
+      renderFinanceTrend(null);renderFinanceDistribution(null);
+      financeReport=null;financeSkuBalances.clear();
+      financeReconciliationRender(null);
+      $('#shopeeFinanceData').hidden=true;renderFinanceSkuList();
+    }
+    wdSetNotice('#shopeeFinanceStatus',
+      'Não foi possível atualizar a Shopee: '+error.message+'. '+
+      (lastValidReport?'Exibindo a última consulta válida, sem substituir seus valores.':
+        'Não há dados suficientes para apurar o resultado após Ads.'),'error');
+    if(!lastValidReport)
+      $('#financePaidCoverage').textContent='Falha na consulta; verifique o aviso acima e tente novamente.';
   }finally{
     shopeeFinanceBusy=false;
     button.disabled=false;button.textContent='Atualizar financeiro';
   }
-};
+}
+$('#shopeeFinanceLoad').onclick=()=>financeLoad({force:true});
 
 
 
