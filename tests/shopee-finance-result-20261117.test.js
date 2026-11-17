@@ -28,7 +28,7 @@ test('cinco pedidos sem bruto continuam válidos quando repasse e custo existem'
    {response:{order_income:{escrow_amount:25,items:[{item_sku:'P1',quantity_purchased:1}]}}},
    costs));
  assert.equal(rows.every(x=>x.ready&&x.buyerTotal===null),true);
- const t=summarizeFinance(rows).totals;
+ const t=summarizeFinance(rows,{eligible:5}).totals;
  assert.equal(t.verified,5);assert.equal(t.received,125);
  assert.equal(calculateFinanceOutcome({complete:true,totals:t},ads(20)).amount,55);
 });
