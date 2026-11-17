@@ -11,7 +11,7 @@ import {mergeShopeeOrderDates,mergeShopeeOrderSummaries} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview,brazilAdsToday} from './adsReport.js';
 import {adsSevenDayWindows,buildAdsMonitor} from './shopeeAdsInsights.js';
-import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
+import {loadShopeeFinance} from './shopeeFinance.js';
 import {buildPaidOrderProfitLedger} from './shopeeFinancePaid.js';
 import {saveFinanceOrderCost,normalizeFinanceOrderCostInput} from './shopeeFinanceOrderCosts.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
@@ -5813,7 +5813,7 @@ installFinanceBridge(app,async(req)=>{
       ads={status:'confirmed',amount:Math.round(Number(report.total.expense)*100)/100,source:'Shopee Ads API · campanhas de produtos'};
   }catch(_){/* sem acesso Ads, não inventar R$0 */}
   return {schema:'ra-finance-bridge-v1',platform:'shopee',generatedAt:new Date().toISOString(),
-    orders,ads,coverage:{note:'Somente pedidos COMPLETED criados na janela de 30 dias; enviados sem repasse confirmado permanecem pendentes; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
+    orders,ads,coverage:{note:'Pedidos COMPLETED criados na janela de 30 dias; consulta paginada sem corte artificial. Enviados sem repasse final permanecem pendentes; repasse nao equivale ao saldo sacavel.'},
     diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
       permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
 });
