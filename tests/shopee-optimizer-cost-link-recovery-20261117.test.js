@@ -56,7 +56,7 @@ test('vínculos ambíguos não fornecem custo por aproximação',async()=>{
 test('precificação final não aceita vínculo pertencente a outro Item ID',async()=>{
  await withSupplierMock(url=>{
   if(url.pathname.endsWith('/shopee_wedrop_sku_links'))
-   return [{shopee_sku:'3283',supplier_sku:'TRC1525'}];
+   return url.searchParams.has('item_id')?[]:[{shopee_sku:'3283',supplier_sku:'TRC1525'}];
   if(url.searchParams.get('supplier_sku')==='eq.TRC1525')
    return [{supplier_sku:'TRC1525',unit_cost:19.99}];
   return [];
