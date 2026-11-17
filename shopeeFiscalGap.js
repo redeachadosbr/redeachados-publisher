@@ -56,16 +56,19 @@ export function fiscalFillMissingOnly(liveTax,approvedTax,{referenceOnly=false}=
  // A execução fiscal em lote não pode exigir campos opcionais que a tabela
  // aprovada não definiu. A regra antiga sem referência continua disponível.
  const gap=inspectShopeeFiscalGap(old,referenceOnly?approvedTax:null);
- if(gap.invalid.length)throw Error('Dados fiscais existentes inválidos; revisar antes do envio: '+gap.invalid.join(', '));
+ if(gap.invalid.some(k=>k!=='cest'))throw Error('Dados fiscais existentes inválidos; revisar antes do envio: '+gap.invalid.filter(k=>k!=='cest').join(', '));
  if(gap.mismatched.some(k=>k!=='cest'))throw Error('Dados fiscais diferentes da tabela aprovada; revisar antes do envio: '+gap.mismatched.filter(k=>k!=='cest').join(', '));
  if(gap.unverified.length)throw Error('Ficha fiscal sem referência confirmada: '+gap.unverified.join(', '));
  const merged={...old};
  // CEST divergente do catálogo: única exceção para corrigir campo preenchido.
- if(referenceOnly&&gap.mismatched.includes('cest'))
-  merged.cest=String(approvedTax.cest||'00').trim();
+ if(gap.invalid.includes('cest')||referenceOnly&&gap.mismatched.includes('cest')){
+  const sourceCest=String(approvedTax.cest??'').trim();
+  merged.cest=/^\d{7}$/.test(sourceCest)?sourceCest:'00';
+ }
  const missingSource=[];
  for(const key of gap.missing){
-  const value=key==='cest'?'00':String(approvedTax[key]??'').trim();
+  const candidate=String(approvedTax[key]??'').trim();
+  const value=key==='cest'?(/^\d{7}$/.test(candidate)?candidate:'00'):candidate;
   if(!value)missingSource.push(key);
   else merged[key]=value;
  }
