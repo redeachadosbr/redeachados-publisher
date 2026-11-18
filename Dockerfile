@@ -41,6 +41,7 @@ RUN node --check shopeeExecutionHealth.js && node --test tests/shopeeExecutionRo
 RUN node --test tests/shopeeKitItemIdRegexRecovery.test.js
 RUN node --test tests/shopeeKitImageBridgeProgress.test.js
 RUN node --test tests/shopee-resume-manager-handshake.test.js
+RUN node --test tests/optimizerBridgeFullRestartContract.test.js
 RUN node --test tests/shopee-independent-sku-preparation.test.js
 RUN node --test tests/shopee-fast-image-gallery.test.js
 RUN node --test tests/shopee-seo-reattach-sku.test.js && node --test tests/seoAutomaticImport.test.js
