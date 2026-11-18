@@ -30,6 +30,7 @@ RUN node --check shopeeSupplierEvidenceFacts.js && node --test tests/shopee-tech
 RUN node --test tests/shopee-kit-technical-source-autofill.test.js
 RUN node --check catalog.js && node --test tests/catalogPriceRecovery.test.js
 RUN node --check shopeeMarktPro.js && node --test tests/shopee-marktpro-video.test.js
+RUN node --check shopeeVideoImportJobs.js && node --check shopeeVideoValidation.js && node --test tests/shopee-video-import-async.test.js tests/shopee-video-validation.test.js
 RUN node --check shopeeOpenAiImages.js && node --test tests/shopeeOpenAiImages.test.js
 RUN node --check wedropExcel.js && node --test tests/wedrop-excel-import.test.js
 RUN node --check shopeeDescriptionComposer.js && node --test tests/shopee-description-commercial-order.test.js

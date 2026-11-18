@@ -38,7 +38,7 @@ test('Otimizador importa vídeo de 61,7 s com ajuste para 59 s sem liberar o lim
    '-of','default=noprint_wrappers=1:nokey=1',output]);
   const actual=Number(stdout.trim());
   assert.ok(actual>=58&&actual<60,'Duração pós-conversão deve ser menor que 60s: '+actual);
-  assert.equal(safe.duration,59);
+  assert.ok(safe.duration>=58&&safe.duration<60);
   const tooLong=path.join(dir,'too-long.mp4');
   await run('ffmpeg',['-v','error','-f','lavfi','-i','color=c=red:s=160x120:r=10',
    '-t','66','-c:v','libx264','-threads','1','-pix_fmt','yuv420p',tooLong]);
@@ -56,7 +56,7 @@ test('UI e servidor aceitam até 65 s no otimizador; kits mantêm validação or
  assert.match(app,/duration<10\|\|duration>optimizerVideoMaxInputDuration/);
  assert.match(app,/const needsTrim=duration>60/);
  assert.match(html,/Selecionar MP4, MOV ou WebM \(10 a 65 segundos/);
- assert.match(server,/normalizeManualVideo\(req\.body,\{allowSlightlyLonger:true\}\)/);
+ assert.match(server,/normalizeManualVideo\(input,\{allowSlightlyLonger:true\}\)/);
  assert.match(server,/normalizeManualVideo\(Buffer\.concat\(buffers,bytes\),\{allowSlightlyLonger:true\}\)/);
  assert.match(kit,/normalizeManualVideo\(buffer\)/);
 });

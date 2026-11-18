@@ -36,8 +36,29 @@ export async function normalizeManualVideo(buffer,{allowSlightlyLonger=false}={}
   if(compatible&&!trimForShopee)
    return {buffer,duration,originalDuration:duration,width:stream.width,height:stream.height,
     converted:false,trimmed:false};
+  // Se H.264/AAC já é compatível, remultiplexar/cortar sem recodificar.
+  // Evita consumir CPU durante toda a duração da requisição Render.
+  const canFastTrim=trimForShopee&&stream.codec_name==='h264'&&
+   stream.pix_fmt==='yuv420p'&&audio.every(x=>x.codec_name==='aac')&&
+   Math.max(stream.width,stream.height)<=1920;
+  if(canFastTrim){
+   try{
+    await run('ffmpeg',['-v','error','-nostdin','-y','-i',input,
+     '-t',String(SHOPEE_SAFE_VIDEO_DURATION),'-map','0:v:0','-map','0:a:0?',
+     '-c','copy','-movflags','+faststart',output],{timeout:25000,maxBuffer:1024*1024});
+    const {stdout}=await run('ffprobe',['-v','error','-show_entries','format=duration',
+     '-of','default=noprint_wrappers=1:nokey=1',output],{timeout:12000,maxBuffer:1024*1024});
+    const actualDuration=Number(stdout.trim());
+    const fastVideo=await readFile(output);
+    if(Number.isFinite(actualDuration)&&actualDuration>=58&&actualDuration<60&&
+      fastVideo.length>=16&&fastVideo.length<=MAX_VIDEO_BYTES)
+     return {buffer:fastVideo,duration:actualDuration,originalDuration:duration,
+      converted:true,trimmed:true,fastTrimmed:true};
+   }catch{ /* O contêiner pode rejeitar o corte direto; converter neste caso. */ }
+   await rm(output,{force:true});
+  }
   try{
-   await run('ffmpeg',['-v','error','-nostdin','-protocol_whitelist','file,pipe','-i',input,
+   await run('ffmpeg',['-v','error','-nostdin','-y','-protocol_whitelist','file,pipe','-i',input,
     ...(trimForShopee?['-t',String(SHOPEE_SAFE_VIDEO_DURATION)]:[]),
     '-map','0:v:0','-map','0:a:0?','-vf',"scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
     '-c:v','libx264','-threads','1','-preset','veryfast','-crf','23','-pix_fmt','yuv420p',

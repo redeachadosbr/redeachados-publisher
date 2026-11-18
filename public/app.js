@@ -3408,6 +3408,59 @@ $('#optimizerVideoFile')?.addEventListener?.('change',()=>{
     queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
  };
 });
+// O servidor confirma o upload antes da conversão, evitando HTTP 502 por
+// processamento síncrono. Todas as consultas usam loja, Item ID, modelo e SKU.
+async function optimizerVideoWaitImport(identity,jobId){
+ const params=new URLSearchParams({...identity,job_id:jobId});
+ for(let attempt=0;attempt<140;attempt++){
+  await new Promise(resolve=>setTimeout(resolve,2500));
+  if(!optimizerVideoStillViewing(identity))return null;
+  let raw;
+  try{raw=await fetch('/api/shopee/optimizer/video/import-status?'+params,{
+   cache:'no-store',signal:AbortSignal.timeout(18000)
+  });}catch{continue;}
+  const state=await raw.json().catch(()=>({}));
+  if(!raw.ok){
+   if(raw.status>=500)continue;
+   throw Error(state.error||'Falha ao consultar conversão do vídeo (HTTP '+raw.status+').');
+  }
+  if(state.status==='error')throw Error(state.error||'Não foi possível preparar o vídeo.');
+  if(state.status==='complete'){
+   if(!state.result?.asset)throw Error('O servidor não confirmou o arquivo salvo.');
+   return state.result;
+  }
+  optimizerVideoNotice(state.progress||'Servidor preparando vídeo. Aguarde a confirmação...','info');
+ }
+ throw Error('O processamento não foi confirmado. Consulte o vídeo salvo antes de reenviar.');
+}
+async function optimizerVideoRecoverImport(identity,file,startedAt){
+ try{
+  const raw=await fetch('/api/shopee/optimizer/video/import-status?'+new URLSearchParams(identity),{
+   cache:'no-store',signal:AbortSignal.timeout(15000)
+  });
+  if(!raw.ok)return null;
+  const state=await raw.json();
+  // Nunca associar um upload novo ao vídeo anterior da mesma SKU por engano.
+  if(state.filename!==file.name||state.sizeBytes!==file.size||
+    !Number.isFinite(Date.parse(state.createdAt))||
+    Date.parse(state.createdAt)<startedAt-10000)return null;
+  return state;
+ }catch{return null}
+}
+async function optimizerVideoConfirmImport(identity,file,saved){
+ const current=optimizerWorkflowPlan;
+ if(!current||current.sku!==identity.sku||current.itemId!==identity.item_id||
+    current.modelId!==identity.model_id)return;
+ optimizerVideoNotice('Arquivo '+file.name+' importado para SKU '+identity.sku+
+   (saved.trimmedForShopee?' e ajustado para menos de 60 s':'')+
+   '. Ainda NÃO foi publicado na Shopee.','success');
+ optimizerWorkflowPlan.manualVideo=saved.asset;
+ optimizerExecReset();
+ optimizerWorkflowRender(optimizerWorkflowPlan);
+ $('#optimizerVideoFile').value='';optimizerVideoDurationReady=false;
+ const retry=$('#optimizerVideoUpload');if(retry){retry.hidden=true;retry.setAttribute('aria-hidden','true');retry.textContent='Salvar vídeo';}
+ await optimizerVideoLoadSaved();
+}
 $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
  if(optimizerVideoUploading||!optimizerVideoDurationReady)return;
  const file=$('#optimizerVideoFile').files?.[0];if(!file)return;
@@ -3419,25 +3472,37 @@ $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
  $('#optimizerVideoUpload').disabled=true;
  optimizerVideoNotice('Importando vídeo e vinculando ao anúncio '+identity.sku+'...');
  try{
-   const raw=await fetch('/api/shopee/optimizer/video/manual?'+new URLSearchParams(identity),{
+   const uploadStartedAt=Date.now();
+   let raw=null;
+   try{raw=await fetch('/api/shopee/optimizer/video/manual?'+new URLSearchParams(identity),{
      method:'POST',headers:{'Content-Type':mime,'X-Video-Filename':encodeURIComponent(file.name)},
      body:file,signal:AbortSignal.timeout(240000)
-   });
-   const response=await raw.json().catch(()=>({}));
-   if(!raw.ok)throw Error(response.error||'Erro HTTP '+raw.status);
-   const current=optimizerWorkflowPlan;
-   if(!current||current.sku!==identity.sku||current.itemId!==identity.item_id||current.modelId!==identity.model_id)return;
-   optimizerVideoNotice('Arquivo '+file.name+' importado para SKU '+identity.sku+
-     (response.trimmedForShopee?' e ajustado para 59 s':'')+
-     '. Ainda NÃO foi publicado na Shopee.','success');
-   if(optimizerWorkflowPlan?.sku===identity.sku){
-     optimizerWorkflowPlan.manualVideo=response.asset;
-     optimizerExecReset();
-     optimizerWorkflowRender(optimizerWorkflowPlan);
+   });}catch(error){
+    const recovered=await optimizerVideoRecoverImport(identity,file,uploadStartedAt);
+    if(!recovered)throw error;
+    const saved=recovered.processing?
+      await optimizerVideoWaitImport(identity,recovered.jobId):recovered.result;
+    if(!saved)return;
+    await optimizerVideoConfirmImport(identity,file,saved);
+    return;
    }
-   $('#optimizerVideoFile').value='';optimizerVideoDurationReady=false;
-   await optimizerVideoLoadSaved();
- }catch(e){optimizerVideoNotice('Falha ao importar vídeo: '+e.message,'error')}
+   let response=await raw.json().catch(()=>({}));
+   if(!raw.ok){
+    if(raw.status>=500){
+     const recovered=await optimizerVideoRecoverImport(identity,file,uploadStartedAt);
+     if(recovered)response=recovered;
+     else throw Error(response.error||'Erro HTTP '+raw.status+'. O servidor não confirmou o recebimento. Tente novamente.');
+    }else throw Error(response.error||'Erro HTTP '+raw.status);
+   }
+   const saved=response.processing?
+    await optimizerVideoWaitImport(identity,response.jobId):response.result||response;
+   if(!saved)return;
+   await optimizerVideoConfirmImport(identity,file,saved);
+  }catch(e){
+  optimizerVideoNotice('Falha ao importar vídeo: '+e.message+' Você pode tentar novamente.','error');
+  const retry=$('#optimizerVideoUpload');
+  if(retry){retry.hidden=false;retry.removeAttribute('aria-hidden');retry.textContent='Tentar novamente';}
+ }
  finally{optimizerVideoUploading=false;$('#optimizerVideoUpload').disabled=!optimizerVideoDurationReady}
 });
 

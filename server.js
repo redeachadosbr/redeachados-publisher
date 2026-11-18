@@ -82,6 +82,7 @@ import {inspectShopeeFiscalGap,fiscalFillMissingOnly,cestForShopeeField} from '.
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo,OPTIMIZER_VIDEO_MAX_INPUT_DURATION} from './shopeeVideoValidation.js';
+import {startOptimizerVideoImport,statusOptimizerVideoImport} from './shopeeVideoImportJobs.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
@@ -4543,6 +4544,15 @@ app.get('/api/shopee/optimizer/video/manual',mustLogin,requireWeDropAdmin,async(
     publishedInShopee:Boolean(asset?.publication?.sha256===asset?.sha256)});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
 });
+app.get('/api/shopee/optimizer/video/import-status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  const job=statusOptimizerVideoImport(info,String(req.query.job_id||''));
+  if(!job)return res.status(404).json({error:'Importação não encontrada nesta instância. Se o servidor reiniciou, selecione novamente o vídeo.'});
+  res.json(job);
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
+});
 app.post('/api/shopee/optimizer/video/manual',
  mustLogin,requireWeDropAdmin,
  express.raw({type:['video/mp4','video/quicktime','video/webm'],limit:MAX_VIDEO_BYTES}),
@@ -4556,16 +4566,26 @@ app.post('/api/shopee/optimizer/video/manual',
   catch{throw Error('Nome de arquivo inválido.');}
   const active=await readShopeeExecution(info.shopId,info.itemId,info.modelId);
   if(['running','uncertain'].includes(active?.state))throw Error('Conclua ou confira a execução em andamento antes de trocar o vídeo.');
-  const normalized=await normalizeManualVideo(req.body,{allowSlightlyLonger:true});
-  const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
+  const input=req.body;
+  if(!Buffer.isBuffer(input)||input.length<16||input.length>MAX_VIDEO_BYTES)
+   throw Error('Arquivo de vídeo inválido ou maior que 30 MB.');
+  const sha256=crypto.createHash('sha256').update(input).digest('hex');
+  const job=startOptimizerVideoImport(info,{filename:name,sizeBytes:input.length,sha256},async progress=>{
+   progress('Validando e ajustando o vídeo para a Shopee...');
+   const normalized=await normalizeManualVideo(input,{allowSlightlyLonger:true});
+   progress('Vídeo preparado. Salvando no armazenamento privado da SKU...');
+   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
     info.sku,normalized.buffer,{mime:'video/mp4',filename:name.replace(/\.[^.]+$/,'')+'.mp4'});
-  await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
-  res.status(201).json({ok:true,asset,publishedInShopee:false,requiresReview:true,
-   trimmedForShopee:normalized.trimmed,originalDurationSeconds:normalized.originalDuration,
-   savedDurationSeconds:normalized.duration,
-   message:normalized.trimmed?
-    'Vídeo aceito e ajustado para 59 segundos antes de salvar. Ainda não publicado na Shopee.':
-    'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
+   progress('Arquivo salvo. Registrando conferência pendente...');
+   await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
+   return {ok:true,asset,publishedInShopee:false,requiresReview:true,
+    trimmedForShopee:normalized.trimmed,originalDurationSeconds:normalized.originalDuration,
+    savedDurationSeconds:normalized.duration,
+    message:normalized.trimmed?
+     'Vídeo ajustado e salvo. Ainda não publicado na Shopee.':
+     'Vídeo importado e salvo. Ainda não publicado na Shopee.'};
+  });
+  res.status(202).json(job);
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 
