@@ -60,7 +60,11 @@ test('chat não limpo não reativa prompt antigo; sessão nova começa pelo pró
  assert.match(app,/let optimizerChatgptCleanChatAuthorized=false/);
  assert.match(app,/optimizerChatgptCleanChatAuthorized=true/);
  assert.match(source,/const resumeDirty=Boolean\(pausedDirty&&optimizerChatBridgeIdentity\(pausedDirty,w\)\)/);
- assert.match(source,/resumeDirty&&!optimizerChatgptCleanChatAuthorized/);
+ assert.match(source,/resumeDirty&&!supportsDirtyRecovery&&!optimizerChatgptCleanChatAuthorized/);
+ assert.match(source,/const dirtyReplace=resumeDirty&&supportsDirtyRecovery/);
+ assert.match(source,/replaceDirtyChat:dirtyReplace/);
+ assert.match(source,/if\(!supportsDirtyRecovery\)await optimizerChatBridgeRelease/);
+ assert.match(source,/if\(dirtyReplace\)optimizerBridgeChatPauseClear\(\)/);
  assert.match(source,/await optimizerChatBridgeRelease\('Chat novo confirmado/);
  assert.match(source,/recovered=\{reason:'NO_RECOVERABLE_JOB'\}/);
  assert.match(source,/completed:bridgeCompleted/);
