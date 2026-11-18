@@ -12489,7 +12489,12 @@ async function optimizerChatgptContinueFromServer(){
    await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
   const pausedDirty=optimizerBridgeChatPauseState();
   const resumeDirty=Boolean(pausedDirty&&optimizerChatBridgeIdentity(pausedDirty,w));
-  if(resumeDirty&&!optimizerChatgptCleanChatAuthorized){
+  // A Ponte >=1.0.64 substitui exclusivamente a sessão que comprovou
+  // NOVO_CHAT_NAO_LIMPO antes do envio, preservando os slots do servidor.
+  const [bridgeMajor=0,bridgeMinor=0,bridgePatch=0]=String(optimizerChatBridgeVersion||'').split('.').map(Number);
+  const supportsDirtyRecovery=bridgeMajor>1||(bridgeMajor===1&&(bridgeMinor>0||bridgePatch>=64));
+  const dirtyReplace=resumeDirty&&supportsDirtyRecovery;
+  if(resumeDirty&&!supportsDirtyRecovery&&!optimizerChatgptCleanChatAuthorized){
    const error='A Ponte parou porque o chat contém o prompt da imagem anterior. '+
     'Abra um novo chat completamente vazio e use o botão "Retomar somente pendentes" no quadro de recuperação. '+
     'A imagem atual pendente é '+first+'/09; as '+stored.length+' posições confirmadas permanecem salvas.';
@@ -12513,13 +12518,16 @@ async function optimizerChatgptContinueFromServer(){
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
   const refs=brief.referenceCandidates; // Somente CDNs oficiais Shopee, jamais WeDrop.
   let referenceIndex=0,referenceUrl=refs[0],recovered=null;
-  if(resumeDirty&&optimizerChatgptCleanChatAuthorized){
+  if(resumeDirty&&(supportsDirtyRecovery||optimizerChatgptCleanChatAuthorized)){
    // A sessão antiga contém o rascunho incorreto. Não reativar seus prompts:
    // começar com os nove roteiros RECALCULADOS e somente slots pendentes.
    // A fila atual e as imagens confirmadas no servidor ficam preservadas.
-   await optimizerChatBridgeRelease('Chat novo confirmado. Descartando somente a sessão com prompt antigo.');
+   // Não usar ABORT aqui: ele apagava o marcador NOVO_CHAT_NAO_LIMPO,
+   // impedindo a Ponte de comprovar que o prompt da imagem não foi enviado.
+   if(!supportsDirtyRecovery)await optimizerChatBridgeRelease('Chat novo confirmado. Descartando somente a sessão com prompt antigo.');
    recovered={reason:'NO_RECOVERABLE_JOB'};
-   notify('Chat vazio confirmado. Criando sessão nova da imagem '+first+
+   notify((supportsDirtyRecovery?'Chat anterior bloqueado. Abrindo conversa limpa automaticamente. ':'Chat vazio confirmado. ')+
+    'Criando sessão nova da imagem '+first+
     '/09 com roteiro atualizado da SKU '+w.sku+'. '+stored.length+'/9 imagens salvas permanecem intactas.');
   }else if(freshThird){
    // Antes de um START novo, consultar a extensão, recuperar seu nonce real
@@ -12586,10 +12594,11 @@ async function optimizerChatgptContinueFromServer(){
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
-     referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
+     referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird,
+      replaceDirtyChat:dirtyReplace
     }},location.origin);
     startResult=await startAck;
-    if(startResult?.ok)break;
+    if(startResult?.ok){if(dirtyReplace)optimizerBridgeChatPauseClear();break;}
     if(optimizerBridgeSkuHasRunningJob(startResult?.error)){
      await optimizerChatBridgeRelease('Ponte ainda tem execução ativa: conciliando nonce antes da nova imagem 03.');
      await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
@@ -12602,10 +12611,11 @@ async function optimizerChatgptContinueFromServer(){
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
       imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
-      referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird
+      referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird,
+      replaceDirtyChat:dirtyReplace
      }},location.origin);
      startResult=await secondAck;
-     if(startResult?.ok)break;
+     if(startResult?.ok){if(dirtyReplace)optimizerBridgeChatPauseClear();break;}
      throw Error('A Ponte ainda está ocupada na SKU '+w.sku+
       '. Abra o ícone da extensão, use Parar na tarefa anterior e depois Gerar 03. As imagens 01 e 02 foram preservadas. '+String(startResult?.error||'').slice(0,180));
     }
