@@ -7,7 +7,7 @@ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 
 test('colagem manual da imagem 03 preserva cotas da foto e não exige consulta WeDrop para gravar',()=>{
  const begin=app.indexOf('async function optimizerImageCorrectionImportFile(file)');
- const end=app.indexOf("$('#optimizerImageCorrectionChoose')",begin);
+ const end=app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",begin);
  assert.ok(begin>0&&end>begin);
  const code=app.slice(begin,end);
  assert.match(code,/optimizerChatgptScaleFile\(file\)/);
