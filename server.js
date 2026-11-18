@@ -81,7 +81,7 @@ import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
 import {inspectShopeeFiscalGap,fiscalFillMissingOnly,cestForShopeeField} from './shopeeFiscalGap.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
-import {normalizeManualVideo} from './shopeeVideoValidation.js';
+import {normalizeManualVideo,OPTIMIZER_VIDEO_MAX_INPUT_DURATION} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
@@ -4556,12 +4556,16 @@ app.post('/api/shopee/optimizer/video/manual',
   catch{throw Error('Nome de arquivo inválido.');}
   const active=await readShopeeExecution(info.shopId,info.itemId,info.modelId);
   if(['running','uncertain'].includes(active?.state))throw Error('Conclua ou confira a execução em andamento antes de trocar o vídeo.');
-  const normalized=await normalizeManualVideo(req.body);
+  const normalized=await normalizeManualVideo(req.body,{allowSlightlyLonger:true});
   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
     info.sku,normalized.buffer,{mime:'video/mp4',filename:name.replace(/\.[^.]+$/,'')+'.mp4'});
   await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
   res.status(201).json({ok:true,asset,publishedInShopee:false,requiresReview:true,
-   message:'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
+   trimmedForShopee:normalized.trimmed,originalDurationSeconds:normalized.originalDuration,
+   savedDurationSeconds:normalized.duration,
+   message:normalized.trimmed?
+    'Vídeo aceito e ajustado para 59 segundos antes de salvar. Ainda não publicado na Shopee.':
+    'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 
@@ -4632,8 +4636,8 @@ app.post('/api/shopee/optimizer/video/marktpro/select',
   const info=await checkedManualVideoIdentity(req);
   const {results}=await marktProCandidates(req,info);
   const video=marktProCandidateFor(String(req.body?.id||''),results);
-  if(video.durationMs && (video.durationMs<10000||video.durationMs>60000))
-   throw Error('Este vídeo não atende ao limite de 10 a 60 segundos.');
+  if(video.durationMs && (video.durationMs<10000||video.durationMs>OPTIMIZER_VIDEO_MAX_INPUT_DURATION*1000))
+   throw Error('Este vídeo não atende ao limite de 10 a 65 segundos para importação.');
   const active=await readShopeeExecution(info.shopId,info.itemId,info.modelId);
   if(['running','uncertain'].includes(active?.state))
    throw Error('Conclua a execução em andamento antes de trocar o vídeo.');
@@ -4652,13 +4656,17 @@ app.post('/api/shopee/optimizer/video/marktpro/select',
     buffers.push(Buffer.from(value));
    }
   }finally{await reader.cancel().catch(()=>{});}
-  const normalized=await normalizeManualVideo(Buffer.concat(buffers,bytes));
+  const normalized=await normalizeManualVideo(Buffer.concat(buffers,bytes),{allowSlightlyLonger:true});
   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,info.sku,
    normalized.buffer,{mime:'video/mp4',filename:'marktpro-'+video.id+'.mp4'});
   // A escolha de um arquivo novo revoga uma aprovação de vídeo anterior.
   await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
   res.status(201).json({ok:true,asset,publishedInShopee:false,requiresReview:true,
-    message:'Vídeo MarktPro selecionado e salvo para revisão da SKU. Ainda não publicado na Shopee.'});
+    trimmedForShopee:normalized.trimmed,originalDurationSeconds:normalized.originalDuration,
+    savedDurationSeconds:normalized.duration,
+    message:normalized.trimmed?
+      'Vídeo MarktPro ajustado para 59 segundos e salvo para revisão. Ainda não publicado na Shopee.':
+      'Vídeo MarktPro selecionado e salvo para revisão da SKU. Ainda não publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
 
