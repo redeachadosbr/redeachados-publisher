@@ -35,7 +35,9 @@ test('fallback de imagem 03 sem ChatGPT está desativado',()=>{
  assert(start>0&&end>start);
  const body=app.slice(start,end);
  assert.match(body,/deve ser gerada com medidas diretamente no ChatGPT/);
- assert.doesNotMatch(app.slice(app.indexOf('let importThirdButton=null'),app.indexOf('const adjust=optimizerMake')),/Criar com foto|Importar foto-base|Aplicar medidas/);
+ const repair=app.slice(app.indexOf('let importThirdButton=null'),app.indexOf('const adjust=optimizerMake'));
+ assert.doesNotMatch(repair,/Criar com foto|Importar foto-base/);
+ assert.match(repair,/Aplicar medidas WeDrop/);
 });
 
 test('motor raiz: botão Gerar 03 usa a Ponte ChatGPT e não copia a imagem 02',()=>{
@@ -52,21 +54,21 @@ test('motor raiz: botão Gerar 03 usa a Ponte ChatGPT e não copia a imagem 02',
  assert.doesNotMatch(cont,/localRendered:true/);
  assert.doesNotMatch(cont,/await optimizerThirdFromPreparedPhoto/);
 });
-test('motor raiz: importa imagem 03 gerada no ChatGPT sem overlay de cotas',()=>{
+test('motor raiz: a Ponte aplica cotas da SKU antes de salvar',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const start=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
  const end=app.indexOf('const existing=await json(',start);
  const received=app.slice(start,end);
  assert.match(received,/await optimizerVerifiedDimensionSpec\(w\)/);
- assert.doesNotMatch(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
  assert.match(received,/sceneSha256/);
- assert.match(received,/chatgpt-auto-03-arte-final.png/);
- assert.match(received,/Medidas solicitadas/);
+ assert.match(received,/chatgpt-auto-03-medidas-confirmadas.png/);
  const click=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
   app.indexOf('async function optimizerChatgptCopyAll('));
  assert.match(click,/referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl/);
  assert.match(click,/imageUrl:refs\[i\],prompts,referenceDataUrl/);
 });
+
 test('modo alternativo com overlay é proibido e não apaga imagens',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const begin=app.indexOf('async function optimizerThirdFromPreparedPhoto(');
@@ -98,7 +100,8 @@ test('renderer insere 10 cm, 10 cm e comprimento 14 cm confirmados da SKU 1736',
   assert(words.filter(x=>x==='10 cm').length>=2);
   assert(words.includes('Altura'));
   assert(words.includes('Largura'));
-  assert(words.includes('Comprimento 14 cm'));
+  assert(words.includes('14 cm'));
+  assert(words.includes('Comprimento'));
  }finally{
   if(origDoc===undefined)delete globalThis.document;else globalThis.document=origDoc;
   if(origBitmap===undefined)delete globalThis.createImageBitmap;else globalThis.createImageBitmap=origBitmap;

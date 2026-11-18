@@ -80,10 +80,10 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  prompts[2]=[
   'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09: FOTO-BASE LIMPA PARA INSERÇÃO AUTOMÁTICA DAS COTAS PELO SHOPEE MANAGER.',
   'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — NÃO GERAR IMAGEM 03')+'.',
-  'CENA ÚNICA 03/09. AMBIENTE EXCLUSIVO: '+scene03.environment,
+  'DIVERSIDADE OBRIGATÓRIA — CENA ÚNICA 03/09. AMBIENTE EXCLUSIVO: '+scene03.environment,
   'ÂNGULO E ENQUADRAMENTO: '+scene03.camera,
   'ILUMINAÇÃO: '+scene03.light,
-  'A FOTO DE REFERÊNCIA serve para preservar o PRODUTO EXATO. Preserve cor, formato, peças, textura, proporções e quantidade, sem misturar SKUs. Crie uma NOVA fotografia 1200×1200 lateral/três-quartos, produto inteiro ocupando 65%–72% da largura, fundo ambientado nítido e margens livres para as cotas.',
+  'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO. Preserve cor, formato, peças, textura, proporções e quantidade, sem misturar SKUs. Crie uma NOVA fotografia 1200×1200 lateral/três-quartos, produto inteiro ocupando 65%–72% da largura, fundo ambientado nítido e margens livres para as cotas.',
   poolDisplay?'Se houver opções de cores confirmadas, mostre variantes visuais sem insinuar envio de várias unidades.':'Não inventar variantes nem produtos extras.',
   'REGRA FINAL OBRIGATÓRIA: ENTREGAR SOMENTE FOTO-BASE LIMPA SEM QUALQUER TEXTO, NÚMERO, SETA, LINHA, MEDIDA, CAIXA OU SELO. As cotas acima NÃO são para escrever agora: o Shopee Manager adiciona UMA única camada com os números exatos desta SKU DEPOIS da geração. Esta regra substitui roteiros antigos de cotas geradas pelo ChatGPT.',
   'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ '+(axes.length===3?'AS TRÊS COTAS VISÍVEIS':'APENAS AS COTAS COMPROVADAS VISÍVEIS')+'. O Manager combinará a fotografia limpa com as dimensões WeDrop da MESMA SKU. Não usar medidas de embalagem nem repetir a imagem 02.',

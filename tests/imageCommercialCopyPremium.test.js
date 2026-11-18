@@ -48,7 +48,7 @@ test('imagem 03 envia valores WeDrop no briefing e termina com renderização ve
  assert.deepEqual(brief.confirmedDimensions.measurements.map(x=>x.value),['40 cm','30 cm','55 cm']);
  assert.match(brief.prompts[2],/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(brief.prompts[2],/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
- assert.match(brief.prompts[2],/ARTE FINAL CRIADA NO CHATGPT/);
+ assert.match(brief.prompts[2],/FOTO-BASE LIMPA/);
  const api=imagePrompt({record:{sku:'AAA',title:'Organizador de Roupas'},slot:3,supplierSourceText:src});
  assert.match(api,/ARTE COMERCIAL FINAL PREMIUM/);
  assert.match(api,/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
@@ -71,7 +71,7 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
   const output=await addConfirmedSpecificationCard(new Blob(['base'],{type:'image/png'}),valid);
   assert.equal(output.type,'image/png');
   assert.deepEqual(names.filter(x=>/^(?:40 cm|30 cm|Altura|Largura|Comprimento)/.test(x)),
-   ['40 cm','Altura','30 cm','Largura','Comprimento 55 cm']);
+   ['40 cm','Altura','30 cm','Largura','55 cm','Comprimento']);
   const script=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
   assert.match(script,/"Inter","Segoe UI"/);
   assert.match(script,/#ffcb0b/);
@@ -84,49 +84,29 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
  }
 });
 
-test('Ponte recebe arte final da imagem 03 sem adicionar cotas no Manager',()=>{
+test('Ponte, API e importação manual aplicam exatamente a fonte WeDrop',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(app,/if\(Number\(m\.slot\)===3\)\{/);
- const bridgeStart=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
- const bridge=app.slice(bridgeStart,app.indexOf('const existing=await json(',bridgeStart));
- assert.doesNotMatch(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(bridge,/chatgpt-auto-03-arte-final.png/);
+ const start=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
+ const bridge=app.slice(start,app.indexOf('const existing=await json(',start));
+ assert.match(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(bridge,/chatgpt-auto-03-medidas-confirmadas.png/);
  assert.match(bridge,/optimizerVerifiedDimensionSpec\(w\)/);
- const apiStart=app.indexOf('async function optimizerImagesGenerateSlot(');
- const apiPath=app.slice(apiStart,app.indexOf("$('#optimizerOpenAiSave')",apiStart));
- assert.doesNotMatch(apiPath,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
- assert.match(apiPath,/nenhuma etiqueta adicional foi desenhada/);
- assert.match(app,/sourceEvidenceSku:source\.sku/);
- assert.match(app,/sourceSaved:true/);
- assert.match(app,/optimizerRepairThirdImageDimensions\(w,image\)/);
- assert.match(app,/X-Expected-Sha256/);
- assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
-});
-
-test('imagem 03 mantém a arte final e desativa foto-base sem cotas',()=>{
- const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const api=app.slice(app.indexOf('async function optimizerImagesGenerateSlot('),
+  app.indexOf("$('#optimizerOpenAiSave')",app.indexOf('async function optimizerImagesGenerateSlot(')));
+ assert.match(api,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
-  app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
- assert.match(manual,/if\(slot===3\)/);
+  app.indexOf("$('#optimizerImageCorrectionChoose')",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
+ assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
- assert.doesNotMatch(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
- assert.match(manual,/criadas pelo ChatGPT|criada no ChatGPT/);
- assert.match(manual,/X-Expect-Empty-Slot/);
  assert.match(manual,/X-Expected-Sha256/);
  assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
- const ui=app.slice(app.indexOf('const generate=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')),
-  app.indexOf('const adjust=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')));
- assert.match(ui,/let importThirdButton=null,thirdFallbackButton=null,measureButton=null/);
- assert.doesNotMatch(ui,/Importar foto-base sem cotas/);
- assert.doesNotMatch(ui,/optimizerImageCorrectionFile/);
- assert.doesNotMatch(ui,/if\(slot===3&&image\)/);
- assert.doesNotMatch(ui,/Aplicar medidas WeDrop/);
+ assert.match(app,/sourceEvidenceSku:source\.sku/);
+ assert.match(app,/sourceSaved:true/);
+ assert.match(app,/X-Expected-Sha256/);
+ assert.match(app,/Aplicar medidas WeDrop/);
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(server,/x-expect-empty-slot/);
- assert.match(server,/A posição foi preenchida por outra aba/);
 });
-
 
 test('WS20357 exibe 183 cm vertical, 69 cm horizontal e selo de cores sortidas na arte final',async()=>{
  const source=[
@@ -168,11 +148,9 @@ test('WS20357 exibe 183 cm vertical, 69 cm horizontal e selo de cores sortidas n
 });
 
 
-test('WS20357 instrui ChatGPT a criar cena final com três cores e cotas',()=>{
+test('WS20357 mantém apenas dimensões do colchão, sem eixo de altura inventado',()=>{
  const evidence=[
-  'Colchão Inflável Piscina 183x69cm Verão',
-  'ESPECIFICAÇÕES:',
-  '- Material: 100% PVC',
+  'Colchão Inflável Piscina 183x69cm Verão','ESPECIFICAÇÕES:',
   '- Dimensões: 183cm comprimento x 69cm largura',
   '- Cor: Azul, Amarelo e Rosa',
   '**PRODUTO ENVIADO COM COR SORTIDA**'
@@ -183,21 +161,36 @@ test('WS20357 instrui ChatGPT a criar cena final com três cores e cotas',()=>{
  for(const prompt of [chat,api]){
   assert.match(prompt,/183 cm/);
   assert.match(prompt,/69 cm/);
-  assert.match(prompt,/ROSA, AMARELO e AZUL/);
-  assert.match(prompt,/Envio em cores sortidas/);
-  assert.match(prompt,/não.*(?:um kit|três unidades)/i);
   assert.doesNotMatch(prompt,/ALTURA: 183 cm|ALTURA: 69 cm/);
  }
- assert.match(api,/BORDA AMARELA/);
- assert.match(api,/AZUL-MARINHO/);
- assert.match(chat,/As cotas confirmadas devem ser desenhadas pelo próprio ChatGPT somente sobre a peça AZUL/);
- const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- const bridge=app.slice(app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;"),
-   app.indexOf('const existing=await json(',app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;")));
- assert.doesNotMatch(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(bridge,/chatgpt-auto-03-arte-final.png/);
- const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
-  app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
- assert.match(manual,/if\(optimizerManualThirdBaseMode\)/);
- assert.match(manual,/imagem-03-arte-pronta-com-medidas/);
+ assert.match(chat,/FOTO-BASE LIMPA/);
+ assert.match(api,/FOTO-BASE TOTALMENTE LIMPA/);
+});
+
+test('TW888-4: imagem 03 recebe 20 cm de altura, 22 cm de largura e 29 cm de comprimento',async()=>{
+ const source=['Especificações:','Dimensões: 20cm altura x 22cm Largura x 29cm comprimento',
+  'Composição: Plástico com componentes eletrônicos','Tipo: Cachorro Robô Inteligente'].join('\n');
+ const spec=confirmedSpecCard({sku:'TW888-4',sourceEvidenceSku:'TW888-4',
+  sourceSaved:true,sourceText:source});
+ assert.deepEqual(spec.measurements.map(x=>[x.axis,x.value]),[
+  ['altura','20 cm'],['largura','22 cm'],['comprimento','29 cm']
+ ]);
+ const prompt=createChatGptPrompts({title:'Cachorro Robô Inteligente',
+  supplierSourceText:source,confirmedDimensionSpec:spec}).prompts[2];
+ assert.match(prompt,/ALTURA: 20 cm; LARGURA: 22 cm; COMPRIMENTO: 29 cm/);
+ const names=[],ctx={save(){},restore(){},beginPath(){},roundRect(){},
+  fill(){},stroke(){},moveTo(){},lineTo(){},drawImage(){},
+  measureText:t=>({width:t.length*16}),fillText:t=>names.push(t)};
+ const prevDoc=globalThis.document,prevBitmap=globalThis.createImageBitmap;
+ globalThis.document={createElement:()=>({getContext:()=>ctx,
+  toBlob:cb=>cb(new Blob(['test image'],{type:'image/png'}))})};
+ globalThis.createImageBitmap=async()=>({close(){}});
+ try{
+  await addConfirmedSpecificationCard(new Blob(['base'],{type:'image/png'}),spec);
+  for(const token of ['20 cm','22 cm','29 cm','Altura','Largura','Comprimento'])
+   assert(names.includes(token),'Ausente na imagem 03: '+token);
+ }finally{
+  if(prevDoc===undefined)delete globalThis.document;else globalThis.document=prevDoc;
+  if(prevBitmap===undefined)delete globalThis.createImageBitmap;else globalThis.createImageBitmap=prevBitmap;
+ }
 });

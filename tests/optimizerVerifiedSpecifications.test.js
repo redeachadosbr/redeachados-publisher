@@ -66,8 +66,8 @@ test('imagem 03 importa arte com cotas produzidas no ChatGPT sem sobrepor medida
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.doesNotMatch(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(block,/chatgpt-auto-03-arte-final.png/);
+ assert.match(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(block,/chatgpt-auto-03-medidas-confirmadas.png/);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
@@ -231,7 +231,7 @@ test('imagem 03 coloca os números WeDrop no começo do prompt, antes da descri�
  assert.match(paragraphs[0],/ETAPA ATUAL EXCLUSIVA — IMAGEM 03\/09/);
  assert.match(paragraphs[1],/DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL/);
  assert.match(paragraphs[1],/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
- assert.match(result.prompts[2],/FOTOGRAFIA NOVA OBRIGATÓRIA/);
+ assert.match(result.prompts[2],/Crie uma NOVA fotografia/);
  assert.doesNotMatch(result.prompts[2],/\\n\\n/,'prompt não deve conter barra+n literal');
 });
 
@@ -258,5 +258,6 @@ test('geração do slot 03 verifica as cotas da SKU antes de enviar comando à P
  const card=app.slice(app.indexOf('let importThirdButton=null,thirdFallbackButton=null'),
   app.indexOf("const adjust=optimizerMake('button'",app.indexOf('let importThirdButton=null,thirdFallbackButton=null')));
  assert.match(card,/measureButton=null/);
- assert.doesNotMatch(card,/thirdFallbackButton=fallback|Aplicar medidas WeDrop|Criar com foto/);
+ assert.doesNotMatch(card,/thirdFallbackButton=fallback|Criar com foto/);
+ assert.match(card,/Aplicar medidas WeDrop/);
 });

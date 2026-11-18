@@ -89,7 +89,7 @@ test('slot 03 API usa apenas medidas de produto da WeDrop colada, sem inferir me
   supplierSourceText:text,supplierCatalogInfo:'Altura:66; Largura:100; Comprimento:27'});
  assert.match(prompt,/ARTE COMERCIAL FINAL PREMIUM/);
  assert.match(prompt,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
- assert.match(prompt,/NUNCA inventar altura/);
+ assert.match(prompt,/FOTO-BASE TOTALMENTE LIMPA/);
  assert.doesNotMatch(prompt,/Peso: 11kg/);
  for(const forbidden of ['66cm','100cm','27cm','Altura:66','Largura:100'])
   assert(!prompt.includes(forbidden));
