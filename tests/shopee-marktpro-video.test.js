@@ -27,7 +27,7 @@ test('busca, prévia e seleção no backend exigem autenticação e SKU verifica
  assert.match(server,/verifiedSameOrigin\(req\)/);
  assert.match(server,/checkedManualVideoIdentity\(req\)/);
  assert.match(server,/marktProCandidateFor/);
- assert.match(server,/normalizeManualVideo\(Buffer\.concat\(buffers,bytes\)\)/);
+ assert.match(server,/normalizeManualVideo\(Buffer\.concat\(buffers,bytes\),\{allowSlightlyLonger:true\}\)/);
  assert.match(server,/importShopeeManualVideo/);
 });
 test('UI mostra candidatos e importação manual sem excesso de comandos',()=>{
