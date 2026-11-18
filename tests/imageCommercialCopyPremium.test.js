@@ -70,7 +70,7 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
  try{
   const output=await addConfirmedSpecificationCard(new Blob(['base'],{type:'image/png'}),valid);
   assert.equal(output.type,'image/png');
-  assert.deepEqual(names.filter(x=>/^(?:40 cm|30 cm|Altura|Largura|Comprimento)/.test(x)),
+  assert.deepEqual(names.filter(x=>/^(?:40 cm|30 cm|55 cm|Altura|Largura|Comprimento)/.test(x)),
    ['40 cm','Altura','30 cm','Largura','55 cm','Comprimento']);
   const script=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
   assert.match(script,/"Inter","Segoe UI"/);
@@ -95,7 +95,7 @@ test('Ponte, API e importação manual aplicam exatamente a fonte WeDrop',()=>{
   app.indexOf("$('#optimizerOpenAiSave')",app.indexOf('async function optimizerImagesGenerateSlot(')));
  assert.match(api,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
-  app.indexOf("$('#optimizerImageCorrectionChoose')",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
+  app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
  assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
  assert.match(manual,/X-Expected-Sha256/);
