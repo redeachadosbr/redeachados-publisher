@@ -3717,11 +3717,14 @@ async function optimizerImageCorrectionImportFile(file){
   // O arquivo ChatGPT contém cotas; a importação não desenha medidas novamente.
   let imageBlob=prepared.blob,dimensionCount=0,usedLocalOverlay=false;
   if(slot===3){
-   const spec=await optimizerVerifiedDimensionSpec(w);
+   // A foto já contém cotas produzidas no ChatGPT. Nunca tentar adicionar
+   // outra camada, nem recusar o upload por falha na consulta auxiliar WeDrop.
+   const spec=await optimizerVerifiedDimensionSpec(w).catch(()=>null);
    dimensionCount=spec?.measurements?.length||0;
-   if(dimensionCount<2)throw Error('Imagem 03 exige duas ou mais medidas WeDrop confirmadas da SKU.');
-   status.textContent='Imagem 03 criada no ChatGPT. Confira na fotografia: '+
-    spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.';
+   status.textContent=dimensionCount>=2
+    ?'Imagem 03 pronta. Confira as medidas impressas na foto: '+
+      spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.'
+    :'Imagem 03 pronta: confira manualmente as medidas da foto com a ficha WeDrop antes da aprovação.';
   }
   if(!optimizerImagesSameSku(w))throw Error('SKU alterada antes de importar a imagem.');
   const mime=imageBlob.type==='image/jpeg'?'image/jpeg':'image/png';
@@ -3745,9 +3748,12 @@ async function optimizerImageCorrectionImportFile(file){
   if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
   optimizerExecReset();optimizerWorkflowRender(w);
   importedSha=result.image.sha256;
-  status.textContent=slot===3&&dimensionCount
-   ?'✓ Imagem 03 do ChatGPT importada. Confira as '+dimensionCount+' medidas visíveis antes de aprovar.'
+  status.textContent=slot===3
+   ?(dimensionCount>=2
+      ?'✓ Imagem 03 importada com as cotas já desenhadas pelo ChatGPT. Confira as '+dimensionCount+' medidas na arte antes de aprovar.'
+      :'✓ Imagem 03 importada com a arte do ChatGPT preservada. Confira manualmente as medidas com a ficha antes de aprovar.')
    :'✓ Imagem '+String(slot).padStart(2,'0')+' salva na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
+  optimizerCommercialActionMessage(status.textContent);
   $('#optimizerImageCorrectionFile').value='';
  }finally{
   optimizerManualThirdBaseMode=false;
@@ -3776,7 +3782,26 @@ $('#optimizerImageCorrectionFile')?.addEventListener?.('change',async e=>{
  catch(error){$('#optimizerImageCorrectionStatus').textContent='Não foi possível importar: '+error.message;}
 });
 const correctionDrop=$('#optimizerImageCorrectionDropzone');
+function optimizerCorrectionPastedFile(e){
+ const entry=Array.from(e.clipboardData?.items||[])
+  .find(x=>x.kind==='file'&&/^image\/(?:png|jpeg|webp)$/.test(x.type));
+ return entry?.getAsFile()||null;
+}
+async function optimizerCorrectionHandlePaste(e){
+ const file=optimizerCorrectionPastedFile(e);
+ if(!file)return false; // Textos seguem para o controle em foco.
+ e.preventDefault();
+ try{await optimizerImageCorrectionImportFile(file);}
+ catch(err){
+  const message='Falha ao colar imagem: '+String(err.message||err);
+  $('#optimizerImageCorrectionStatus').textContent=message;
+  optimizerCommercialActionMessage(message,true);
+ }
+ return true;
+}
 if(correctionDrop){
+ // A área anuncia "clique e Ctrl+V": o clique precisa ativar o foco real.
+ correctionDrop.addEventListener('click',()=>correctionDrop.focus());
  correctionDrop.addEventListener('dragover',e=>{e.preventDefault();correctionDrop.classList.add('is-drop-target');});
  correctionDrop.addEventListener('dragleave',()=>correctionDrop.classList.remove('is-drop-target'));
  correctionDrop.addEventListener('drop',async e=>{
@@ -3785,16 +3810,22 @@ if(correctionDrop){
    const image=Array.from(e.dataTransfer?.files||[]).find(f=>/^image\/(?:png|jpeg|webp)$/.test(f.type));
    if(!image)throw Error('Arraste uma imagem PNG, JPG ou WebP.');
    await optimizerImageCorrectionImportFile(image);
-  }catch(err){$('#optimizerImageCorrectionStatus').textContent='Falha ao importar: '+err.message;}
+  }catch(err){
+   $('#optimizerImageCorrectionStatus').textContent='Falha ao importar: '+err.message;
+   optimizerCommercialActionMessage('Falha ao importar imagem: '+err.message,true);
+  }
  });
- correctionDrop.addEventListener('paste',async e=>{
-  const entry=Array.from(e.clipboardData?.items||[]).find(x=>x.kind==='file'&&/^image\/(?:png|jpeg|webp)$/.test(x.type));
-  if(!entry)return;
-  e.preventDefault();
-  try{await optimizerImageCorrectionImportFile(entry.getAsFile());}
-  catch(err){$('#optimizerImageCorrectionStatus').textContent='Falha ao colar: '+err.message;}
- });
+ correctionDrop.addEventListener('paste',e=>void optimizerCorrectionHandlePaste(e));
 }
+// Aceitar Ctrl+V mesmo quando a pessoa colar com foco no painel (em vez
+// do retângulo de upload). Não interceptar texto nem outro fluxo do sistema.
+document.addEventListener('paste',e=>{
+ if(!optimizerWorkflowPlan||!optimizerImagesSameSku(optimizerWorkflowPlan))return;
+ const ready=$('#raCommercialPasteReady');
+ if(!ready?.open||ready.hidden||correctionDrop?.contains(e.target))return;
+ if(!optimizerCorrectionPastedFile(e))return;
+ void optimizerCorrectionHandlePaste(e);
+});
 $('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerImageCorrectionStatus');
  try{
@@ -3809,8 +3840,9 @@ $('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
   await optimizerImageCorrectionImportFile(file);
  }catch(error){
   const area=$('#optimizerImageCorrectionDropzone');if(area)area.focus();
-  status.textContent='Colagem direta indisponível: '+error.message+
-   ' Alternativa: clique na área de colagem, pressione Ctrl+V ou use Selecionar imagem.';
+  status.textContent='O Chrome não liberou a leitura automática: '+error.message+
+   '. A área de colagem foi ativada: pressione Ctrl+V agora ou use Selecionar imagem.';
+  optimizerCommercialActionMessage(status.textContent,true);
  }
 });
 
@@ -12785,10 +12817,13 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
    const prepared=await optimizerChatgptScaleFile(file);
    const finalBlob=prepared.blob;
    if(slot===3){
-    const spec=await optimizerVerifiedDimensionSpec(w);
-    if((spec?.measurements?.length||0)<2)throw Error('Imagem 03 exige medidas WeDrop da SKU confirmadas.');
-    status.textContent='Arte 03 produzida no ChatGPT. Confira: '+
-     spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.';
+    // Importar uma arte JÁ PRONTA não é gerar novas dimensões. A falta de
+    // ficha WeDrop não deve bloquear a colagem ou excluir o trabalho do usuário.
+    const spec=await optimizerVerifiedDimensionSpec(w).catch(()=>null);
+    status.textContent=(spec?.measurements?.length||0)>=2
+     ?'Arte 03 pronta. Confira os valores WeDrop na imagem antes de aprovar: '+
+      spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.'
+     :'Arte 03 pronta para importação. A confirmação automática das medidas não está disponível; confira os números da imagem com a ficha antes de aprovar.';
    }
    if(!optimizerImagesSameSku(w))throw Error('SKU alterada durante a importação.');
    const outputType=finalBlob.type==='image/jpeg'?'image/jpeg':'image/png';
