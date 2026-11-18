@@ -43,7 +43,7 @@ test('nova geração API e ChatGPT usam a mesma direção para SKU 2392',()=>{
  for(let slot=1;slot<=9;slot++){
   const scene=imageSceneDirection({slot,title});
   const a=prompts[slot-1];
-  const b=imagePrompt({record:rec,slot});
+  const b=imagePrompt({record:rec,slot,supplierSourceText:slot===3?'Dimensões: 75cm altura x 63cm largura x 117cm comprimento':''});
   assert(a.includes(scene.environment),slot+' ChatGPT deve ter ambiente exclusivo');
   assert(b.includes(scene.environment),slot+' API deve ter ambiente exclusivo');
   assert(a.includes(scene.camera),slot+' ChatGPT deve ter câmera exclusiva');

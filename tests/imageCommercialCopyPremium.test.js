@@ -164,7 +164,8 @@ test('WS20357 mantém apenas dimensões do colchão, sem eixo de altura inventad
   assert.doesNotMatch(prompt,/ALTURA: 183 cm|ALTURA: 69 cm/);
  }
  assert.match(chat,/ARTE FINAL CRIADA NO CHATGPT/);
- assert.match(api,/FOTO-BASE TOTALMENTE LIMPA/);
+ assert.match(api,/DESENHE NA PRÓPRIA IMAGEM/);
+ assert.doesNotMatch(api,/FOTO-BASE TOTALMENTE LIMPA/);
 });
 
 test('TW888-4: imagem 03 recebe 20 cm de altura, 22 cm de largura e 29 cm de comprimento',async()=>{
