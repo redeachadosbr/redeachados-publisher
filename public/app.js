@@ -12284,6 +12284,16 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    '. As fotos já salvas permanecem. Retomar fará nova conferência pelo servidor.');
  }
 });
+// Ação visível: o usuário pode reiniciar uma sequência concluída ou travada.
+// Reutiliza a confirmação e a limpeza limitada à SKU da ação já existente.
+$('#optimizerChatgptStartOver')?.addEventListener?.('click',()=>{
+ const w=optimizerWorkflowPlan,button=$('#optimizerChatgptRestartAll');
+ if(!w||!optimizerImagesSameSku(w)){
+  optimizerChatBridgeNotice('Abra a etapa Imagens da SKU que deseja reiniciar.');return;
+ }
+ if(!button||button.disabled)return;
+ button.click();
+});
 // A new nine-image action is atomic: clear only commercial staging and
 // start a fresh extension job from image 01. No nested click/confirm recursion.
 $('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
@@ -12457,7 +12467,18 @@ async function optimizerChatgptContinueFromServer(){
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
   const allMissing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
-  if(!allMissing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
+  if(!allMissing.length){
+   // O servidor confirma o encerramento; não manter esta sessão como ativa.
+   if(optimizerChatBridgeJob?.nonce&&optimizerChatBridgeIdentity(w,optimizerChatBridgeJob)){
+    optimizerChatBridgeJob.complete=true;
+    sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
+    optimizerChatBridgeActiveClear(optimizerChatBridgeJob.nonce);
+    optimizerChatBridgeBusy=false;
+    const abort=$('#optimizerChatgptAbort');if(abort)abort.hidden=true;
+   }
+   const message='9/9 imagens já preparadas para esta SKU. Para outro produto, selecione a nova SKU. Para refazer esta, use Começar do zero.';
+   notify(message);return {ok:false,error:message};
+  }
   // A imagem 03 exige cotas verificadas; a falta delas não retém 01/02/04–09.
   // Nunca declarar 03 salva: somente a fila da extensão a pula temporariamente.
   let deferredThird=false;
@@ -12489,6 +12510,9 @@ async function optimizerChatgptContinueFromServer(){
    notify(msg);return {ok:false,error:msg};
   }
   const bridgeCompleted=deferredThird?[...stored,3].sort((a,b)=>a-b):stored;
+   // A Ponte 1.0.59 só aceita restart total com zero posições e imagem 01.
+   // Uma retomada 02/09, 03/09 etc. jamais deve fingir ser reinício completo.
+   const fullStartFromZero=bridgeCompleted.length===0&&missing.length===9&&missing[0]===1;
   const first=String(missing[0]).padStart(2,'0');
   const preparedThirdReference=Number(missing[0])===3?
    await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
@@ -12599,7 +12623,7 @@ async function optimizerChatgptContinueFromServer(){
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
-     referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird,
+     referenceDataUrl:preparedThirdReference,restart:fullStartFromZero,
       replaceDirtyChat:dirtyReplace
     }},location.origin);
     startResult=await startAck;
@@ -12616,7 +12640,7 @@ async function optimizerChatgptContinueFromServer(){
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
       imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
-      referenceDataUrl:preparedThirdReference,restart:freshThird||deferredThird,
+      referenceDataUrl:preparedThirdReference,restart:fullStartFromZero,
       replaceDirtyChat:dirtyReplace
      }},location.origin);
      startResult=await secondAck;
