@@ -3238,7 +3238,7 @@ globalThis.RAKitWorkflowSyncReview=({kitSku,itemId,modelId,review}={})=>{
  return true;
 };
 // Importação manual (SKU isolada) em armazenamento privado. Nunca publica na Shopee.
-const optimizerVideoMaxBytes=30*1024*1024;
+const optimizerVideoMaxBytes=30*1024*1024,optimizerVideoMaxInputDuration=65;
 let optimizerVideoObjectURL=null,optimizerVideoDurationReady=false,optimizerVideoUploading=false;
 function optimizerVideoContext(){
  const p=optimizerWorkflowPlan;
@@ -3385,17 +3385,21 @@ $('#optimizerVideoFile')?.addEventListener?.('change',()=>{
      optimizerVideoDurationReady=true;$('#optimizerVideoUpload').disabled=false;
      optimizerVideoNotice('Duração desconhecida. O servidor validará o vídeo ao salvar automaticamente.','warning');
       queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
-   }else if(duration<10||duration>60){
+   }else if(duration<10||duration>optimizerVideoMaxInputDuration){
      optimizerVideoDurationReady=false;
      $('#optimizerVideoUpload').disabled=true;
-     optimizerVideoNotice('Duração '+(Number.isFinite(duration)?duration.toFixed(1)+'s':'desconhecida')+
-       '. Para preparar publicação Shopee, use vídeo entre 10 e 60 segundos.','error');
+     optimizerVideoNotice('Duração '+duration.toFixed(1)+
+       's. Para importar, use vídeo entre 10 e 65 segundos.','error');
    }else{
      optimizerVideoDurationReady=true;
      $('#optimizerVideoUpload').disabled=false;
-     optimizerVideoNotice('Prévia validada: '+duration.toFixed(1)+' segundos · '+
-       (file.size/1024/1024).toFixed(1)+' MB. Salvando automaticamente...','success');
-       queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
+     const needsTrim=duration>60;
+     optimizerVideoNotice(needsTrim?
+       'Vídeo de '+duration.toFixed(1)+' s aceito. Ajuste automático para 59 s antes de salvar na Shopee. Salvando...':
+       'Prévia validada: '+duration.toFixed(1)+' segundos · '+
+       (file.size/1024/1024).toFixed(1)+' MB. Salvando automaticamente...',
+       needsTrim?'warning':'success');
+     queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
    }
  };
  player.onerror=()=>{
@@ -3423,7 +3427,8 @@ $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
    if(!raw.ok)throw Error(response.error||'Erro HTTP '+raw.status);
    const current=optimizerWorkflowPlan;
    if(!current||current.sku!==identity.sku||current.itemId!==identity.item_id||current.modelId!==identity.model_id)return;
-   optimizerVideoNotice('Arquivo '+file.name+' importado e armazenado para SKU '+identity.sku+
+   optimizerVideoNotice('Arquivo '+file.name+' importado para SKU '+identity.sku+
+     (response.trimmedForShopee?' e ajustado para 59 s':'')+
      '. Ainda NÃO foi publicado na Shopee.','success');
    if(optimizerWorkflowPlan?.sku===identity.sku){
      optimizerWorkflowPlan.manualVideo=response.asset;
