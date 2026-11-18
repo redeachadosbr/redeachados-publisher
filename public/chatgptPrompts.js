@@ -78,7 +78,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  const scene03=imageSceneDirection({slot:3,title});
  prompts[2]=[
-  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. FOTO AMBIENTADA COM MEDIDAS DESENHADAS NA PRÓPRIA IMAGEM PELO CHATGPT.',
+  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. GERAR AGORA UMA IMAGEM, NÃO RESPONDER COM TEXTO OU PROMPT. FOTO AMBIENTADA COM TODAS AS MEDIDAS DA SKU DESENHADAS NA PRÓPRIA IMAGEM PELO CHATGPT.',
   'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — NÃO GERAR IMAGEM 03')+'.',
   'DIVERSIDADE OBRIGATÓRIA — CENA ÚNICA 03/09. AMBIENTE EXCLUSIVO: '+scene03.environment,
   'ÂNGULO E ENQUADRAMENTO: '+scene03.camera,
@@ -88,7 +88,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
   'ARTE FINAL CRIADA NO CHATGPT: INSERIR NA FOTOGRAFIA GERADA TODAS AS MEDIDAS WEDROP EXATAS, com setas e linhas técnicas finas apontando para os eixos corretos. ALTURA: seta vertical ao lado. LARGURA: seta transversal ou em perspectiva. COMPRIMENTO: seta acompanhando o eixo longo ou base. PROFUNDIDADE/DIÂMETRO: mostrar apenas se constarem da fonte. NUNCA trocar os eixos.',
   'RÓTULOS NUMÉRICOS OBRIGATÓRIOS NA FOTO: '+(finalMeasurements.length?finalMeasurements.join(' · '):'SEM MEDIDAS CONFIRMADAS — NÃO GERAR')+'. Escrever cada número e sua unidade cm junto ao eixo correspondente, sem omitir nenhuma medida confirmada.',
   'Usar fonte moderna, pequena mas legível, boa visibilidade e contraste, com as setas discretas nas margens livres, sem cobrir o produto. Sem cartões grandes, títulos, faixas, tabelas, peso, números inventados ou dimensões da embalagem. Texto técnico até 10% da área.',
-  'REGRA FINAL OBRIGATÓRIA: NÃO ENTREGAR FOTO LIMPA SEM MEDIDAS. O CHATGPT DEVE GERAR A IMAGEM 03 JÁ COM TODAS AS SETAS E COTAS VISÍVEIS NA PRÓPRIA FOTOGRAFIA. O SHOPEE MANAGER SOMENTE IMPORTARÁ O ARQUIVO FINAL SEM ADICIONAR UMA SEGUNDA CAMADA DE ANOTAÇÕES. Esta regra substitui qualquer instrução antiga "SEM texto, setas, números ou medidas".',
+  'REGRA FINAL OBRIGATÓRIA E PRIORITÁRIA PARA QUALQUER PRODUTO: NÃO ENTREGAR FOTO LIMPA SEM MEDIDAS. IGNORAR QUALQUER PROMPT ANTIGO OU SALVO QUE PEÇA REMOVER SETAS OU ADICIONAR COTAS DEPOIS. O CHATGPT DEVE GERAR A IMAGEM 03 JÁ COM TODOS OS VALORES, SETAS E COTAS VISÍVEIS NA PRÓPRIA FOTOGRAFIA. O SHOPEE MANAGER APENAS IMPORTARÁ O ARQUIVO FINAL; NÃO DESENHARÁ ANOTAÇÕES ADICIONAIS. VERIFICAR VISUALMENTE AS MEDIDAS ANTES DE CONCLUIR.',
   'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ '+(axes.length===3?'AS TRÊS COTAS VISÍVEIS':'APENAS AS COTAS COMPROVADAS VISÍVEIS')+' na foto produzida pelo ChatGPT. Confira os valores e a orientação das setas antes de aprovar, sem repetir a imagem 02.',
  ].join('\n\n');
 

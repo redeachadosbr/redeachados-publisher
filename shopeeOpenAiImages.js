@@ -26,17 +26,20 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
  if(position===3){
   const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
   const axes=confirmedProductDimensionsFromWeDrop(supplierSourceText)?.measurements||[];
+  if(axes.length<2)throw Error('IMAGEM 03 NÃO GERADA: faltam duas dimensões físicas confirmadas da mesma SKU nas informações WeDrop. Não gerar foto limpa sem cotas nem usar medidas da embalagem.');
   const scene=imageSceneDirection({slot:3,title:product});
+  const values=axes.map(x=>x.label+': '+x.value).join('; ');
   return [
-   'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. GERAR FOTO-BASE LIMPA, pois o Manager desenhará as cotas EXATAS depois.',
+   'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. GERAR AGORA A IMAGEM FINAL COM AS DIMENSÕES EXATAS DESENHADAS PELO PRÓPRIO CHATGPT/OPENAI NA FOTOGRAFIA, e não uma foto-base limpa.',
    'PRODUTO REAL: '+product+'. Preserve corpo, proporções, cor, acabamento, peças, logotipos e acessórios da foto original.',
    'AMBIENTE: '+scene.environment,
    'ÂNGULO: '+scene.camera,
    'ILUMINAÇÃO: '+scene.light,
-   'Produto inteiro em perspectiva lateral ou três-quartos, centro do quadro ocupando 65% a 72% da largura e com margens laterais/inferior vazias para dimensões. Fundo ambientado moderno visível.',
-   'DADOS WE DROP VÁLIDOS PARA A SOBREPOSIÇÃO POSTERIOR: '+(axes.length?axes.map(x=>x.label+': '+x.value).join('; '):'nenhum valor confirmado')+'.',
-   'FOTO-BASE TOTALMENTE LIMPA: NÃO gerar texto, medidas, números, setas, legendas, cartões, rótulos ou selos. As cotas visíveis serão inseridas uma só vez pelo Shopee Manager com os dados desta SKU. Não usar dimensões da embalagem.',
-   'Entregar somente a imagem final quadrada limpa, sem explicações em texto separado.'
+   'FOTOGRAFIA AMBIENTADA: mostrar o produto inteiro em perspectiva lateral ou três-quartos, ocupando 80% a 85% do quadro, com margens suficientes para as cotas legíveis. Sem mosaicos.',
+   'DIMENSÕES WEDROP CONFIRMADAS DA MESMA SKU, OBRIGATORIAMENTE VISÍVEIS NA ARTE FINAL: '+values+'.',
+   'DESENHE NA PRÓPRIA IMAGEM setas e linhas de cota finas próximas ao produto. ALTURA na direção vertical; LARGURA na direção transversal; COMPRIMENTO no eixo longitudinal; PROFUNDIDADE e DIÂMETRO somente quando constarem da fonte. Cada medida com o número, unidade e eixo corretos, sem trocas nem omissões.',
+   'Design de fotografia premium, letras pequenas e legíveis, fundo ambientado moderno e limpo. Sem títulos, tarjas, cartões grandes, listas, peso, números inventados, medidas da embalagem ou textos fora das cotas. As anotações devem ocupar no máximo 10% da imagem.',
+   'OBRIGATÓRIO: entregue somente UMA IMAGEM QUADRADA FINAL PRONTA COM AS COTAS INTEGRADAS. Não responda com descrição textual ou instruções. Não deixe as medidas para o Shopee Manager inserir depois. Verifique visualmente todas as cotas antes da entrega.'
   ].join('\n');
  }
 
