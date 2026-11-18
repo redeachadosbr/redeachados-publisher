@@ -1,7 +1,7 @@
 import {PREMIUM_NINE_IMAGE_TITLES,premiumNineImageRule} from './premiumNineImagePolicy.js';
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
 import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
-import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-premium-nine-images';
+import {imageScenePrompt,imageSceneDirection} from './imageSceneDiversity.js?v=20261104-premium-nine-images';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
 // SKU, informações de catálogo, cabeçalho, notas, outro prompt ou rodapé.
@@ -76,17 +76,17 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
  const verifiedAxes=axes.map(x=>x.label).join(', ');
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
+ const scene03=imageSceneDirection({slot:3,title});
  prompts[2]=[
-  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. O ChatGPT deve criar uma fotografia NOVA da mesma SKU. NÃO reutilizar nem devolver a imagem 02.',
-  'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — O MANAGER DEVE IMPEDIR GERAÇÃO')+'.',
-  imageScenePrompt({slot:3,title}),
-  'FOTOGRAFIA NOVA OBRIGATÓRIA: baseie-se na FOTO ANEXADA do produto exato, preserve corpo, cores, componentes e detalhes físicos. Crie nova cena comercial moderna COERENTE COM A CATEGORIA E USO REAL DO PRODUTO informado na ficha WeDrop; jamais impor cozinha a brinquedos, ferramentas, banho, roupas ou outros produtos. Perspectiva lateral/três-quartos diferente da imagem 02 de uso real, enquadramento técnico de catálogo. Se o produto puder ficar apoiado, deixe-o sobre superfície apropriada. Evite mãos, pessoas e ações de uso; mostre o produto inteiro, sem cortes.',
-  poolDisplay?
-   'VARIAÇÕES DE COR CONFIRMADAS PELA WEDROP: apresentar as três OPÇÕES de cor do colchão inflável na mesma cena, da esquerda para a direita ROSA, AMARELO e AZUL. O envio contém UMA unidade de cor sortida, NÃO é kit nem três unidades. As cotas confirmadas devem ser desenhadas pelo próprio ChatGPT somente sobre a peça AZUL. O aviso discreto “Envio em cores sortidas” deve fazer parte da arte do ChatGPT.':
-   '',
-  'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e medidas verificadas ('+(verifiedAxes||'ALTURA, LARGURA, COMPRIMENTO ou DIÂMETRO quando comprovados')+'). Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
-  'ARTE FINAL CRIADA NO CHATGPT: desenhe NA PRÓPRIA IMAGEM as cotas EXATAS '+(finalMeasurements.join(' e ')||'confirmadas')+' de forma elegante, proporcional ao produto real, com linhas finas e discretas. Posicione a cota de altura verticalmente ao lado do produto; diâmetro horizontalmente na base, quando houver diâmetro confirmado. Use tipografia pequena, muito legível, azul-marinho ou branca de alto contraste. Sem caixas chamativas, etiquetas coloridas, tarjas, cartões, medidas da embalagem ou informações inventadas. A composição final gerada precisa conter os valores legíveis, não apenas mencioná-los no texto da resposta. O Shopee Manager NÃO acrescentará números nem setas depois; esta é a arte final.',
-  axes.length===3?'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA com as cotas visíveis integradas à arte 03, sem elementos extras e sem inventar medidas.':'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ APENAS AS COTAS COMPROVADAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
+  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09: FOTO-BASE LIMPA PARA INSERÇÃO AUTOMÁTICA DAS COTAS PELO SHOPEE MANAGER.',
+  'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — NÃO GERAR IMAGEM 03')+'.',
+  'CENA ÚNICA 03/09. AMBIENTE EXCLUSIVO: '+scene03.environment,
+  'ÂNGULO E ENQUADRAMENTO: '+scene03.camera,
+  'ILUMINAÇÃO: '+scene03.light,
+  'A FOTO DE REFERÊNCIA serve para preservar o PRODUTO EXATO. Preserve cor, formato, peças, textura, proporções e quantidade, sem misturar SKUs. Crie uma NOVA fotografia 1200×1200 lateral/três-quartos, produto inteiro ocupando 65%–72% da largura, fundo ambientado nítido e margens livres para as cotas.',
+  poolDisplay?'Se houver opções de cores confirmadas, mostre variantes visuais sem insinuar envio de várias unidades.':'Não inventar variantes nem produtos extras.',
+  'REGRA FINAL OBRIGATÓRIA: ENTREGAR SOMENTE FOTO-BASE LIMPA SEM QUALQUER TEXTO, NÚMERO, SETA, LINHA, MEDIDA, CAIXA OU SELO. As cotas acima NÃO são para escrever agora: o Shopee Manager adiciona UMA única camada com os números exatos desta SKU DEPOIS da geração. Esta regra substitui roteiros antigos de cotas geradas pelo ChatGPT.',
+  'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ '+(axes.length===3?'AS TRÊS COTAS VISÍVEIS':'APENAS AS COTAS COMPROVADAS VISÍVEIS')+'. O Manager combinará a fotografia limpa com as dimensões WeDrop da MESMA SKU. Não usar medidas de embalagem nem repetir a imagem 02.',
  ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};

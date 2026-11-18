@@ -134,8 +134,13 @@ export async function addConfirmedSpecificationCard(blob,spec){
     sizeChip(ctx,{value:height.value,label:'Altura',x:1079,y:510,width:213});
    }
    if(width){
-    dimensionLine(ctx,321,964,862,964);
-    sizeChip(ctx,{value:width.value,label:'Largura',x:604,y:1040,width:214});
+    if(height&&length){
+     dimensionLine(ctx,243,748,352,864);
+     sizeChip(ctx,{value:width.value,label:'Largura',x:205,y:851,width:194});
+    }else{
+     dimensionLine(ctx,321,964,862,964);
+     sizeChip(ctx,{value:width.value,label:'Largura',x:604,y:1040,width:214});
+    }
    }
    if(diameter){
     // Produtos circulares (ex.: bebedouro) têm diâmetro, não "largura".
@@ -146,7 +151,10 @@ export async function addConfirmedSpecificationCard(blob,spec){
     }
    }
    if(length){
-    if(height||width)smallFact(ctx,'Comprimento '+length.value,842,1102);
+    if(height&&width){
+     dimensionLine(ctx,395,974,864,974);
+     sizeChip(ctx,{value:length.value,label:'Comprimento',x:639,y:1075,width:236});
+    }else if(height||width)smallFact(ctx,'Comprimento '+length.value,842,1102);
     else{
      dimensionLine(ctx,1059,165,1059,937);
      sizeChip(ctx,{value:length.value,label:'Comprimento',x:1079,y:510,width:214});

@@ -3,7 +3,7 @@ import {PREMIUM_NINE_IMAGE_TITLES,PREMIUM_NINE_IMAGE_RULES,premiumNineImageRule}
 import {spawn} from 'node:child_process';
 import {imageDimensions,MAX_IMAGE_BYTES} from './shopeePreparedImages.js';
 import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './public/productDimensions.js';
-import {imageScenePrompt} from './public/imageSceneDiversity.js';
+import {imageScenePrompt,imageSceneDirection} from './public/imageSceneDiversity.js';
 
 export const IMAGE_STORYBOARD=Object.freeze(PREMIUM_NINE_IMAGE_RULES.map((rule,i)=>'Imagem '+(i+1)+' — '+PREMIUM_NINE_IMAGE_TITLES[i]+': '+rule))
 
@@ -26,35 +26,18 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
  if(position===3){
   const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
   const axes=confirmedProductDimensionsFromWeDrop(supplierSourceText)?.measurements||[];
-  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
-  const verifiedColors=/envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?/i.test(supplierSourceText)&&
-   /cor(?:es)?\s*[:\-][^\n]*azul[^\n]*amarelo[^\n]*rosa/i.test(supplierSourceText);
-  const showVariants=/colch[aã]o.*(?:infl[aá]vel|piscina)|(?:boia|infl[aá]vel).*colch[aã]o/i.test(product)&&
-   Boolean(length&&width)&&verifiedColors;
+  const scene=imageSceneDirection({slot:3,title:product});
   return [
-   'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. Produto REAL: '+product+'.',
-   'A imagem deve sair PRONTA, incluindo a apresentação fotográfica e as cotas VISUAIS com os números EXATOS da WeDrop da mesma SKU. Não aplicar outras etiquetas depois.',
-   'Preservar produto original: cor, formato, proporções, textura e peças vistas nas referências. Fundo ambientado moderno, arquitetura nítida, luz profissional, sem texto de título.',
-   imageScenePrompt({slot:position,title:product}),
-   premiumNineImageRule(position),
-   showVariants?
-    'CENÁRIO ESPECIAL CONFIRMADO: apresentar 3 variações do MESMO colchão na ordem ROSA, AMARELO e AZUL, em pé e lado a lado, com o AZUL à direita. São opções de cor de UMA unidade, não um kit de três produtos. Mostrar piso e parede elegantes, mantendo o colchão azul inteiro e dominante.':
-    'Mostrar uma composição de produto único ou conjunto fiel à foto de referência; não criar variantes que não constem na ficha.',
-   axes.length?
-    'COTAS EXATAS CONFIRMADAS DA SKU (NÃO ALTERAR NÚMEROS, UNIDADES OU NOMES): '+
-    axes.map(x=>x.label+': '+x.value).join('; ')+'.':
-    'Nenhuma dimensão do produto foi confirmada. Entregar a FOTO LIMPA sem valores ou setas; não inventar números.',
-   length&&width&&showVariants?
-    'AO LADO DIREITO DO COLCHÃO AZUL: linha de dimensão VERTICAL BRANCA com setas nas pontas, e box BRANCO arredondado com BORDA AMARELA fina e texto AZUL-MARINHO “'+length.value+'” grande e “Comprimento” menor. SOB O COLCHÃO AZUL: seta HORIZONTAL BRANCA e box igual com “'+width.value+'” grande e “Largura” menor. Exibir as medidas SOMENTE no colchão azul.':
-    axes.length?
-    'Adicionar só as cotas confirmadas aos eixos correspondentes do produto, com setas brancas finas, boxes brancos arredondados de borda amarela e valor grande azul-marinho sobre legenda menor.':'',
-   showVariants?
-    'Selo discreto no canto inferior esquerdo: “Envio em cores sortidas”, fundo azul-marinho, borda amarela e três pequenos ícones de cor azul, amarelo e rosa. Não insinuar que o comprador recebe três unidades.':'',
-   'TIPOGRAFIA sofisticada sans-serif, valores em negrito e rótulos menores, nítidos, sem painéis grandes. Uma camada de dimensão por eixo, SEM duplicações, SEM textos genéricos.',
-   'NUNCA inventar altura, peso, capacidade, embalagem, pacote ou conteúdo não provados. Se a fonte não confirmar a medida, omitir esse número.',
-   hasPreparedReference?'Editar ou recriar a foto comercial anterior: remover cotas antigas e selos conflitantes ANTES de inserir as etiquetas finais solicitadas. NÃO sobrepor medidas novas a outras já existentes.':'',
-   'Entregue somente a IMAGEM FINAL pronta, sem explicação em texto separado.',
-  ].filter(Boolean).join('\n');
+   'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. GERAR FOTO-BASE LIMPA, pois o Manager desenhará as cotas EXATAS depois.',
+   'PRODUTO REAL: '+product+'. Preserve corpo, proporções, cor, acabamento, peças, logotipos e acessórios da foto original.',
+   'AMBIENTE: '+scene.environment,
+   'ÂNGULO: '+scene.camera,
+   'ILUMINAÇÃO: '+scene.light,
+   'Produto inteiro em perspectiva lateral ou três-quartos, centro do quadro ocupando 65% a 72% da largura e com margens laterais/inferior vazias para dimensões. Fundo ambientado moderno visível.',
+   'DADOS WE DROP VÁLIDOS PARA A SOBREPOSIÇÃO POSTERIOR: '+(axes.length?axes.map(x=>x.label+': '+x.value).join('; '):'nenhum valor confirmado')+'.',
+   'FOTO-BASE TOTALMENTE LIMPA: NÃO gerar texto, medidas, números, setas, legendas, cartões, rótulos ou selos. As cotas visíveis serão inseridas uma só vez pelo Shopee Manager com os dados desta SKU. Não usar dimensões da embalagem.',
+   'Entregar somente a imagem final quadrada limpa, sem explicações em texto separado.'
+  ].join('\n');
  }
 
  const attributes=(record?.attributeAudit?.attributes||[])
@@ -170,7 +153,7 @@ export async function generateOpenAiImage({record,slot,masterPrompt='',note='',r
  form.set('quality',String(process.env.OPENAI_IMAGE_QUALITY||'medium'));
  form.set('output_format','png');
  form.set('n','1');
- form.set('prompt',overridePrompt||imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length,hasPreparedReference:referenceImages.length>0,supplierSourceText,supplierCatalogInfo}));
+ form.set('prompt',Number(slot)===3?imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length,hasPreparedReference:referenceImages.length>0,supplierSourceText,supplierCatalogInfo}):(overridePrompt||imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length,hasPreparedReference:referenceImages.length>0,supplierSourceText,supplierCatalogInfo})));
  for(const [i,x] of originals.entries())form.append('image[]',new Blob([x.file],{type:x.mime}),'original-'+i+(x.mime==='image/png'?'.png':x.mime==='image/webp'?'.webp':'.jpg'));
  const response=await fetch('https://api.openai.com/v1/images/edits',{
   method:'POST',headers:{Authorization:'Bearer '+token},

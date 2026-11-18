@@ -3714,18 +3714,17 @@ async function optimizerImageCorrectionImportFile(file){
  try{
   status.textContent='Preparando imagem '+String(slot).padStart(2,'0')+' para salvar...';
   const prepared=await optimizerChatgptScaleFile(file);
-  // Toda arte 03 deve conter as medidas criadas pelo ChatGPT.
-  // Nunca compor cotas locais nem aceitar o modo antigo de foto-base.
+  // Dados WeDrop da SKU são desenhados deterministicamente na foto-base.
   let imageBlob=prepared.blob,dimensionCount=0,usedLocalOverlay=false;
   if(slot===3){
    const spec=await optimizerVerifiedDimensionSpec(w);
    dimensionCount=spec?.measurements?.length||0;
-   if(optimizerManualThirdBaseMode)
-    throw Error('Importação de foto-base sem cotas desativada. Gere a imagem 03 completa pelo ChatGPT.');
-   if(dimensionCount)
-    status.textContent='Imagem 03 importada exatamente como criada no ChatGPT. Revise as medidas desenhadas na fotografia.';
-   else
-    throw Error('Medidas WeDrop não verificadas. Não é possível confirmar imagem 03.');
+   if(dimensionCount<2)throw Error('Imagem 03 exige duas ou mais cotas WeDrop confirmadas da SKU.');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
+   spec.productTitle=w.draftTitle||w.productTitle||'';
+   imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
+   usedLocalOverlay=true;
+   status.textContent='Aplicadas as cotas WeDrop: '+spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.';
   }
   if(!optimizerImagesSameSku(w))throw Error('SKU alterada antes de importar a imagem.');
   const mime=imageBlob.type==='image/jpeg'?'image/jpeg':'image/png';
@@ -3750,9 +3749,7 @@ async function optimizerImageCorrectionImportFile(file){
   optimizerExecReset();optimizerWorkflowRender(w);
   importedSha=result.image.sha256;
   status.textContent=slot===3&&dimensionCount
-   ?'✓ Imagem 03 salva. Medidas esperadas: '+dimensionCount+' conforme WeDrop; '+
-    (usedLocalOverlay?'cotas aplicadas à foto-base limpa.':'arte pronta preservada SEM duplicar os textos.')+
-    ' Confira o resultado visual antes de aprovar.'
+   ?'✓ Imagem 03 salva com '+dimensionCount+' cotas WeDrop VISÍVEIS na fotografia. Confira na galeria antes de aprovar.'
    :'✓ Imagem '+String(slot).padStart(2,'0')+' salva na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
   $('#optimizerImageCorrectionFile').value='';
  }finally{
@@ -3827,8 +3824,8 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
  try{
   const brief=await optimizerChatgptMakeBrief(w);
   if(!optimizerImagesSameSku(w))return;
-  const prompt=optimizerImageEditorActive(w,slot)
-   ?$('#optimizerImagePromptEditor').value.trim():brief.prompts[slot-1];
+  const prompt=slot===3?brief.prompts[2]:(optimizerImageEditorActive(w,slot)
+   ?$('#optimizerImagePromptEditor').value.trim():brief.prompts[slot-1]);
   if(!prompt)throw Error('Prompt da posição indisponível.');
   await navigator.clipboard.writeText(prompt);
   status.textContent='Prompt completo da imagem '+String(slot).padStart(2,'0')+' copiado. A foto original deve ser anexada ao ChatGPT.';
@@ -11537,7 +11534,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261110-chatgpt-final-cotas'),
+  import('/chatgptPrompts.js?v=20261118-imagem03-cotas-v3'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -11563,7 +11560,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  // Não descartar medidas válidas por falta apenas desse metadado opcional.
  const trustedText=String(evidence?.sku||'').trim()===String(w.sku).trim()
   ?String(evidence.sourceText||''):'';
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
  // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
  // plano aberto antes da importação ainda não tenha o supplierProduct.
  const verifiedCatalog=String(source?.supplierSku||'')===String(w.sku)||
@@ -11637,7 +11634,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261110-product-package-scope');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -12319,10 +12316,13 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
     throw Error('Imagem 03 sem pelo menos duas dimensões confirmadas nesta SKU WeDrop.');
    if(!optimizerImagesSameSku(w)||!optimizerChatBridgeIdentity(job,optimizerWorkflowPlan))
     throw Error('A SKU mudou durante a recepção da imagem 03.');
-   prepared={...prepared,filename:'chatgpt-auto-03-arte-final.png'};
-   optimizerChatBridgeNotice('Imagem 03 gerada no ChatGPT recebida sem sobreposição do Manager. Medidas solicitadas: '+
-    spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
-    '. Confira se estão legíveis na foto antes de aprovar.');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
+   spec.productTitle=w.draftTitle||w.productTitle||'';
+   prepared={...prepared,blob:await addConfirmedSpecificationCard(prepared.blob,spec),
+    filename:'chatgpt-auto-03-medidas-confirmadas.png'};
+   optimizerChatBridgeNotice('Imagem 03 recebeu cotas WeDrop exatas: '+
+    spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+'.');
+
   }
   const sha256=await imageBlobSha256(prepared.blob);
   if(job.expectedHashes?.[m.slot]===sha256)throw Error('A extensão reenviou a imagem antiga, não uma foto corrigida.');
@@ -12336,8 +12336,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
-   filename:Number(m.slot)===3&&prepared.filename==='chatgpt-auto-03-arte-final.png'?
-    'chatgpt-auto-03-arte-final.png':
+   filename:Number(m.slot)===3&&prepared.filename==='chatgpt-auto-03-medidas-confirmadas.png'?
+    'chatgpt-auto-03-medidas-confirmadas.png':
     'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
   // ACK negativo informa apenas o slot. NÃO enviar RA_SITE_ABORT, pois
@@ -12771,7 +12771,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261110-chatgpt-final-cotas');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261118-imagem03-cotas-v3');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
@@ -12786,14 +12786,23 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
    if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a importação.');
    status.textContent='Preparando e salvando imagem '+slot+' de 9 ('+(processed+1)+'/'+ordered.length+')...';
    const prepared=await optimizerChatgptScaleFile(file);
-   const outputType=prepared.blob.type==='image/jpeg'?'image/jpeg':'image/png';
+   let finalBlob=prepared.blob;
+   if(slot===3){
+    const spec=await optimizerVerifiedDimensionSpec(w);
+    if((spec?.measurements?.length||0)<2)throw Error('Imagem 03 exige medidas WeDrop da SKU confirmadas.');
+    const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
+    spec.productTitle=w.draftTitle||w.productTitle||'';
+    finalBlob=await addConfirmedSpecificationCard(finalBlob,spec);
+   }
+   if(!optimizerImagesSameSku(w))throw Error('SKU alterada durante a importação.');
+   const outputType=finalBlob.type==='image/jpeg'?'image/jpeg':'image/png';
    const extension=outputType==='image/jpeg'?'jpg':'png';
    const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
     sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
    }),{
     method:'POST',headers:{'Content-Type':outputType,
-     'X-Image-Filename':encodeURIComponent('chatgpt-'+String(slot).padStart(2,'0')+'.'+extension)},
-    body:prepared.blob,signal:AbortSignal.timeout(90000)
+     'X-Image-Filename':encodeURIComponent(slot===3?'imagem-03-medidas-confirmadas.png':'chatgpt-'+String(slot).padStart(2,'0')+'.'+extension)},
+    body:finalBlob,signal:AbortSignal.timeout(90000)
    });
    const result=await response.json();
    if(!response.ok)throw Error(result.error||'Erro ao salvar imagem '+slot+'.');
@@ -12876,7 +12885,7 @@ async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}=
   if(String(photo.headers.get('X-Image-SHA256')||'')!==String(original.sha256))
    throw Error('A foto-base mudou durante a leitura. Nada foi salvo.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=20261110-product-package-scope');
+   await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const output=await addConfirmedSpecificationCard(await photo.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a criação. Nada foi salvo.');
@@ -12910,10 +12919,9 @@ async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}=
 // Aplica apenas as cotas verificadas à foto 03 JÁ SALVA.
 // Não gera imagem de novo, não toca nas outras oito posições e não publica.
 async function optimizerRepairThirdImageDimensions(w,image){
- throw Error('Sobreposição de cotas desativada. Use Refazer 03 com medidas no ChatGPT.');
  if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy||!image)return;
  const status=$('#optimizerImagesStatus');
- if(/medidas/i.test(String(image.filename||''))){
+ if(/(?:medidas-confirmadas|cotas-aplicadas)/i.test(String(image.filename||''))){
   optimizerCommercialActionMessage('A imagem 03 já consta como anotada. Confira a prévia; para ajustar use Refazer apenas se necessário.');
   return;
  }
@@ -12934,7 +12942,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=20261110-product-package-scope');
+   await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -13128,7 +13136,7 @@ async function optimizerImagesLoad(){
    generate.setAttribute('aria-label',(image?'Refazer':'Gerar')+' imagem '+slot);
    if(slot===3){
     generate.textContent=image?'↻ Refazer 03 no ChatGPT + medidas':'✧ Gerar 03 no ChatGPT + medidas';
-    generate.title='Solicita uma nova imagem 03 com medidas desenhadas no próprio ChatGPT; o Manager não aplica caixas ou setas sobre a foto.';
+    generate.title='Gera fotografia técnica limpa e aplica as medidas WeDrop automaticamente ao importar.';
     if(image&&!/^chatgpt-auto-03-arte-final\.png$/i.test(String(image.filename||'')))
      detail.append(optimizerMake('small','optimizer-commercial-original-caption',
       '⚠ Arte antiga. Use Refazer 03 no ChatGPT: as medidas serão integradas na própria imagem, sem sobreposição do Manager. Confira a foto antes de aprovar.'));
@@ -13174,6 +13182,15 @@ async function optimizerImagesLoad(){
    // Não oferecer botões de pós-processamento nem cópia de fotos anteriores.
    // A posição 03 deve ser produzida integralmente no ChatGPT.
    let importThirdButton=null,thirdFallbackButton=null,measureButton=null;
+   if(slot===3&&image&&!/(?:medidas-confirmadas|cotas-aplicadas)/i.test(String(image.filename||''))){
+    measureButton=optimizerMake('button','secondary','↔ Aplicar medidas WeDrop');
+    measureButton.type='button';
+    measureButton.title='Aplica as medidas confirmadas à imagem 03 salva, sem refazer as outras posições.';
+    measureButton.onclick=async()=>{
+     try{await optimizerRepairThirdImageDimensions(w,image);}
+     catch(error){optimizerCommercialActionMessage('Falha ao aplicar medidas: '+String(error.message||error),true);}
+    };
+   }
    const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
    adjust.title='Ajustar pedido da imagem '+slot;adjust.setAttribute('aria-label','Ajustar imagem '+slot);
    adjust.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();void optimizerOpenImagePromptEditor();};
@@ -13278,9 +13295,9 @@ async function optimizerImagesLoad(){
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
  const {addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=20261110-product-package-scope');
+  await import('/specificationCard.js?v=20261118-imagem03-cotas-v3');
  const spec=await optimizerVerifiedDimensionSpec(w);
- if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
+ if((spec?.measurements?.length||0)<2)throw Error('Imagem 03 exige duas cotas WeDrop confirmadas; a foto-base ainda não está pronta.');
  spec.productTitle=w.draftTitle||w.productTitle||'';
  const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
  const image=await fetch('/api/shopee/optimizer/images/reference?'+qs,{
@@ -13301,7 +13318,8 @@ async function optimizerAnnotateThirdGeneratedImage(w,generated){
   throw Error('Foto 03 foi alterada em outra sessão. Nenhuma camada adicional enviada.');
  const uploaded=await fetch('/api/shopee/optimizer/images/manual?'+qs,{
   method:'POST',credentials:'same-origin',headers:{
-   'Content-Type':'image/png','X-Image-Filename':'imagem-03-medidas-confirmadas.png'
+   'Content-Type':'image/png','X-Image-Filename':'imagem-03-medidas-confirmadas.png',
+   'X-Expected-Sha256':sha
   },body:final,signal:AbortSignal.timeout(90000)
  });
  const response=await uploaded.json().catch(()=>({}));
@@ -13317,14 +13335,9 @@ async function optimizerImagesGenerateSlot(w,slot,replace,{editCurrent=false}={}
   signal:AbortSignal.timeout(210000)
  });
  if(Number(slot)===3){
-  // API gera a arte FINAL integrada com as medidas. Não desenhar overlay
-  // genérico por cima nem substituir a foto por outro arquivo.
-  const spec=await optimizerVerifiedDimensionSpec(w);
-  optimizerCommercialActionMessage(spec?.measurements?.length?
-   'Imagem 03 gerada com cotas na própria arte (valores WeDrop esperados: '+
-   spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
-   '). Confira visualmente antes de aprovar; nenhuma etiqueta adicional foi desenhada.':
-   'Imagem 03 gerada sem medidas confirmadas: confira a fotografia antes de aprovar.');
+  const applied=await optimizerAnnotateThirdGeneratedImage(w,result);
+  optimizerCommercialActionMessage('Imagem 03 salva com '+applied.measurements+
+   ' cotas exatas WeDrop desenhadas diretamente sobre a foto. Confira na galeria.');
  }
  if(optimizerImagesSameSku(w)){
   optimizerImagesSavedSlots.add(slot);
