@@ -48,7 +48,7 @@ test('imagem 03 envia valores WeDrop no briefing e termina com renderização ve
  assert.deepEqual(brief.confirmedDimensions.measurements.map(x=>x.value),['40 cm','30 cm','55 cm']);
  assert.match(brief.prompts[2],/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(brief.prompts[2],/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
- assert.match(brief.prompts[2],/FOTO-BASE LIMPA/);
+ assert.match(brief.prompts[2],/ARTE FINAL CRIADA NO CHATGPT/);
  const api=imagePrompt({record:{sku:'AAA',title:'Organizador de Roupas'},slot:3,supplierSourceText:src});
  assert.match(api,/ARTE COMERCIAL FINAL PREMIUM/);
  assert.match(api,/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
@@ -88,15 +88,15 @@ test('Ponte, API e importação manual aplicam exatamente a fonte WeDrop',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const start=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
  const bridge=app.slice(start,app.indexOf('const existing=await json(',start));
- assert.match(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(bridge,/chatgpt-auto-03-medidas-confirmadas.png/);
+ assert.doesNotMatch(bridge,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(bridge,/chatgpt-auto-03-arte-final-com-cotas.png/);
  assert.match(bridge,/optimizerVerifiedDimensionSpec\(w\)/);
  const api=app.slice(app.indexOf('async function optimizerImagesGenerateSlot('),
   app.indexOf("$('#optimizerOpenAiSave')",app.indexOf('async function optimizerImagesGenerateSlot(')));
  assert.match(api,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
   app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
- assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
+ assert.doesNotMatch(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
  assert.match(manual,/X-Expected-Sha256/);
  assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
@@ -163,7 +163,7 @@ test('WS20357 mantém apenas dimensões do colchão, sem eixo de altura inventad
   assert.match(prompt,/69 cm/);
   assert.doesNotMatch(prompt,/ALTURA: 183 cm|ALTURA: 69 cm/);
  }
- assert.match(chat,/FOTO-BASE LIMPA/);
+ assert.match(chat,/ARTE FINAL CRIADA NO CHATGPT/);
  assert.match(api,/FOTO-BASE TOTALMENTE LIMPA/);
 });
 
@@ -178,6 +178,7 @@ test('TW888-4: imagem 03 recebe 20 cm de altura, 22 cm de largura e 29 cm de com
  const prompt=createChatGptPrompts({title:'Cachorro Robô Inteligente',
   supplierSourceText:source,confirmedDimensionSpec:spec}).prompts[2];
  assert.match(prompt,/ALTURA: 20 cm; LARGURA: 22 cm; COMPRIMENTO: 29 cm/);
+ assert.match(prompt,/NÃO ENTREGAR FOTO LIMPA SEM MEDIDAS/);
  const names=[],ctx={save(){},restore(){},beginPath(){},roundRect(){},
   fill(){},stroke(){},moveTo(){},lineTo(){},drawImage(){},
   measureText:t=>({width:t.length*16}),fillText:t=>names.push(t)};

@@ -66,8 +66,8 @@ test('imagem 03 importa arte com cotas produzidas no ChatGPT sem sobrepor medida
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
- assert.match(block,/chatgpt-auto-03-medidas-confirmadas.png/);
+ assert.doesNotMatch(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(block,/chatgpt-auto-03-arte-final-com-cotas.png/);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);

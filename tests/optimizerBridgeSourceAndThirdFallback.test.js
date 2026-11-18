@@ -60,9 +60,9 @@ test('motor raiz: a Ponte aplica cotas da SKU antes de salvar',()=>{
  const end=app.indexOf('const existing=await json(',start);
  const received=app.slice(start,end);
  assert.match(received,/await optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.doesNotMatch(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
  assert.match(received,/sceneSha256/);
- assert.match(received,/chatgpt-auto-03-medidas-confirmadas.png/);
+ assert.match(received,/chatgpt-auto-03-arte-final-com-cotas.png/);
  const click=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
   app.indexOf('async function optimizerChatgptCopyAll('));
  assert.match(click,/referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl/);
