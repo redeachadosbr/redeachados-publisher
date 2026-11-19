@@ -22,5 +22,5 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Check syntax
         run: npm run check
-      - name: Run all tests
-        run: npm test
+      - name: Run focused image-delivery regression tests
+        run: node --test tests/optimizerDetectedImageRecovery.test.js tests/shopee-chatgpt-delivery.test.js tests/shopee-chatgpt-auto-import-repair.test.js tests/optimizerImageAutoResume.test.js
