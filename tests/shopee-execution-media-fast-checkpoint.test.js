@@ -92,7 +92,7 @@ test('imagem pequena e compressão inválida preservam o arquivo aprovado',async
 test('executor evita segunda leitura após validar identidade na Shopee',async()=>{
  const item={item_id:58214692629,item_name:'Antes',description:'',description_type:'normal',
   image:{image_id_list:[]},video_info:[]};
- const approved={...plan,original:{...item,category_id:123},images:images.slice(0,1)};
+ const approved={...plan,original:{...item,category_id:123},proposed:{item_name:'Depois'},images:images.slice(0,1)};
  const calls=[];
  const io={validateIdentity:async()=>{calls.push('identity');return item;},
   read:async()=>{calls.push('read');return item;},
