@@ -120,7 +120,8 @@ export async function callShopeePublicMediaApi(cfg,{path,form,body}={}){
  const headers={Accept:'application/json'};
  if(!form)headers['Content-Type']='application/json';
  return readJson(await shopeeFetch(url,{method:'POST',headers,
-   body:form||JSON.stringify(body),signal:AbortSignal.timeout(60000)}));
+   body:form||JSON.stringify(body),
+   signal:AbortSignal.timeout(path==='/api/v2/media_space/upload_image'?90000:60000)}));
 }
 function requireConfigured(cfg){
   if(!cfg?.configured) throw new Error('Configure SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY e SHOPEE_REDIRECT_URI.');

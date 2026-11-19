@@ -1,14 +1,23 @@
 import crypto from 'node:crypto';
 import {callShopeeShopApi,callShopeePublicMediaApi} from './shopee.js';
+import {optimizeShopeeImagePayload} from './shopeeImageTransfer.js';
 export const VIDEO_PART_SIZE=4*1024*1024;
 export const md5=buffer=>crypto.createHash('md5').update(buffer).digest('hex');
 export function createShopeeMediaApi(cfg,auth){
  const common={accessToken:auth.accessToken,shopId:auth.shopId};
  return {
   image:async(file,mime)=>{
-   const form=new FormData();form.set('image',new Blob([file],{type:mime}),'image.'+(mime==='image/png'?'png':'jpg'));
+   const transfer=await optimizeShopeeImagePayload(file,mime);
+   if(transfer.optimized)console.info('[shopee-image-transfer] PNG otimizado para envio Shopee:',
+    Math.round(file.length/1024)+' KB → '+Math.round(transfer.file.length/1024)+' KB');
+   const form=new FormData();
+   form.set('image',new Blob([transfer.file],{type:transfer.mime}),
+    'image.'+(transfer.mime==='image/png'?'png':'jpg'));
    form.set('scene','normal');
-   const result=await callShopeePublicMediaApi(cfg,{path:'/api/v2/media_space/upload_image',form});
+   let result;
+   try{result=await callShopeePublicMediaApi(cfg,{path:'/api/v2/media_space/upload_image',form});}
+   catch(error){throw Error('Falha ao enviar imagem para a biblioteca da Shopee: '+
+    String(error.message||error).slice(0,170));}
    const first=result.response?.image_info_list?.[0];
    if(first?.error)throw Error('Imagem recusada pela Shopee: '+String(first.message||first.error).slice(0,160));
    const id=first?.image_info?.image_id||result.response?.image_info?.image_id;

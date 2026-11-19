@@ -4357,8 +4357,28 @@ async function runOptimizerJobs(){
     const common={accessToken:auth.accessToken,shopId:auth.shopId};
     const out=await advanceShopeeExecution(job,{
       read:()=>shopeeLiveEditableItem(cfg,auth,job.item_id),
-      validateIdentity:()=>auditShopeeItem(cfg,auth,callShopeeShopApi,job.item_id,
-        {expectedSku:job.sku,expectedModelId:String(job.model_id)}),
+      validateIdentity:async()=>{
+       // A auditoria completa, incluindo get_attribute_tree, já ocorreu
+       // na preparação e no execute. O worker revalida apenas a identidade
+       // e categoria reais, sem uma consulta redundante da árvore técnica.
+       const live=await shopeeLiveEditableItem(cfg,auth,job.item_id);
+       if(String(live.item_id)!==String(job.item_id))
+        throw Error('Item ID mudou durante a execução; nada foi enviado.');
+       if(!['NORMAL','UNLIST'].includes(String(live.item_status||'').toUpperCase()))
+        throw Error('Anúncio não está editável; execução suspensa.');
+       if(job.plan.original?.category_id!=null&&
+          String(live.category_id)!==String(job.plan.original.category_id))
+        throw Error('Categoria da Shopee mudou após aprovação; nova prévia necessária.');
+       const sku=String(job.sku).trim(),modelId=String(job.model_id),parentSku=String(live.item_sku||'').trim();
+       if(modelId==='0'&&parentSku===sku)return live;
+       if(live.has_model!==true)throw Error('Modelo/SKU não corresponde mais ao anúncio na Shopee.');
+       const models=await callShopeeShopApi(cfg,{...common,
+        path:'/api/v2/product/get_model_list',query:{item_id:Number(job.item_id)}});
+       const matching=(models.response?.model||[]).filter(m=>String(m.model_sku||'').trim()===sku);
+       if(modelId==='0'&&matching.length===1||
+          modelId!=='0'&&matching.some(m=>String(m.model_id)===modelId))return live;
+       throw Error('SKU ou modelo mudou na Shopee; nenhuma publicação foi executada.');
+      },
       download:downloadShopeeManualVideo,downloadImage:downloadPreparedImage,media:createShopeeMediaApi(cfg,auth),
       beforeWrite:result=>checkpointShopeeExecution(job,result,90000),
       update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body}),
@@ -4508,6 +4528,12 @@ async function runOptimizerJobs(){
       'kit_discount_price_updating','kit_discount_price_verifying','kit_discount_updating','kit_discount_verifying']
       .includes(current.result?.phase);
     const attempts=Number(current.result?.attempts||0)+1;
+    console.warn('[shopee-execution-step]',JSON.stringify({
+     sku:job.sku,itemId:String(job.item_id),
+     phase:String(current.result?.phase||'queued'),attempt:attempts,
+     timeout:/timeout|aborted|aborterror/i.test(String(e.message||e)),
+     reason:String(e.message||e).slice(0,200)
+    }));
     if(!uncertain&&attempts<3&&/fetch|timeout|network|HTTP 5|error_rate_limit/i.test(String(e.message))){
      await checkpointShopeeExecution(job,{...current.result,attempts},attempts*15000);
     }else await finishShopeeExecution(job.shop_id,job.item_id,job.model_id,job.run_id,{

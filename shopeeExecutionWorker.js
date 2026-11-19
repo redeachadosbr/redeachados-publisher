@@ -24,8 +24,11 @@ async function uploadNextApprovedImage(plan,result,io){
    timer=setTimeout(()=>reject(Error('timeout: '+label+' excedeu '+Math.ceil(ms/1000)+' segundos')),ms);
   })]);}finally{clearTimeout(timer);}
  };
- const file=await bounded(io.downloadImage(asset),90000,'download da imagem '+(index+1));
- const id=await bounded(io.media.image(file,asset.mime_type),90000,'envio da imagem '+(index+1));
+ let file,id;
+ try{file=await bounded(io.downloadImage(asset),90000,'download da imagem '+(index+1));}
+ catch(error){throw Error('Imagem '+(index+1)+': download privado: '+String(error.message||error));}
+ try{id=await bounded(io.media.image(file,asset.mime_type),105000,'envio da imagem '+(index+1));}
+ catch(error){throw Error('Imagem '+(index+1)+': upload à Shopee: '+String(error.message||error));}
  const current=[...(result.imageIds||[]),id];
  return {state:'running',result:withExecutionEvent({...result,phase:'images_upload',imageIds:current,attempts:0},
   'image-'+current.length,'Imagem '+current.length+' de '+plan.images.length+' enviada à biblioteca de mídia da Shopee.','success'),delay:500};
@@ -286,8 +289,9 @@ async function advanceShopeeExecutionStep(job,io){
     lastError:'Atualização fiscal final sem confirmação: '+reason};
   }
  }
- await io.validateIdentity();
- const currentItem=await io.read();
+ // O preflight leve retorna o anúncio lido; não consultar duas vezes
+ // o mesmo Item ID antes de enviar a primeira imagem.
+ const currentItem=await io.validateIdentity()||await io.read();
  noteVideoReadback(currentItem);
  // Regra GLOBAL para qualquer SKU: conferir o anúncio na Shopee antes
  // de escrever. Se todo o conteúdo/mídia aprovado já estiver publicado,

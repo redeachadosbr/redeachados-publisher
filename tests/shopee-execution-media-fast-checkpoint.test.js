@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
+import {optimizeShopeeImagePayload} from '../shopeeImageTransfer.js';
 
 const images=Array.from({length:9},(_,i)=>({slot:i+1,mime_type:'image/png',sha256:'abc-'+i}));
 const plan={requiresExplicitConfirmation:true,canExecute:true,images,selectedStage:'images',
@@ -66,4 +67,38 @@ test('fast path não contém escrita de produto, e a verificação antecede upda
  assert(!/io\.update|io\.beforeWrite/.test(body));
  assert.match(source,/if\(result\.phase==='images_upload'/);
  assert.match(source,/assertLiveShopeeUnchanged\(plan,currentItem,result\)/);
+});
+
+test('PNG de vários megabytes é reduzido apenas para transporte, sem alterar original',async()=>{
+ const original=Buffer.alloc(2_500_000,1);
+ const jpeg=Buffer.concat([Buffer.from([255,216,255]),Buffer.alloc(100_000,4),Buffer.from([255,217])]);
+ const prepared=await optimizeShopeeImagePayload(original,'image/png',async buffer=>{
+  assert.equal(buffer,original);return jpeg;
+ });
+ assert.equal(prepared.optimized,true);
+ assert.equal(prepared.mime,'image/jpeg');
+ assert.equal(prepared.file,jpeg);
+ assert.equal(original.length,2_500_000);
+});
+test('imagem pequena e compressão inválida preservam o arquivo aprovado',async()=>{
+ const small=Buffer.alloc(30_000,1);
+ const same=await optimizeShopeeImagePayload(small,'image/png',async()=>{throw Error('não usar encoder');});
+ assert.equal(same.file,small);
+ const large=Buffer.alloc(2_500_000,1);
+ const invalid=await optimizeShopeeImagePayload(large,'image/png',async()=>Buffer.from('não é jpg'));
+ assert.equal(invalid.file,large);
+ assert.equal(invalid.optimized,false);
+});
+test('executor evita segunda leitura após validar identidade na Shopee',async()=>{
+ const item={item_id:58214692629,item_name:'Antes',description:'',description_type:'normal',
+  image:{image_id_list:[]},video_info:[]};
+ const approved={...plan,original:{...item,category_id:123},images:images.slice(0,1)};
+ const calls=[];
+ const io={validateIdentity:async()=>{calls.push('identity');return item;},
+  read:async()=>{calls.push('read');return item;},
+  downloadImage:async()=>{calls.push('image');return Buffer.from('imagem');},
+  media:{image:async()=>{calls.push('media');return 'id-01';}}};
+ const output=await advanceShopeeExecution({plan:approved,result:{phase:'queued'}},io);
+ assert.equal(output.state,'running');
+ assert.deepEqual(calls,['identity','image','media']);
 });
