@@ -49,3 +49,12 @@ test('modal reutiliza executor, possui fechamento e um único comando sem requis
  assert.doesNotMatch(dialog,/fetch\(/);
  assert.match(css,/position:fixed/);
 });
+
+test('prévia temporária de desconto não é aceita após expiração local',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/const receivedAt=Number\(optimizerDiscountFinalPreviewData\?\.receivedAt\|\|0\)/);
+ assert.match(app,/Date\.now\(\)-receivedAt<8\*60\*1000/);
+ assert.match(app,/if\(!deferred&&!fresh\)return false/);
+ assert.match(app,/optimizerDiscountFinalPreviewData=\{\.\.\.data,receivedAt:Date\.now\(\)\}/);
+ assert.match(app,/await optimizerDiscountFinalPrepare\(\)/);
+});
