@@ -5268,6 +5268,12 @@ function optimizerDiscountFinalEligible(q){
 function optimizerDiscountApprovalReady(){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote,p=optimizerDiscountFinalPreviewData?.preview;
  const deferred=optimizerDiscountFinalPreviewData?.deferred===true;
+ // A assinatura do servidor vale por dez minutos. Não tratar como válida
+ // uma autorização local antiga: renovar ANTES de chamar execution/execute.
+ const receivedAt=Number(optimizerDiscountFinalPreviewData?.receivedAt||0);
+ const fresh=receivedAt>0&&Date.now()>=receivedAt&&
+  Date.now()-receivedAt<8*60*1000;
+ if(!deferred&&!fresh)return false;
  if(!w||!q||!p||(!deferred&&!optimizerDiscountFinalPreviewData?.approvalToken)||
     optimizerDiscountFinalIdentityOf(w)!==optimizerDiscountFinalIdentity||!optimizerDiscountFinalEligible(q))return false;
  if(deferred&&!$('#optimizerExecDiscountDeferredConsent')?.checked)return false;
@@ -5491,7 +5497,7 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
      String(data.preview?.modelId)!==String(w.modelId)||
      String(data.preview?.discountId)!==campaign)
    throw Error('Prévia devolvida para outra SKU/campanha; nenhuma publicação.');
-  optimizerDiscountFinalPreviewData=data;optimizerDiscountFinalPreviewKey=previewKey;
+  optimizerDiscountFinalPreviewData={...data,receivedAt:Date.now()};optimizerDiscountFinalPreviewKey=previewKey;
   $('#optimizerExecDiscountPriceConsent').checked=false;
   $('#optimizerExecDiscountDeferredConsent').checked=false;
   const realStatus='Anúncio '+String(data.itemId||w.itemId)+' · status Shopee '+
