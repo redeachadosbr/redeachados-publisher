@@ -36,6 +36,6 @@ test('fluxo API não duplica as cotas com sobreposição local e força versão 
  assert.ok(start>0&&end>start);
  assert.doesNotMatch(validation,/addConfirmedSpecificationCard|\bbody:final\b/);
  assert.match(validation,/optimizerVerifiedDimensionSpec/);
- assert.match(app,/chatgpt-dimensoes-universal-v6/);
+ assert.match(app,/20261119-component-dimensions/);
  assert.match(html,/image03=cotas-chatgpt-universal-v6/);
 });

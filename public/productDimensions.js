@@ -8,6 +8,48 @@ const number='(\\d{1,4}(?:[.,]\\d{1,2})?)';
 const axisPattern=new RegExp(number+'\\s*(cm|mm|m)\\s*(?:de\\s+)?(altura|largura|comprimento|profundidade|diametro|diamentro)\\b','gi');
 // A ficha pode nomear o eixo antes do valor: "Altura: 20 cm × Largura: 15 cm".
 const axisFirstPattern=new RegExp('\\b(altura|largura|comprimento|profundidade|diametro|diamentro)\\s*(?::|=|-|de\\s+)?\\s*'+number+'\\s*(cm|mm|m)\\b','gi');
+const logisticsPattern=/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/;
+function namedAxes(source){
+ const axes={};
+ const add=(axis,raw,unit)=>{
+  const value=Number(raw.replace(',','.'))*(unit==='m'?100:unit==='mm'?0.1:1);
+  if(!Number.isFinite(value)||value<=0||value>10000){axes.invalid=true;return;}
+  const formatted=fmtNumber(Number(value.toFixed(4)))+' cm';
+  if(axes[axis]&&axes[axis]!==formatted)axes.invalid=true;
+  axes[axis]=formatted;
+ };
+ for(const m of source.matchAll(axisPattern))add(axisNames[m[3]],m[1],m[2]);
+ for(const m of source.matchAll(axisFirstPattern))add(axisNames[m[1]],m[2],m[3]);
+ if(axes.invalid)return null;
+ return ['altura','largura','comprimento','profundidade','diametro']
+  .filter(axis=>axes[axis]).map(axis=>({label:axis.toUpperCase(),value:axes[axis],axis}));
+}
+function componentHeaders(source){
+ return [...source.matchAll(/(?:^|[\/;\n])\s*([a-z][a-z ()-]{0,69})\s*:\s*/g)]
+  .filter(m=>!Object.hasOwn(axisNames,m[1].trim()));
+}
+// "Dimensões: Patins: ... / Capacete: ..." contém corpos diferentes.
+// Eixos iguais de componentes diferentes não são conflitos nem intercambiáveis.
+function componentMeasurements(source){
+ const headers=componentHeaders(source);
+ if(!headers.length)return undefined;
+ if(source.slice(0,headers[0].index).trim())return null;
+ const components=new Map();
+ for(let i=0;i<headers.length;i++){
+  const header=headers[i],subject=header[1].trim().replace(/\s+/g,' ');
+  const body=source.slice(header.index+header[0].length,headers[i+1]?.index??source.length);
+  if(logisticsPattern.test(subject))continue;
+  if(logisticsPattern.test(body))return null;
+  const measures=namedAxes(body);
+  // Não esconder um componente com medidas ambíguas para gerar uma arte parcial.
+  if(!measures||measures.length<2)return null;
+  const previous=components.get(subject);
+  if(previous&&JSON.stringify(previous)!==JSON.stringify(measures))return null;
+  components.set(subject,measures);
+ }
+ return components.size?[...components].flatMap(([subject,measures])=>
+  measures.map(m=>({...m,subject,label:subject.toUpperCase()+' — '+m.label}))):null;
+}
 // Não classificar como produto um bloco "Dimensões:" que está dentro
 // de uma seção logística separada (ex.: "Embalagem:\nDimensões: ...").
 function isLogisticsSection(lines,index){
@@ -35,8 +77,27 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
   // Aceitar continuação somente com pelo menos DOIS eixos textuais explícitos.
   // Nunca buscar números soltos nem campos de peso/embalagem nas linhas seguintes.
   const label=lineTrim.match(/^(?:[-*•]\s*)?(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.*)$/i);
-  if(!label||/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/.test(lineTrim)||isLogisticsSection(lines,i))continue;
+  if(!label||isLogisticsSection(lines,i))continue;
   let axisSource=label[2].trim();
+  // Aceitar também componentes em linhas consecutivas dentro de Dimensões.
+  // Parar no próximo campo da ficha; nunca absorver campos logísticos soltos.
+  if(!axisSource||componentHeaders(axisSource).length){
+   for(let j=i+1;j<lines.length&&j<=i+12;j++){
+    const candidate=lines[j].trim().replace(/^[-*•]\s*/,'');
+    if(!candidate)continue;
+    if(!componentHeaders(candidate).length||
+       /^(?:dimensoes|medidas|peso|cor|material|capacidade|conteudo)\s*:/.test(candidate))break;
+    if(!/\b(?:altura|largura|comprimento|profundidade|diametro|diamentro)\b/.test(candidate))break;
+    axisSource+=(axisSource?'\n':'')+candidate;
+   }
+  }
+  const components=componentMeasurements(axisSource);
+  if(components!==undefined){
+   if(!components)return null;
+   entries.push({measurements:components,sourceLine:lineTrim});
+   continue;
+  }
+  if(logisticsPattern.test(lineTrim))continue;
   if(!axisSource){
    let j=i+1;
    while(j<lines.length&&j<=i+3&&!lines[j].trim())j++;
@@ -46,34 +107,9 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
       /embalagem|caixa|pacote|frete|logistic|transporte/.test(candidate))continue;
    axisSource=candidate;
   }
-  const axes={};
-  for(const m of axisSource.matchAll(axisPattern)){
-   const axis=axisNames[m[3]];
-   let numberValue=Number(m[1].replace(',','.'));
-   if(m[2]==='m')numberValue*=100;
-   if(m[2]==='mm')numberValue/=10;
-   if(!Number.isFinite(numberValue)||numberValue<=0||numberValue>10000)continue;
-   const value=fmtNumber(numberValue)+' cm';
-   if(axes[axis]&&axes[axis]!==value){axes.invalid=true;break;}
-   axes[axis]=value;
-  }
-  if(!axes.invalid){
-   for(const m of axisSource.matchAll(axisFirstPattern)){
-    const axis=axisNames[m[1]];
-    let numberValue=Number(m[2].replace(',','.'));
-    if(m[3]==='m')numberValue*=100;
-    if(m[3]==='mm')numberValue/=10;
-    if(!Number.isFinite(numberValue)||numberValue<=0||numberValue>10000)continue;
-    const value=fmtNumber(numberValue)+' cm';
-    if(axes[axis]&&axes[axis]!==value){axes.invalid=true;break;}
-    axes[axis]=value;
-   }
-  }
-  if(axes.invalid)continue;
   // Apenas grandezas explicitamente nomeadas, nao assumir que x/y/z sejam A/L/C.
-  const measurements=['altura','largura','comprimento','profundidade','diametro'].filter(axis=>axes[axis]).map(axis=>({
-   label:axis.toUpperCase(),value:axes[axis],axis
-  }));
+  const measurements=namedAxes(axisSource);
+  if(!measurements)return null;
   if(measurements.length>=2)entries.push({measurements,sourceLine:axisSource===label[2].trim()?lineTrim:lineTrim+' '+axisSource});
  }
  if(!entries.length)return null;

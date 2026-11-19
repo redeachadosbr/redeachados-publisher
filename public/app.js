@@ -11569,7 +11569,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261118-chatgpt-dimensoes-universal-v6'),
+  import('/chatgptPrompts.js?v=20261119-component-dimensions'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -11595,7 +11595,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  // Não descartar medidas válidas por falta apenas desse metadado opcional.
  const trustedText=String(evidence?.sku||'').trim()===String(w.sku).trim()
   ?String(evidence.sourceText||''):'';
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261118-chatgpt-cotas-na-arte-v5');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261119-component-dimensions');
  // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
  // plano aberto antes da importação ainda não tenha o supplierProduct.
  const verifiedCatalog=String(source?.supplierSku||'')===String(w.sku)||
@@ -11608,12 +11608,12 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
    w.supplierProduct?.catalogMeasurements||
    w.supplierProduct?.product_data?.catalogMeasurements||null
  }):null;
- // Não paralisar as imagens 01, 02 e 04–09 por uma ambiguidade EXCLUSIVA
- // da imagem 03. Nunca afirmar um eixo nem desenhar números por inferência.
+ // A prévia continua disponível; a sequência só começa quando a 03 pendente
+ // tem medidas confirmadas. Nunca pular a posição nem inventar eixos.
  const dimensionWarning=/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
     !confirmedDimensionSpec?.measurements?.length&&
     !/dimensões da pista montada/i.test(trustedText)
-   ?'Medidas WeDrop cadastradas, mas os eixos ainda não foram confirmados. A imagem 03 exigirá a conferência exata da SKU antes de receber cotas; as demais imagens podem prosseguir.':'';
+   ?'Medidas WeDrop cadastradas, mas os eixos ainda não foram confirmados. Confira as medidas na Etapa 01 para gerar a imagem 03 e continuar a sequência.':'';
 
  const linkedSupplierPhoto=!existingKit&&
   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
@@ -11669,7 +11669,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=20261118-chatgpt-cotas-na-arte-v5');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261119-component-dimensions');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -11696,9 +11696,9 @@ async function optimizerRequireThirdChatgptDimensions(w,brief){
  if(measures.length<2)
   throw Error('IMAGEM 03 NÃO INICIADA: não foi possível recuperar duas dimensões confirmadas em Informações da WeDrop da SKU '+w.sku+
    '. Verifique a Etapa 01 e o vínculo exato com o catálogo WeDrop. Nenhuma imagem sem cotas será gerada.');
- const expected=measures.map(x=>String(x.axis)+':'+String(x.value)).join('|');
+ const expected=measures.map(x=>String(x.subject||'')+':'+String(x.axis)+':'+String(x.value)).join('|');
  const embedded=(brief?.confirmedDimensions?.measurements||[])
-  .map(x=>String(x.axis)+':'+String(x.value)).join('|');
+  .map(x=>String(x.subject||'')+':'+String(x.axis)+':'+String(x.value)).join('|');
  if(expected!==embedded)
   throw Error('IMAGEM 03 NÃO INICIADA: medidas WeDrop salvas divergem das medidas anexadas ao prompt. Recarregue o anúncio e tente novamente sem digitar valores.');
  const prompt=String(brief?.prompts?.[2]||'');
@@ -11728,7 +11728,9 @@ async function optimizerChatgptRender(w){
    copy.type='button';
    copy.onclick=async()=>{
     try{
-     await navigator.clipboard.writeText(brief.prompts[i]);
+     const current=i===2?await optimizerChatgptMakeBrief(w):brief;
+     if(i===2)await optimizerRequireThirdChatgptDimensions(w,current);
+     await navigator.clipboard.writeText(current.prompts[i]);
      $('#optimizerChatgptCopyStatus').textContent='Pedido da imagem '+String(i+1).padStart(2,'0')+' copiado. Anexe a mesma foto original no ChatGPT antes de gerar.';
     }catch(e){$('#optimizerChatgptCopyStatus').textContent='Não foi possível copiar: '+String(e.message||e);}
    };
@@ -11865,7 +11867,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
     imageUrl:refs[i],prompts,referenceDataUrl,imageMode:editMode,
     completed:Array.from({length:9},(_,n)=>n+1).filter(n=>n!==slot),
-    restart:slot===3
+    restart:false
    }},location.origin);
    const reply=await ack;
    if(reply.ok){
@@ -11905,9 +11907,13 @@ async function optimizerChatgptCopyAll({open=false}={}){
   // Fallback manual: sempre copia apenas a PRIMEIRA posição ainda pendente, nunca um lote.
   const slot=Array.from({length:9},(_,i)=>i+1).find(x=>!optimizerImagesSavedSlots.has(x))||1;
   const pos=String(slot).padStart(2,'0');
-  const copy=recent
-   ?navigator.clipboard.writeText(recent.prompts[slot-1])
-   :optimizerChatgptMakeBrief(w).then(brief=>navigator.clipboard.writeText(brief.prompts[slot-1]));
+  const copy=slot===3
+   ?optimizerChatgptMakeBrief(w).then(async brief=>{
+     await optimizerRequireThirdChatgptDimensions(w,brief);
+     return navigator.clipboard.writeText(brief.prompts[2]);
+    })
+   :recent?navigator.clipboard.writeText(recent.prompts[slot-1])
+    :optimizerChatgptMakeBrief(w).then(brief=>navigator.clipboard.writeText(brief.prompts[slot-1]));
   if(open)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
   await copy;
   status.textContent=open
@@ -12579,37 +12585,14 @@ async function optimizerChatgptContinueFromServer(){
    const message='9/9 imagens já preparadas para esta SKU. Para outro produto, selecione a nova SKU. Para refazer esta, use Começar do zero.';
    notify(message);return {ok:false,error:message};
   }
-  // A imagem 03 exige cotas verificadas; a falta delas não retém 01/02/04–09.
-  // Nunca declarar 03 salva: somente a fila da extensão a pula temporariamente.
-  let deferredThird=false;
+  // Só informar como concluídas as posições realmente salvas no servidor.
+  // Marcar 03 como concluída para contorná-la fazia a Ponte saltar para 04.
   if(allMissing.includes(3)){
-   try{
-    if(brief.dimensionWarning||(brief.confirmedDimensions?.measurements?.length||0)<2)
-     throw Error('Os eixos da imagem 03 ainda não estão confirmados para esta SKU.');
-    // As medidas já foram lidas da fonte autenticada na montagem do roteiro.
-    // Revalidar a imagem 03 só quando ela for a primeira pendente; nunca
-    // bloquear a imagem 01 por uma SEGUNDA consulta exclusiva da imagem 03.
-    // O upload da imagem 03 sempre faz uma conferência final independente.
-    const confirmed=allMissing[0]===3
-     ?await optimizerRequireThirdChatgptDimensions(w,brief)
-     :brief.confirmedDimensions.measurements;
-    notify('Dimensões da imagem 03 conferidas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
-   }catch(error){
-    const reason=String(error?.message||error);
-    const dimensionPending=/^(?:Os eixos da imagem 03|Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas|IMAGEM 03 NÃO INICIADA|PROMPT ANTIGO DETECTADO)/i.test(reason);
-    // Falhas de rede, autenticação e API não são ambiguidades de dimensões.
-    // Nesses casos, informar o erro real, em vez de ignorar a posição 03.
-    if(!optimizerImagesSameSku(w)||!dimensionPending)throw error;
-    deferredThird=true;
-    optimizerCommercialActionMessage('Imagem 03 pendente de medidas WeDrop verificadas. As outras posições continuam sem inventar cotas. '+reason.slice(0,220));
-   }
+   const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
+   notify('Dimensões da imagem 03 conferidas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
   }
-  const missing=deferredThird?allMissing.filter(slot=>slot!==3):allMissing;
-  if(!missing.length){
-   const msg='Somente a imagem 03 está pendente: conferir os eixos em Informações da WeDrop. As outras imagens permanecem salvas.';
-   notify(msg);return {ok:false,error:msg};
-  }
-  const bridgeCompleted=deferredThird?[...stored,3].sort((a,b)=>a-b):stored;
+  const missing=allMissing;
+  const bridgeCompleted=stored;
    // A Ponte 1.0.59 só aceita restart total com zero posições e imagem 01.
    // Uma retomada 02/09, 03/09 etc. jamais deve fingir ser reinício completo.
    const fullStartFromZero=bridgeCompleted.length===0&&missing.length===9&&missing[0]===1;
@@ -12665,12 +12648,6 @@ async function optimizerChatgptContinueFromServer(){
    await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
    recovered={reason:'NO_RECOVERABLE_JOB'};
    notify('Imagem 03/09: sessão anterior da Ponte reconciliada. Criando NOVO comando com cotas WeDrop verificadas, preservando '+stored.length+'/9 imagens.');
-  }else if(deferredThird){
-   // Não reativar uma sessão antiga que ainda possa gerar a imagem 03 sem cotas.
-   // Encerrar somente a sessão da SKU, preservar tudo que já está no servidor.
-   await optimizerBridgeRetireSameSkuForNewThird(w,brief,bridgeCompleted);
-   recovered={reason:'NO_RECOVERABLE_JOB'};
-   notify('Imagem 03 aguardando confirmação. Iniciando somente as posições '+missing.map(x=>String(x).padStart(2,'0')).join(', ')+'.');
   }else{
    // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
    // foto. Repetir somente a leitura da referência, jamais apagar imagens.
@@ -12806,7 +12783,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261118-chatgpt-dimensoes-universal-v6');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=20261119-component-dimensions');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
@@ -12922,7 +12899,7 @@ async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}=
   if(String(photo.headers.get('X-Image-SHA256')||'')!==String(original.sha256))
    throw Error('A foto-base mudou durante a leitura. Nada foi salvo.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=20261118-chatgpt-cotas-na-arte-v5');
+   await import('/specificationCard.js?v=20261119-component-dimensions');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const output=await addConfirmedSpecificationCard(await photo.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a criação. Nada foi salvo.');
@@ -12979,7 +12956,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=20261118-chatgpt-cotas-na-arte-v5');
+   await import('/specificationCard.js?v=20261119-component-dimensions');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -13404,25 +13381,16 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
- let count=0,errorMessage='',deferredThird=false;
+ let count=0,errorMessage='';
  try{
   // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
   for(let slot=1;slot<=9;slot++){
    if(optimizerImagesStopRequested||!optimizerImagesSameSku(w))break;
    if(optimizerImagesSavedSlots.has(slot))continue;
    if(slot===3){
-    try{
-     const verified=await optimizerVerifiedDimensionSpec(w);
-     if((verified?.measurements?.length||0)<2){
-      deferredThird=true;status.textContent='Imagem 03 pendente de medidas confirmadas; gerando as demais sem alterar 03.';
-      continue;
-     }
-    }catch(error){
-     if(!optimizerImagesSameSku(w)||
-        !/Há medidas cadastradas na WeDrop|As informações WeDrop não foram confirmadas/i.test(String(error.message||'')))throw error;
-     deferredThird=true;status.textContent='Imagem 03 pendente de conferência WeDrop; as demais prosseguem.';
-     continue;
-    }
+    const verified=await optimizerVerifiedDimensionSpec(w);
+    if((verified?.measurements?.length||0)<2)
+     throw Error('Imagem 03 pendente de dimensões WeDrop confirmadas. Confira as medidas na Etapa 01 para continuar a partir da imagem 03.');
    }
    status.textContent='OpenAI gerando imagem '+slot+' de 9. '+optimizerImagesSavedSlots.size+'/9 concluídas. Não feche o anúncio.';
    await optimizerImagesGenerateSlot(w,slot,false);
@@ -13433,7 +13401,6 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
    status.textContent=optimizerImagesSavedSlots.size===9
     ?'9/9 imagens prontas e salvas. Confira a galeria e aprove a etapa antes do envio à Shopee.'
     :optimizerImagesStopRequested?'Geração interrompida. '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Clique novamente para continuar.'
-    :deferredThird?'Geração parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas; apenas a imagem 03 aguarda cotas WeDrop confirmadas.'
     :'Geração parcial. '+optimizerImagesSavedSlots.size+'/9 imagens disponíveis.';
  }catch(e){
   errorMessage=e.message;
@@ -13444,7 +13411,6 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSameSku(w)){
    status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
     :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
-    :deferredThird?'Lote parcial: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Imagem 03 pendente de dimensões WeDrop confirmadas; retome após a conferência.'
     :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
   }
  }

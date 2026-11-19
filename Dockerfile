@@ -32,6 +32,7 @@ RUN node --check catalog.js && node --test tests/catalogPriceRecovery.test.js
 RUN node --check shopeeMarktPro.js && node --test tests/shopee-marktpro-video.test.js
 RUN node --check shopeeVideoImportJobs.js && node --check shopeeVideoValidation.js && node --test tests/shopee-video-import-async.test.js tests/shopee-video-validation.test.js
 RUN node --check shopeeOpenAiImages.js && node --test tests/shopeeOpenAiImages.test.js tests/shopee-image03-inline-ai.test.js tests/shopee-image03-manual-paste.test.js
+RUN node --test tests/image03ComponentsAndSequence.test.js tests/optimizerWedropDimensionsNonblocking.test.js
 RUN node --check wedropExcel.js && node --test tests/wedrop-excel-import.test.js
 RUN node --check shopeeDescriptionComposer.js && node --test tests/shopee-description-commercial-order.test.js
 RUN node --check public/fiscal-migration-run.js && node --check shopeeFiscalGap.js && node --test tests/shopee-fiscal-gap-official.test.js

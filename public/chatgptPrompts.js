@@ -1,6 +1,6 @@
 import {PREMIUM_NINE_IMAGE_TITLES,premiumNineImageRule} from './premiumNineImagePolicy.js';
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261110-product-package-scope';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261119-component-dimensions';
 import {imageScenePrompt,imageSceneDirection} from './imageSceneDiversity.js?v=20261104-premium-nine-images';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
@@ -80,6 +80,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  prompts[2]=[
   'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. GERAR AGORA UMA IMAGEM, NÃO RESPONDER COM TEXTO OU PROMPT. FOTO AMBIENTADA COM TODAS AS MEDIDAS DA SKU DESENHADAS NA PRÓPRIA IMAGEM PELO CHATGPT.',
   'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — NÃO GERAR IMAGEM 03')+'.',
+  axes.some(x=>x.subject)?'COTAS POR COMPONENTE: cada rótulo identifica a peça à qual a medida pertence. Mostrar os componentes confirmados da mesma SKU e apontar cada seta SOMENTE para a peça nomeada. Nunca combinar eixos de peças diferentes. Não duplicar unidades para ilustrar cotas.':'',
   'DIVERSIDADE OBRIGATÓRIA — CENA ÚNICA 03/09. AMBIENTE EXCLUSIVO: '+scene03.environment,
   'ÂNGULO E ENQUADRAMENTO: '+scene03.camera,
   'ILUMINAÇÃO: '+scene03.light,

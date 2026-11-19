@@ -37,6 +37,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
    'ILUMINAÇÃO: '+scene.light,
    'FOTOGRAFIA AMBIENTADA: mostrar o produto inteiro em perspectiva lateral ou três-quartos, ocupando 80% a 85% do quadro, com margens suficientes para as cotas legíveis. Sem mosaicos.',
    'DIMENSÕES WEDROP CONFIRMADAS DA MESMA SKU, OBRIGATORIAMENTE VISÍVEIS NA ARTE FINAL: '+values+'.',
+   axes.some(x=>x.subject)?'COTAS POR COMPONENTE: cada rótulo nomeia a peça medida. Mostrar os componentes confirmados e aplicar cada seta somente à peça correspondente, sem misturar medidas entre peças nem duplicar unidades.':'',
    'DESENHE NA PRÓPRIA IMAGEM setas e linhas de cota finas próximas ao produto. ALTURA na direção vertical; LARGURA na direção transversal; COMPRIMENTO no eixo longitudinal; PROFUNDIDADE e DIÂMETRO somente quando constarem da fonte. Cada medida com o número, unidade e eixo corretos, sem trocas nem omissões.',
    'Design de fotografia premium, letras pequenas e legíveis, fundo ambientado moderno e limpo. Sem títulos, tarjas, cartões grandes, listas, peso, números inventados, medidas da embalagem ou textos fora das cotas. As anotações devem ocupar no máximo 10% da imagem.',
    'OBRIGATÓRIO: entregue somente UMA IMAGEM QUADRADA FINAL PRONTA COM AS COTAS INTEGRADAS. Não responda com descrição textual ou instruções. Não deixe as medidas para o Shopee Manager inserir depois. Verifique visualmente todas as cotas antes da entrega.'
