@@ -291,7 +291,9 @@ async function advanceShopeeExecutionStep(job,io){
  }
  // O preflight leve retorna o anúncio lido; não consultar duas vezes
  // o mesmo Item ID antes de enviar a primeira imagem.
- const currentItem=await io.validateIdentity()||await io.read();
+ const validated=await io.validateIdentity();
+ const currentItem=validated&&typeof validated==='object'&&
+  String(validated.item_id)===String(plan.itemId)?validated:await io.read();
  noteVideoReadback(currentItem);
  // Regra GLOBAL para qualquer SKU: conferir o anúncio na Shopee antes
  // de escrever. Se todo o conteúdo/mídia aprovado já estiver publicado,
