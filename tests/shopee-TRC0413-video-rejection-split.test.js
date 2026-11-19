@@ -88,12 +88,17 @@ test('etapa SOMENTE VÍDEO sem mídia pronta inicia upload, não vínculo com ID
  const videoPlan={...plan,selectedStage:'video',images:[],proposed:{}};
  const videoJob={state:'running',plan:videoPlan,result:{phase:'queued',startedAt:new Date().toISOString()}};
  let uploadStarts=0,attachWrites=0;
- const out=await advanceShopeeExecution(videoJob,{
+ const io={
   read:async()=>live(),validateIdentity:async()=>{},
   download:async()=>Buffer.from('arquivo.mp4'),
   media:{init:async()=>{uploadStarts++;return {video_upload_id:'new-video-task'};}},
   update:async()=>{attachWrites++;throw Error('Vídeo não pronto');}
- });
+ };
+ const prepared=await advanceShopeeExecution(videoJob,io);
+ assert.equal(prepared.state,'running');
+ assert.equal(prepared.result.phase,'video_upload');
+ assert.equal(uploadStarts,0);
+ const out=await advanceShopeeExecution({...videoJob,result:prepared.result},io);
  assert.equal(uploadStarts,1);
  assert.equal(attachWrites,0);
  assert.equal(out.state,'running');
