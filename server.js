@@ -2974,6 +2974,32 @@ async function verifiedLinkedKitQuote(auth,link){
   throw Error('Os custos, margem ou preço do kit mudaram. Recalcule antes de executar.');
  return {draft,live};
 }
+// Uma revisão técnica aprovada pode ter as escolhas guardadas somente no
+// technicalDraft. Preparar e executar precisam usar a MESMA reconstrução,
+// limitada ao rascunho anterior à aprovação e à categoria Shopee atual.
+async function restoreApprovedTechnicalDraftForExecution({
+ reviewState,selectedStage,record,live,cfg,auth
+}){
+ if(!['all','technical'].includes(selectedStage)||
+    reviewState.stages?.technical?.reviewed!==true||
+    reviewState.attributes?.length||
+    !Array.isArray(reviewState.technicalDraft?.fields)||
+    !reviewState.technicalDraft.fields.length)return;
+ const source=approvedTechnicalDraftChanges(reviewState.technicalDraft,{
+  reviewedAt:reviewState.stages.technical.reviewedAt
+ });
+ if(!source.length)return;
+ const scoped=scopeTechnicalReviewChanges(
+  applySellerDeclarations(source,record.attributeAudit?.attributes||[]),{
+   record,live,auditChanges:attributeAuditForChanges
+  });
+ await hydrateCategoryChoices(record,scoped.changes,cfg,auth,live);
+ const audited=attributeAuditForChanges(scoped.changes,record,live);
+ const classified=selectValidTechnicalChanges(scoped.changes,audited);
+ reviewState.attributes=classified.valid;
+ reviewState._technicalRecoveredFromApprovedDraft=true;
+ reviewState._technicalSkipped=classified.skipped;
+}
 app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
@@ -3122,31 +3148,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
        '. As demais etapas aprovadas podem ser executadas e o desconto será reavaliado em separado.';
      }
     }
-    // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
-    // precisa ser anterior à revisão e os campos devem continuar elegíveis
-    // pela categoria Shopee atual. Não aprovar dados novos automaticamente.
-    if(['all','technical'].includes(selectedStage)&&
-       reviewState.stages?.technical?.reviewed===true&&
-       !reviewState.attributes?.length&&
-       Array.isArray(reviewState.technicalDraft?.fields)&&
-       reviewState.technicalDraft.fields.length){
-      const source=approvedTechnicalDraftChanges(reviewState.technicalDraft,{
-       reviewedAt:reviewState.stages.technical.reviewedAt
-      });
-      if(source.length){
-       const scoped=scopeTechnicalReviewChanges(
-        applySellerDeclarations(source,record.attributeAudit?.attributes||[]),{
-         record,live,auditChanges:attributeAuditForChanges
-        });
-       await hydrateCategoryChoices(record,scoped.changes,cfg,auth,live);
-       const audited=attributeAuditForChanges(scoped.changes,record,live);
-       const classified=selectValidTechnicalChanges(scoped.changes,audited);
-       // Os campos incompatíveis continuam como pendência explícita.
-       reviewState.attributes=classified.valid;
-       reviewState._technicalRecoveredFromApprovedDraft=true;
-       reviewState._technicalSkipped=classified.skipped;
-      }
-    }
+    await restoreApprovedTechnicalDraftForExecution({
+     reviewState,selectedStage,record,live,cfg,auth
+    });
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
@@ -4045,6 +4049,11 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const singleProductName=!linkedKit?.kitSku&&
     ['exact-sku','reviewed-link'].includes(String(supplierForBrand?.matchedBy||''))?
     String(supplierForBrand.product_data?.name||''):'';
+  // Não comparar um plano técnico recuperado com revisão incompleta:
+  // reconstruir as escolhas aprovadas com as mesmas regras do prepare.
+  await restoreApprovedTechnicalDraftForExecution({
+   reviewState,selectedStage:plan.selectedStage||'all',record,live,cfg,auth
+  });
   if(['all','technical'].includes(plan.selectedStage||'all'))
     assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
       reviewState.attributes||[]:[],supplier:supplierForBrand});

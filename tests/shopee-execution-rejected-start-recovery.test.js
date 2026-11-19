@@ -65,3 +65,46 @@ test('a mensagem de divergência real aciona atualização da prévia',()=>{
  assert.equal(scope.optimizerExecutionNeedsFreshPreview(reason),true);
  assert.equal(scope.optimizerExecutionNeedsFreshPreview('Falha de rede'),false);
 });
+
+test('reconstrução técnica aprovada é idêntica na preparação e na execução',async()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const start=server.indexOf('async function restoreApprovedTechnicalDraftForExecution(');
+ const end=server.indexOf("app.post('/api/shopee/optimizer/execution/prepare'",start);
+ assert.ok(start>0&&end>start);
+ const prepare=server.slice(end,server.indexOf("app.post('/api/shopee/optimizer/execution/execute'",end));
+ const execute=server.slice(server.indexOf("app.post('/api/shopee/optimizer/execution/execute'",end));
+ assert.match(prepare,/await restoreApprovedTechnicalDraftForExecution\(/);
+ assert.match(execute,/await restoreApprovedTechnicalDraftForExecution\(/);
+ assert.ok(execute.indexOf('await restoreApprovedTechnicalDraftForExecution(')<
+  execute.indexOf('assertShopeeSupplierBrand('));
+ const calls=[];
+ const scope={
+  approvedTechnicalDraftChanges:(draft,{reviewedAt})=>{
+   calls.push('approved:'+reviewedAt);
+   return draft.fields;
+  },
+  applySellerDeclarations:changes=>changes,
+  scopeTechnicalReviewChanges:changes=>({changes}),
+  hydrateCategoryChoices:async()=>{calls.push('category');},
+  attributeAuditForChanges:()=>({}),
+  selectValidTechnicalChanges:changes=>({valid:changes,skipped:[]})
+ };
+ runInNewContext(server.slice(start,end),scope);
+ const saved={stages:{technical:{reviewed:true,reviewedAt:'2026-11-19T00:13:20Z'}},
+  attributes:[],technicalDraft:{updatedAt:'2026-11-19T00:13:06Z',
+   fields:[{attributeId:78,value:'confirmado'}]}};
+ await scope.restoreApprovedTechnicalDraftForExecution({
+  reviewState:saved,selectedStage:'all',record:{attributeAudit:{attributes:[]}},
+  live:{},cfg:{},auth:{}
+ });
+ assert.equal(saved.attributes.length,1);
+ assert.equal(saved.attributes[0].attributeId,78);
+ assert.equal(saved._technicalRecoveredFromApprovedDraft,true);
+ assert.deepEqual(calls,['approved:2026-11-19T00:13:20Z','category']);
+ const unapproved={stages:{technical:{reviewed:false}},technicalDraft:saved.technicalDraft};
+ await scope.restoreApprovedTechnicalDraftForExecution({
+  reviewState:unapproved,selectedStage:'all',record:{},live:{},cfg:{},auth:{}
+ });
+ assert.equal(unapproved.attributes,undefined);
+ assert.equal(calls.length,2);
+});
