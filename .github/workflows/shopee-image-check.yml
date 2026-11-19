@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/shopee-openai-images-20261018
+      - shopee-service
   pull_request:
     branches:
       - shopee-service
