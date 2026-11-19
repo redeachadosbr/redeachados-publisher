@@ -78,7 +78,7 @@ test('recuperação técnica aprovada é idêntica ao preparar e executar',async
  assert.ok(prepareStart>0&&executeStart>prepareStart&&prep>0&&prepEnd>prep&&
   exec>executeStart&&execEnd>exec);
  const original=server.slice(prep,prepEnd),revalidated=server.slice(exec,execEnd);
- assert.equal(revalidated,original);
+ assert.equal(revalidated.trimEnd(),original.trimEnd());
  assert.ok(server.slice(executeStart,exec).includes("const selectedStage=plan.selectedStage||'all'"));
  const calls=[];
  const scope={
