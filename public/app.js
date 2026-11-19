@@ -11956,6 +11956,95 @@ const RA_CHAT_BRIDGE_ACTIVE_KEY='redeAchadosBridgeActiveV3';
 let optimizerChatBridgeJob=null,optimizerChatBridgeQueuePromise=null;
 let optimizerChatBridgeStartConfirmed=false;
 let optimizerChatBridgeRetryingSource=false;
+// Recupera a foto que a Ponte JÁ detectou. Não pede outra geração e nunca
+// considera uma prévia da extensão como upload confirmado pelo Manager.
+let optimizerChatBridgePickupTimer=null,optimizerChatBridgePickupRevision=0;
+let optimizerChatBridgePickupKey='';
+function optimizerChatBridgeStopPickupRecovery(){
+ optimizerChatBridgePickupRevision++;
+ if(optimizerChatBridgePickupTimer!==null){
+  clearTimeout(optimizerChatBridgePickupTimer);
+  optimizerChatBridgePickupTimer=null;
+ }
+ optimizerChatBridgePickupKey='';
+}
+function optimizerChatBridgeWatchDetectedImage(message){
+ const slot=Number(message?.slot),state=String(message?.status||'')+' '+String(message?.error||'');
+ const job=optimizerChatBridgeJob,w=optimizerWorkflowPlan;
+ if(!Number.isInteger(slot)||slot<1||slot>9||
+    !/(?:detectad[ao]|encontrad[ao]|localizad[ao]|gerad[ao]|pront[ao]|conclu[ií]d[ao])/i.test(state)||
+    !job?.nonce||job.complete||job.stopped||!job.slots?.includes(slot)||
+    !optimizerChatBridgeIdentity(job,w)||
+    String($('#optimizerSku')?.value||'').trim()!==String(job.sku))return;
+ const key=job.nonce+':'+slot;
+ // Muitas atualizações "imagem encontrada" não podem adiar o resgate.
+ if(optimizerChatBridgePickupKey===key)return;
+ optimizerChatBridgeStopPickupRecovery();
+ optimizerChatBridgePickupKey=key;
+ const revision=optimizerChatBridgePickupRevision,nonce=job.nonce;
+ let attempts=0;
+ const active=()=>optimizerChatBridgePickupRevision===revision&&
+  optimizerChatBridgePickupKey===key&&optimizerChatBridgeJob?.nonce===nonce&&
+  !optimizerChatBridgeJob.stopped&&!optimizerChatBridgeJob.complete&&
+  optimizerChatBridgeIdentity(optimizerChatBridgeJob,optimizerWorkflowPlan)&&
+  String($('#optimizerSku')?.value||'').trim()===String(job.sku);
+ const schedule=delay=>{
+  optimizerChatBridgePickupTimer=setTimeout(async()=>{
+   if(!active())return;
+   attempts++;
+   try{
+    const saved=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+     sku:job.sku,item_id:job.itemId,model_id:job.modelId
+    }));
+    if(!active())return;
+    const image=(saved.images||[]).find(row=>Number(row.slot)===slot);
+    if(image?.sha256&&(!job.expectedHashes?.[slot]||image.sha256!==job.expectedHashes[slot])){
+     // ACK perdido: o servidor já possui o arquivo desta sessão/posição.
+     optimizerChatBridgeAck({nonce,slot},true);
+     optimizerImagesSavedSlots.add(slot);
+     optimizerChatBridgeStopPickupRecovery();
+     optimizerChatBridgeNotice('✓ Imagem '+String(slot).padStart(2,'0')+
+      '/09 confirmada no servidor. Liberando a próxima posição sem repetir o prompt.');
+     if(optimizerWorkflowStage==='images')void optimizerImagesLoad();
+     return;
+    }
+    // Se os bytes chegaram à fila local, reenviá-los ANTES de acordar a Ponte.
+    const pending=await optimizerChatBridgeRecover({includeBlocked:false});
+    if(!active())return;
+    if(pending){
+     optimizerChatBridgeNotice('Imagem '+String(slot).padStart(2,'0')+
+      '/09 recuperada da fila de envio. Aguardando confirmação do servidor.');
+    }else{
+     optimizerChatBridgeNotice('A Ponte encontrou a imagem '+String(slot).padStart(2,'0')+
+      '/09, mas ainda não entregou o arquivo. Solicitando nova captura, sem criar outra imagem ('+
+      attempts+'/3).');
+     const reply=optimizerWaitBridgeReply('RA_EXTENSION_WAKE_RESULT',nonce,16000);
+     window.postMessage({kind:'RA_SITE_WAKE',nonce},location.origin);
+     const result=await reply;
+     if(!active())return;
+     if(!result.ok)optimizerChatBridgeNotice('Recuperação da imagem '+
+      String(slot).padStart(2,'0')+'/09 não confirmada pela Ponte: '+result.error+
+      '. A foto anterior e as demais imagens estão preservadas.');
+    }
+   }catch(error){
+    if(active())optimizerChatBridgeNotice('Falha na recuperação da imagem '+
+     String(slot).padStart(2,'0')+'/09: '+String(error.message||error)+
+     '. As demais imagens permanecem salvas.');
+   }
+   if(!active())return;
+   if(attempts<3)schedule(20000);
+   else{
+    optimizerChatBridgeStopPickupRecovery();
+    optimizerChatBridgeNotice('Imagem '+String(slot).padStart(2,'0')+
+     '/09 detectada, mas não entregue após três tentativas de recuperação. '+
+     'Use Gerar / continuar automaticamente para recuperar a conversa original ou importe a foto pronta. '+
+     'Nenhum prompt foi repetido e nenhuma imagem salva foi apagada.');
+   }
+  },delay);
+ };
+ schedule(12000);
+}
+
 // NOVO_CHAT_NAO_LIMPO é um bloqueio de SEGURANÇA da extensão. Não contornar
 // a verificação do campo nem descartar fotos já confirmadas por Item ID/SKU.
 const RA_BRIDGE_CHAT_PAUSE_KEY='redeAchadosChatBridgeDirtyChatV1';
@@ -12088,6 +12177,7 @@ window.addEventListener('storage',event=>{
  }
 });
 function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já salvas foram preservadas.'){
+ optimizerChatBridgeStopPickupRecovery();
  const job=optimizerChatBridgeJob,nonce=optimizerChatBridgeNonce;
  optimizerBridgeChatPauseClear();
  if(job&&!job.stopped&&nonce)window.postMessage({kind:'RA_SITE_ABORT',nonce},location.origin);
@@ -12134,6 +12224,7 @@ async function optimizerChatBridgeConfirmed(job){
  const complete=job.slots.every(slot=>slots.has(slot)&&
   (!job.expectedHashes?.[slot]||slots.get(slot)?.sha256!==job.expectedHashes[slot]));
  if(complete&&job.nonce===optimizerChatBridgeNonce){
+  optimizerChatBridgeStopPickupRecovery();
   optimizerChatBridgeJob.complete=true;
   sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
   optimizerChatBridgeActiveClear(job.nonce);
@@ -12178,6 +12269,7 @@ function optimizerChatBridgeQueue(){
      ' ainda não confirmada. Arquivo preservado. Use Gerar / continuar automaticamente para sincronizar sem repetir imagens: '+row.error);
    },
    onSaved:async row=>{
+    if(optimizerChatBridgePickupKey===row.nonce+':'+row.slot)optimizerChatBridgeStopPickupRecovery();
     const w=optimizerWorkflowPlan;
     if(optimizerChatBridgeJob?.nonce!==row.nonce||!optimizerChatBridgeIdentity(w,row))return;
     optimizerChatBridgeNotice('Imagem '+row.slot+'/9 salva na SKU '+row.sku+'. '+(row.wasPadded?'Formato ajustado para 1:1 com margens, sem cortes. ':'')+'Aguardando a próxima imagem.');
@@ -12315,6 +12407,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  }
  if(m.kind==='RA_EXTENSION_PROGRESS'){
   optimizerBridgeChatPauseMark(m);
+  optimizerChatBridgeWatchDetectedImage(m);
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':''));
@@ -12331,6 +12424,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  }
  if(m.kind!=='RA_EXTENSION_IMAGE')return;
  optimizerBridgeChatPauseClear();
+ // O ACK continua dependente do servidor; o resgate é desativado após o upload.
+ if(optimizerChatBridgePickupKey===m.nonce+':'+m.slot)optimizerChatBridgeStopPickupRecovery();
  try{
   if(!Number.isInteger(m.slot)||m.slot<1||m.slot>9||!job.slots.includes(m.slot))throw Error('Slot inválido.');
   if(typeof m.dataUrl!=='string'||m.dataUrl.length>28*1024*1024||
