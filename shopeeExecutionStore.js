@@ -96,7 +96,7 @@ export async function leaseShopeeExecution(job,runId){
  const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
   '&state=eq.running&run_id=eq.'+encodeURIComponent(job.run_id)+
   '&lease_until=lte.'+encodeURIComponent(new Date().toISOString()),{method:'PATCH',
-  data:{run_id:runId,lease_until:new Date(Date.now()+300000).toISOString()},prefer:'return=representation'});
+  data:{run_id:runId,lease_until:new Date(Date.now()+480000).toISOString()},prefer:'return=representation'});
  return r[0]||null;
 }
 export async function checkpointShopeeExecution(job,result,delay=1000){

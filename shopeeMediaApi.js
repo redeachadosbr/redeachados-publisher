@@ -52,7 +52,11 @@ export async function advanceVideoUpload({state={},file,api,now=Date.now()}){
  const count=Math.ceil(file.length/VIDEO_PART_SIZE);
  if(state.nextPart<count){
   const seq=state.nextPart||0;
-  await api.part(state.id,seq,file.subarray(seq*VIDEO_PART_SIZE,Math.min(file.length,(seq+1)*VIDEO_PART_SIZE)));
+  try{
+   await api.part(state.id,seq,file.subarray(seq*VIDEO_PART_SIZE,Math.min(file.length,(seq+1)*VIDEO_PART_SIZE)));
+  }catch(error){
+   throw Error('Vídeo Shopee, parte '+(seq+1)+'/'+count+': '+String(error.message||error).slice(0,185));
+  }
   return {...state,nextPart:seq+1,phase:'uploading',totalParts:count};
  }
  if(state.phase==='uploading'){

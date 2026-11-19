@@ -109,6 +109,18 @@ export async function callShopeeShopApi(cfg,{path,method='GET',accessToken,shopI
   return readJson(await shopeeFetch(url,options));
 }
 // MediaSpace upload_part/complete are Public APIs: do not use shop signatures.
+// O endpoint público da mídia pode usar a saída direta do Render; o proxy
+// da loja é usado apenas se a própria Shopee recusar o IP de origem.
+// Timeout não é evidência de recusa: jamais disparar outro POST automaticamente.
+export async function videoPartIpFallback(direct,proxied){
+ try{return await direct();}
+ catch(error){
+  if(!/source_ip_undeclared|source.ip.*undeclared|source.ip.*whitelist|ip.*not.*whitelist/i.test(
+   String(error?.message||error)))throw error;
+  console.warn('[shopee-video-part] IP direto não autorizado; usando proxy configurado.');
+  return proxied();
+ }
+}
 export async function callShopeePublicMediaApi(cfg,{path,form,body}={}){
  requireConfigured(cfg);
  if(!['/api/v2/media_space/upload_video_part','/api/v2/media_space/complete_video_upload',
@@ -119,9 +131,15 @@ export async function callShopeePublicMediaApi(cfg,{path,form,body}={}){
  url.searchParams.set('sign',publicSign(cfg,path,timestamp));
  const headers={Accept:'application/json'};
  if(!form)headers['Content-Type']='application/json';
- return readJson(await shopeeFetch(url,{method:'POST',headers,
-   body:form||JSON.stringify(body),
-   signal:AbortSignal.timeout(path==='/api/v2/media_space/upload_image'?90000:60000)}));
+ const request={method:'POST',headers,body:form||JSON.stringify(body)};
+ if(path==='/api/v2/media_space/upload_video_part'){
+  return videoPartIpFallback(
+   ()=>readJson(await fetch(url,{...request,signal:AbortSignal.timeout(120000)})),
+   ()=>readJson(await shopeeFetch(url,{...request,signal:AbortSignal.timeout(240000)}))
+  );
+ }
+ return readJson(await shopeeFetch(url,{...request,
+  signal:AbortSignal.timeout(path==='/api/v2/media_space/upload_image'?90000:60000)}));
 }
 function requireConfigured(cfg){
   if(!cfg?.configured) throw new Error('Configure SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY e SHOPEE_REDIRECT_URI.');

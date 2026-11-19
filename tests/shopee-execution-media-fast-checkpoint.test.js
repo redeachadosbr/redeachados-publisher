@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
 import {optimizeShopeeImagePayload} from '../shopeeImageTransfer.js';
+import {videoPartIpFallback} from '../shopee.js';
 
 const images=Array.from({length:9},(_,i)=>({slot:i+1,mime_type:'image/png',sha256:'abc-'+i}));
 const plan={requiresExplicitConfirmation:true,canExecute:true,images,selectedStage:'images',
@@ -101,4 +102,72 @@ test('executor evita segunda leitura após validar identidade na Shopee',async()
  const output=await advanceShopeeExecution({plan:approved,result:{phase:'queued'}},io);
  assert.equal(output.state,'running');
  assert.deepEqual(calls,['identity','image','media']);
+});
+
+test('vídeo não impede a publicação das nove imagens e conteúdo aprovado',async()=>{
+ const imageIds=images.map((_,i)=>'shopee-media-'+i);
+ const before={item_id:plan.itemId,item_name:'Título antigo',description:'',
+  description_type:'normal',item_status:'NORMAL',image:{image_id_list:[]},
+  video_info:[],attribute_list:[]};
+ let live={...before},writes=0,parts=0,reads=0;
+ const approved={...plan,selectedStage:'all',video:{sha256:'v'.repeat(64)},
+  images,proposed:{item_name:'Título novo'},original:before};
+ const io={
+  validateIdentity:async()=>live,read:async()=>{reads++;return live;},
+  beforeWrite:async()=>{},
+  update:async body=>{
+   writes++;
+   assert.deepEqual(body.image.image_id_list,imageIds);
+   assert.equal(body.item_name,'Título novo');
+   assert.equal(body.video_upload_id,undefined);
+   live={...live,item_name:body.item_name,image:{image_id_list:[...imageIds]}};
+   return {request_id:'ok'};
+  },
+  download:async()=>Buffer.from('video'),
+  media:{init:async()=>({video_upload_id:'task-1438'}),part:async()=>{parts++;}}
+ };
+ let job={plan:approved,result:{phase:'queued',imageIds}};
+ let out=await advanceShopeeExecution(job,io);
+ assert.equal(out.result.phase,'verifying');
+ assert.equal(writes,1);
+ assert.equal(parts,0);
+ job={plan:approved,result:out.result};
+ out=await advanceShopeeExecution(job,io);
+ assert.equal(out.result.phase,'video_upload');
+ assert.equal(out.result.contentVerified,true);
+ assert.equal(writes,1);
+ job={plan:approved,result:out.result};
+ out=await advanceShopeeExecution(job,io);
+ assert.equal(out.result.phase,'video_upload');
+ assert.equal(out.result.video.id,'task-1438');
+ assert.equal(writes,1);
+ job={plan:approved,result:out.result};
+ out=await advanceShopeeExecution(job,io);
+ assert.equal(out.result.video.nextPart,1);
+ assert.equal(parts,1);
+ assert.equal(writes,1);
+});
+test('falha de upload no vídeo conserva nove IDs e nunca repete a escrita do anúncio',async()=>{
+ const allIds=images.map((_,i)=>'media-'+i);
+ const planWithVideo={...plan,video:{sha256:'a'.repeat(64)}};
+ const result={phase:'video_upload',imageIds:allIds,contentVerified:true,
+  video:{id:'task-partial',phase:'uploading',nextPart:0,startedAt:Date.now()}};
+ const io={download:async()=>Buffer.from('video'),
+  media:{part:async()=>{throw Error('The operation was aborted due to timeout');}}};
+ await assert.rejects(()=>advanceShopeeExecution({plan:planWithVideo,result},io),
+  /Vídeo Shopee, parte 1\/1.*timeout/);
+ assert.equal(result.imageIds.length,9);
+ assert.equal(result.video.id,'task-partial');
+});
+test('vídeo direto usa proxy apenas se Shopee rejeitar explicitamente o IP',async()=>{
+ let direct=0,proxy=0;
+ const result=await videoPartIpFallback(async()=>{direct++;return 'ok';},
+  async()=>{proxy++;return 'proxy';});
+ assert.equal(result,'ok');assert.equal(direct,1);assert.equal(proxy,0);
+ const backup=await videoPartIpFallback(async()=>{throw Error('source_ip_undeclared');},
+  async()=>{proxy++;return 'proxy';});
+ assert.equal(backup,'proxy');assert.equal(proxy,1);
+ await assert.rejects(()=>videoPartIpFallback(async()=>{throw Error('aborted due to timeout');},
+  async()=>{proxy++;return 'proxy';}),/timeout/);
+ assert.equal(proxy,1);
 });
