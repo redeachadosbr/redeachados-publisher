@@ -134,8 +134,8 @@ export async function callShopeePublicMediaApi(cfg,{path,form,body}={}){
  const request={method:'POST',headers,body:form||JSON.stringify(body)};
  if(path==='/api/v2/media_space/upload_video_part'){
   return videoPartIpFallback(
-   ()=>readJson(await fetch(url,{...request,signal:AbortSignal.timeout(120000)})),
-   ()=>readJson(await shopeeFetch(url,{...request,signal:AbortSignal.timeout(240000)}))
+   async()=>readJson(await fetch(url,{...request,signal:AbortSignal.timeout(120000)})),
+   async()=>readJson(await shopeeFetch(url,{...request,signal:AbortSignal.timeout(240000)}))
   );
  }
  return readJson(await shopeeFetch(url,{...request,
