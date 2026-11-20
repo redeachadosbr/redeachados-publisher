@@ -121,3 +121,21 @@ test('clicar EXECUTAR recupera primeiro o job preparado por consulta somente-lei
  assert.ok(code.indexOf("'/api/shopee/optimizer/execution/status?'")<
   code.indexOf('await optimizerExecutionPrepare()'),'recuperar antes de preparar novamente');
 });
+
+test('retomada Shopee prioriza variações aprovadas, nunca a campanha pendente',()=>{
+ const start=app.indexOf('globalThis.RAExecutionPrimaryAction=async(onlyStage=null)');
+ const end=app.indexOf("$('#optimizerExecutionRetry')?.addEventListener?.('click'",start);
+ assert.ok(start>0&&end>start);
+ const action=app.slice(start,end);
+ assert.match(action,/const pendingVariants=\(!onlyStage\|\|onlyStage==='variants'\)/);
+ assert.match(action,/pendingVariants\?\.status==='uncertain'/);
+ assert.match(action,/\.find\(x=>x\.key==='variants'\)\?\.reviewed!==true/);
+ assert.match(action,/optimizerWorkflowOpen\('variants'\)/);
+ assert.match(action,/const one=picked\|\|pendingVariants\|\|\(independentFiscal/);
+ assert.match(action,/const chosen=one\?\(one\.id==='discount'\?'discount_adjust':one\.id\):'all'/);
+ assert.ok(action.indexOf('const pendingVariants=')<action.indexOf('const independentFiscal='));
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const stage=server.slice(server.indexOf('let modelVariations=null;'),server.indexOf('let autoModelDiscountToken=null;'));
+ assert.match(stage,/\['all','remaining','variants'\]\.includes\(selectedStage\)/);
+ assert.match(server,/if\(modelVariations&&selectedStage!=='variants'\)/);
+});
