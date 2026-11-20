@@ -4808,6 +4808,8 @@ $('#optimizerFinalDiscountOpen')?.addEventListener('click',async()=>{
   if(p.action==='already'){
    optimizerModelDiscountVerified={...optimizerModelDiscountApproval,verifiedAt:Date.now()};
    optimizerDiscountFinalSent=true;
+   optimizerRootAuditCache.delete(optimizerDiscountFinalIdentityOf(w));
+   void optimizerRootAuditRefresh(true,true);
   }
   optimizerDiscountFinalPaint();
   optimizerDiscountFinalStatus(p.action==='already'?
@@ -4850,6 +4852,8 @@ $('#optimizerFinalModelDiscountApply')?.addEventListener('click',async()=>{
    optimizerDiscountFinalSent=true;
    optimizerDiscountFinalPaint();
    optimizerFinalSnapshot=null;
+   optimizerRootAuditCache.delete(p.key);
+   void optimizerRootAuditRefresh(true,true);
    void optimizerFinalPendingRefresh(true);
    optimizerExecNotice('Etapa 08 confirmada pela API Shopee para '+p.modelCount+
     ' modelos, sem reenviar fotos, estoque ou outras etapas.','success');
@@ -7878,6 +7882,10 @@ globalThis.RAExecutionCurrentStatus=()=>({
  rootAuditPending:Boolean(optimizerWorkflowPlan&&optimizerRootAuditCache.get(
   [optimizerWorkflowPlan.sku,String(optimizerWorkflowPlan.itemId),
    String(optimizerWorkflowPlan.modelId)].join('|'))?.audit?.pending?.some(id=>id!=='final')),
+ modelDiscountPending:Boolean(optimizerWorkflowPlan?.variationConfig?.enabled===true&&
+  optimizerRootAuditCache.get([optimizerWorkflowPlan.sku,
+   String(optimizerWorkflowPlan.itemId),String(optimizerWorkflowPlan.modelId)].join('|'))?.
+   audit?.stages?.some(s=>s.id==='discount'&&s.status!=='confirmed')),
  videoTaskRejected:optimizerExecutionVideoRejected(optimizerExecJob),
  videoRelinkExhausted:optimizerExecutionVideoRejected(optimizerExecJob)&&
   Number(optimizerExecJob?.result?.videoRelinkCount||0)>=1,
@@ -8027,6 +8035,24 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
   const one=picked||pendingVariants||(independentFiscal?pending.find(x=>x.id==='fiscal'):
    independentDiscount?pending.find(x=>x.id==='discount'):
    pending.length===1?pending[0]:null);
+  // A ação principal para um anúncio com modelos não pode cair no executor
+  // de item único: abrir a prévia POR MODELO e preservar as sete etapas.
+  if(one?.id==='discount'&&w.variationConfig?.enabled===true){
+   globalThis.RAExecutionDialog?.close?.();
+   optimizerDiscountOpenReview();
+   if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
+   if(!same())return;
+   const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
+   if(!/^\d{1,18}$/.test(campaign)){
+    optimizerDiscountFinalStatus('Informe o ID da campanha Minha Promoção para conferir o desconto das três cores.','warning');
+    return;
+   }
+   if(!optimizerModelDiscountState(w,optimizerDiscountFinalQuote,campaign).verified){
+    optimizerDiscountFinalSent=false;
+    await optimizerDiscountFinalPrepare();
+   }else await optimizerRootAuditRefresh(true,true);
+   return;
+  }
   const scope=$('#optimizerExecutionScope');
   const chosen=one?(one.id==='discount'?'discount_adjust':one.id):'all';
   if(scope)scope.value=chosen;

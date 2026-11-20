@@ -74,6 +74,7 @@ import {advanceShopeeExecution,approvedShopeeModels,reconcileShopeeModelExecutio
  nextShopeePhaseAfterReadback} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {auditRootShopeeExecution} from './shopeeExecutionHealth.js';
+import {verifyModelDiscountReadback} from './shopeeModelDiscountReadback.js';
 import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,prepareRejectedVideoRelink,guardRejectedVideoCompletion} from './shopeeExecutionVideoRecovery.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
@@ -3726,6 +3727,53 @@ async function readLiveRootExecution(req){
       Math.round(Number(liveDiscount.gross)*100)===Math.round(Number(approvedKitDiscount.gross)*100));
    }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
     String(error.message||error).slice(0,130);}
+  }else if(live.has_model===true&&/^\d{1,18}$/.test(String(req.query?.campaign_id||'').trim())){
+   // AUDITORIA REAL da etapa 08 para anúncios com modelos JÁ PUBLICADOS:
+   // antes havia verificação somente quando !live.has_model, deixando
+   // permanentemente 7/9 e impedindo o check da promoção por cor.
+   try{
+    const discountId=String(req.query.campaign_id).trim();
+    const options=review.variationDetails?.options||[];
+    if(!Array.isArray(models)||models.length<2||options.length!==models.length)
+     throw Error('Não foi possível conferir os modelos publicados deste anúncio.');
+    const saved=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+    const quote=saved?.quote;
+    if(saved?.sku!==sku||quote?.sku!==sku||String(quote.itemId)!==String(itemId)||
+       String(quote.modelId)!==String(modelId))
+     throw Error('Cotação da SKU principal não corresponde ao anúncio e precisa ser revisada.');
+    const settings=normalizeShopeePricingSettings({
+     ...await shopeePricingPreferences(auth.shopId),
+     marginPct:Number(quote.targetMarginPct),
+     minMarginPct:Math.max(8,Number(quote.minMarginPct)||8),
+     discountPct:Number(quote.discountPct),couponPct:Number(quote.couponPct)
+    });
+    const prices=await Promise.all(options.map(async option=>{
+     const model=models.find(m=>String(m.model_sku||'')===String(option.sku));
+     if(!model||!Number.isSafeInteger(Number(model.model_id))||Number(model.model_id)<=0)
+      throw Error('SKU da variação '+String(option.name||option.sku)+' não identificada na Shopee.');
+     const cost=await shopeePricingSupplierCost(auth.shopId,{
+      sku:option.sku,itemId,modelId:model.model_id});
+     if(!cost||String(cost.supplierSku)!==String(option.supplierSku)||
+        !(Number(cost.unitCost)>0))
+      throw Error('O vínculo ou custo WeDrop da cor '+String(option.name||option.sku)+' mudou.');
+     const estimated=quoteShopeePrice({unitCost:Number(cost.unitCost),
+      settings,marginOverride:true});
+     if(!(Number(estimated.netProfit)>0)||
+       Number(estimated.netMarginPct)+0.001<settings.minMarginPct)
+      throw Error('A margem líquida atual da cor '+String(option.name||option.sku)+' não foi validada.');
+     return {sku:String(option.sku),modelId:String(model.model_id),
+      promo:Number(estimated.marketplaceDisplayPrice)};
+    }));
+    const {record:campaign,pages}=await readDiscountPages(callShopeeShopApi,
+     {cfg,auth,discountId});
+    const match=verifyModelDiscountReadback({options,models,prices,
+     campaign,member:promotionMember(pages,itemId)});
+    discountReadback=match.confirmed;
+    if(!match.confirmed)discountDiagnostic=match.reason;
+   }catch(error){
+    discountDiagnostic='Promoção das variações ainda não confirmada: '+
+     String(error.message||error).slice(0,160);
+   }
   }else if(!live.has_model&&/^\d{1,18}$/.test(String(req.query?.campaign_id||'').trim())){
    // Mesmo quando uma nova prévia substitui o histórico do último job,
    // conferir a campanha informada nesta SKU com GET oficial Shopee.

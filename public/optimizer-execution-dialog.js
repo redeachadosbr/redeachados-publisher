@@ -33,6 +33,7 @@
    phase==='running'?'◷ Execução em andamento — acompanhando Shopee':
    data.videoRelinkExhausted?'⚠ Vínculo recusado — verificar com Shopee':
    data.videoTaskRejected?'↻ Reconectar vídeo sem novo upload':
+   data.modelDiscountPending?'▶ Conferir promoção das variações':
    phase==='verified'?(data.rootAuditPending?'▶ Executar somente pendências':
     data.rootAuditKnown?'✓ Todas as etapas confirmadas':'↻ Conferir pendências do anúncio'):
    phase==='uncertain'&&data.priceMismatchBeforeWrite?'▶ Corrigir preço e concluir desconto':

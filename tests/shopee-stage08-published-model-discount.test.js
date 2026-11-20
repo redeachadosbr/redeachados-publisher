@@ -1,3 +1,4 @@
+import {verifyModelDiscountReadback} from '../shopeeModelDiscountReadback.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -120,4 +121,26 @@ test('Desconto de modelos já publicados não exige republicar fotos; preço/ide
  assert.match(execute,/model_promotion_price/);
  assert.match(execute,/const verified=approved\.models\.every/);
  assert.match(app,/if\(data\.verified===true&&p\.key===optimizerDiscountFinalIdentityOf\(optimizerWorkflowPlan\)\)/);
+});
+
+test('auditoria raiz confirma desconto somente com as três cores e valores oficiais',()=>{
+ const options=[{sku:'RED'},{sku:'BLUE'},{sku:'BLACK'}];
+ const models=options.map((o,i)=>({model_sku:o.sku,model_id:i+11}));
+ const prices=options.map((o,i)=>({sku:o.sku,modelId:String(i+11),promo:143.09+i}));
+ const member={model_list:prices.map(p=>({model_id:Number(p.modelId),model_promotion_price:p.promo}))};
+ const campaign={status:'ongoing',end_time:Math.floor(Date.now()/1000)+3600};
+ const input={options,models,prices,member,campaign};
+ assert.equal(verifyModelDiscountReadback(input).confirmed,true);
+ assert.equal(verifyModelDiscountReadback({...input,member:{model_list:member.model_list.slice(0,2)}}).confirmed,false);
+ assert.equal(verifyModelDiscountReadback({...input,
+  member:{model_list:member.model_list.map((p,i)=>i===1?{...p,model_promotion_price:145.20}:p)}}).confirmed,false);
+ assert.equal(verifyModelDiscountReadback({...input,
+  campaign:{...campaign,status:'ended'}}).confirmed,false);
+ assert.equal(verifyModelDiscountReadback({...input,models:[models[0],models[1],{...models[2],model_sku:'OTHER'}]}).confirmed,false);
+});
+test('modal abre prévia segura por variação, sem executar desconto de item único',()=>{
+ assert.match(app,/if\(one\?\.id==='discount'&&w\.variationConfig\?\.enabled===true\)/);
+ assert.match(app,/await optimizerDiscountFinalPrepare\(\)/);
+ assert.match(server,/else if\(live\.has_model===true&&/);
+ assert.match(server,/verifyModelDiscountReadback\(\{options,models,prices/);
 });

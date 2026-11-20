@@ -152,3 +152,16 @@ test('não declarar audit completo sem confirmação final explícita',()=>{
  assert.notEqual(state.states[8],'done');
  assert.doesNotMatch(state.title,/Otimização concluída/);
 });
+
+test('anúncio de três cores com 7/9 confirmados mostra 78%, nunca 0% do job antigo',()=>{
+ const stages=['images','video','seo','description','technical','variants','fiscal','discount','final']
+  .map((id,i)=>({id,status:i<7?'confirmed':'pending',
+   reason:i===7?'Minha Promoção ainda não confirmada':''}));
+ const data=derive({job:{state:'prepared'},progress:{percent:0,hasStarted:false,
+  hasSavedProgress:false},rootAudit:{complete:false,stages,pending:['discount','final']}});
+ assert.equal(data.completed,7);
+ assert.equal(data.percent,78);
+ assert.equal(data.states[7],'pending');
+ assert.equal(data.states[8],'pending');
+ assert.match(data.countLabel,/7 de 9/);
+});

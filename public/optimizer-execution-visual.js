@@ -152,7 +152,12 @@
     blockedDetail||(!['running','uncertain','failed'].includes(job?.state)&&pendingDetail)||
     (failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
     serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.'),
-   states,reasons,completed,countLabel,percent:auditComplete?100:normalizedPercent(progress,job),history,
+   states,reasons,completed,countLabel,
+   // A auditoria das nove etapas mostra a porcentagem acumulada real do
+   // anúncio. Uma tentativa antiga preparada não pode zerar 7/9 confirmados.
+   percent:audited.length===DEFINITIONS.length?
+    (auditComplete?100:Math.min(99,Math.round((completed+excused)/9*100))):
+    normalizedPercent(progress,job),history,
    state:job?.state||'prepared',
    mediaInfo:progress?.imagesTotal>0?
     String(progress.imagesUploaded||0)+'/'+progress.imagesTotal+' imagens na mídia · '+
