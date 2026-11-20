@@ -4769,11 +4769,12 @@ $('#optimizerFinalDiscountOpen')?.addEventListener('click',async()=>{
   const format=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   block.replaceChildren();
   block.append(optimizerMake('strong','',
-   'Prévia · '+p.models.length+' variações · Margem líquida estimada '+Number(p.netMarginPct).toFixed(2).replace('.',',')+'%'));
+   'Prévia · '+p.models.length+' variações · Menor margem líquida estimada '+Number(p.netMarginPct).toFixed(2).replace('.',',')+'%'));
   for(const model of p.models){
    block.append(optimizerMake('p','',
     model.name+' · WeDrop '+model.supplierSku+' · custo '+format(model.cost)+
-    ' · preço Shopee '+format(model.base)+' → promoção '+format(model.promo)));
+    ' · preço Shopee '+format(model.base)+' → promoção '+format(model.promo)+
+    ' · margem líquida '+Number(model.margin).toFixed(2).replace('.',',')+'%'));
   }
   block.append(optimizerMake('small','',
    'Nenhum preço bruto será alterado nesta operação. Os preços promocionais só serão aplicados após sua confirmação.'));
@@ -4817,6 +4818,8 @@ $('#optimizerFinalModelDiscountApply')?.addEventListener('click',async()=>{
   if(data.verified===true&&p.key===optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)){
    optimizerDiscountFinalSent=true;
    optimizerDiscountFinalPaint();
+   optimizerFinalSnapshot=null;
+   void optimizerFinalPendingRefresh(true);
    optimizerExecNotice('Etapa 08 confirmada pela API Shopee para '+p.modelCount+
     ' modelos, sem reenviar fotos, estoque ou outras etapas.','success');
   }

@@ -5644,7 +5644,15 @@ async function variationModelDiscountContext(req){
    !Number.isFinite(Date.parse(quote.calculatedAt))||
    Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
   throw Error('Preço e pesquisa de concorrentes precisam ser recalculados antes de publicar a promoção por variação.');
- const pricePlan=promotionFromQuote(quote);
+ // Cada modelo tem custo WeDrop próprio. A cotação do anúncio-pai apenas
+ // fornece os parâmetros aprovados de margem, cupom e desconto.
+ const pricingSettings=normalizeShopeePricingSettings({
+  ...await shopeePricingPreferences(x.auth.shopId),
+  marginPct:Number(quote.targetMarginPct),
+  minMarginPct:Math.max(8,Number(quote.minMarginPct)||8),
+  discountPct:Number(quote.discountPct),
+  couponPct:Number(quote.couponPct)
+ });
  const checked=[];
  for(const option of details.options){
   const model=models.find(m=>String(m.model_sku||'')===option.sku);
@@ -5664,16 +5672,31 @@ async function variationModelDiscountContext(req){
    link=await shopeePricingSupplierCost(x.auth.shopId,{
     sku:option.sku,itemId:x.itemId,modelId:model.model_id});
   }
-  if(link.supplierSku!==option.supplierSku||link.supplierSku!==source?.supplierSku||
-    Math.abs(link.unitCost-source.unitCost)>0.009||
-    Math.abs(link.unitCost-Number(quote.unitCost))>0.009)
-   throw Error('Custo WeDrop da cor '+option.name+' mudou ou não corresponde ao preço aprovado.');
+  if(!source||link.supplierSku!==option.supplierSku||link.supplierSku!==source.supplierSku||
+    Math.abs(link.unitCost-source.unitCost)>0.009)
+   throw Error('O custo ou vínculo WeDrop da cor '+option.name+' mudou. Revise somente esta variação.');
+  // Nunca aplicar o mesmo preço do anúncio-pai às três cores por pressuposição.
+  const modelQuote=quoteShopeePrice({unitCost:Number(link.unitCost),
+   settings:pricingSettings,marginOverride:true});
+  const promo=Number(modelQuote.marketplaceDisplayPrice);
+  const buyerAfterCoupon=Number(modelQuote.buyerAfterCoupon);
+  const margin=Number(modelQuote.netMarginPct),profit=Number(modelQuote.netProfit);
+  const gross=Number(modelQuote.grossPrice);
+  if(![promo,buyerAfterCoupon,margin,profit,gross].every(Number.isFinite)||
+    promo<=0||gross<=promo||profit<=0||
+    margin+0.001<pricingSettings.minMarginPct||
+    ![0,9].includes(Math.round(promo*100)%10))
+   throw Error('A cor '+option.name+' não tem preço promocional com margem segura. Recalcule esta variação.');
+  const reference=Number(quote.marketResearch.reference);
+  if(Number.isFinite(reference)&&reference>0&&buyerAfterCoupon>reference*1.25+0.011)
+   throw Error('A cor '+option.name+' excede o limite de 25% acima da média de mercado. Revise o preço, sem reduzir a margem mínima.');
   const row=(model.price_info||[])[0]||{};
   const base=Number(row.original_price??model.original_price);
-  if(!Number.isFinite(base)||base<=pricePlan.promo||base>pricePlan.gross*1.35)
-   throw Error('Preço base da cor '+option.name+' incompatível com a promoção. Revise a precificação.');
+  if(!Number.isFinite(base)||base<=promo||base>gross*1.35)
+   throw Error('Preço bruto da cor '+option.name+' difere da prévia segura. Confira esse modelo na Shopee antes de aplicar a promoção.');
   checked.push({name:option.name,sku:option.sku,modelId:String(model.model_id),
-   supplierSku:link.supplierSku,cost:link.unitCost,base:Number(base.toFixed(2)),promo:pricePlan.promo});
+   supplierSku:link.supplierSku,cost:link.unitCost,base:Number(base.toFixed(2)),
+   promo,margin,profit,buyerAfterCoupon});
  }
  const {record,pages}=await readDiscountPages(callShopeeShopApi,
   {cfg:x.cfg,auth:x.auth,discountId});
@@ -5689,7 +5712,7 @@ async function variationModelDiscountContext(req){
  const snap={kind:'variation_models_discount',shopId:String(x.auth.shopId),
   sku:x.sku,itemId:String(x.itemId),discountId,quoteAt:String(quote.calculatedAt),
   unitCost:Number(quote.unitCost),discountPct:Number(quote.discountPct),
-  couponPct:Number(quote.couponPct),netMarginPct:Number(quote.netMarginPct),
+  couponPct:Number(quote.couponPct),netMarginPct:Math.min(...checked.map(m=>m.margin)),
   minMarginPct:Number(quote.minMarginPct),action,
   models:checked.map(o=>({...o}))};
  return {...x,discountId,quote,snapshot:snap,record};

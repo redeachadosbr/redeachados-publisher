@@ -80,7 +80,12 @@ test('Desconto de modelos já publicados não exige republicar fotos; preço/ide
  assert.match(code,/validateVariationDetails\(x\.details,\{requirePhotos:false/);
  assert.match(code,/models\.length!==details\.options\.length/);
  assert.match(code,/m\.model_sku/);
- assert.match(code,/Math\.abs\(link\.unitCost-Number\(quote\.unitCost\)\)/);
+ assert.doesNotMatch(code,/Math\.abs\(link\.unitCost-Number\(quote\.unitCost\)\)/);
+ assert.match(code,/const modelQuote=quoteShopeePrice\(\{unitCost:Number\(link\.unitCost\)/);
+ assert.match(code,/modelQuote\.marketplaceDisplayPrice/);
+ assert.match(code,/modelQuote\.netMarginPct/);
+ assert.match(code,/buyerAfterCoupon>reference\*1\.25/);
+ assert.match(code,/Math\.min\(\.\.\.checked\.map\(m=>m\.margin\)\)/);
  const execute=server.slice(server.indexOf("app.post('/api/shopee/optimizer/variants-discount/execute'"));
  assert.match(execute,/verifyDiscountPreview/);
  assert.match(execute,/JSON\.stringify\(fresh\.snapshot\)!==JSON\.stringify\(approvedValues\)/);
