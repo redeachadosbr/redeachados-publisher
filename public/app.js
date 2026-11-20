@@ -7879,12 +7879,29 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
   // Uma divergência de ficha técnica NÃO bloqueia fiscal ou promoção.
   // A etapa técnica permanece pendente até comparação oficial; no fluxo
   // automático seguimos a etapa fiscal, depois a campanha aprovada.
+  // Um anúncio com cores pendentes não deve ir direto à promoção: publicar
+  // os modelos em escopo 06 e preservar conteúdo, imagens, fiscal e desconto.
+  // A conferência de fotos/estoque é uma decisão do vendedor, nunca inferida
+  // de uma imagem salva na mídia ou do último status "verified" do anúncio-pai.
+  const pendingVariants=(!onlyStage||onlyStage==='variants')?
+   pending.find(x=>x.id==='variants'):null;
+  if(pendingVariants?.status==='uncertain'){
+   optimizerExecNotice('O envio anterior de variações tem resultado incerto. Confira os SKUs na Shopee antes de repetir qualquer criação.','warning');
+   return;
+  }
+  if(pendingVariants&&(w.stages||[]).find(x=>x.key==='variants')?.reviewed!==true){
+   globalThis.RAExecutionDialog?.close?.();
+   optimizerWorkflowOpen('variants');
+   optimizerWorkflowNotice('Etapa 06: confira a foto e o estoque de CADA cor, salve as opções e registre a etapa concluída. Depois execute somente as variações.','warning');
+   optimizerExecNotice('Variações salvas, mas não aprovadas: conferir as imagens e a disponibilidade de cada cor. Nenhuma publicação ou desconto foi iniciado.','warning');
+   return;
+  }
   const independentFiscal=pending.some(x=>x.id==='fiscal')&&
    pending.every(x=>['technical','fiscal','discount'].includes(x.id));
   const independentDiscount=!pending.some(x=>x.id==='fiscal')&&
    pending.some(x=>x.id==='discount')&&
    pending.every(x=>['technical','discount'].includes(x.id));
-  const one=picked||(independentFiscal?pending.find(x=>x.id==='fiscal'):
+  const one=picked||pendingVariants||(independentFiscal?pending.find(x=>x.id==='fiscal'):
    independentDiscount?pending.find(x=>x.id==='discount'):
    pending.length===1?pending[0]:null);
   const scope=$('#optimizerExecutionScope');
