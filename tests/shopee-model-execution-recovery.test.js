@@ -100,7 +100,7 @@ test('interface reconcilia modelos automaticamente uma vez e retoma acompanhamen
  const w={sku:'SKU',itemId:'2',modelId:'0'};
  const pending={...job('model_discount_verifying'),sku:'SKU',item_id:2,model_id:0,
   updated_at:new Date(Date.now()-4*60000).toISOString()};
- const ctx=vm.createContext({Date,AbortSignal,optimizerWorkflowPlan:w,optimizerExecPoll:null,
+ const ctx=vm.createContext({Date,AbortSignal,optimizerPrimaryActionBusy:false,optimizerWorkflowPlan:w,optimizerExecPoll:null,
   json:async(url,request)=>{requests.push({url,body:JSON.parse(request.body)});
    return {job:{...pending,state:'running',result:{phase:'model_discount_ready'}}};},
   optimizerExecutionJobView:j=>views.push(j),optimizerExecNotice:()=>{},
