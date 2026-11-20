@@ -7,6 +7,22 @@
   const key=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
   const savedTerms=new Map();
+  // A dimensão no nome de um concorrente não comprova a dimensão desta SKU.
+  // A conferência do backend aceita dimensões compostas somente quando
+  // aparecem no nome comercial WeDrop vinculado ao produto individual.
+  const productDimensions=value=>[...clean(value).matchAll(/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\s*(?:mm|cm|m)\b/gi)]
+    .map(m=>m[0].toLowerCase().replace(/\s+/g,'').replace(/×/g,'x'));
+  function titleWithoutUnverifiedDimensions(title,wedropName=''){
+    const confirmed=new Set(productDimensions(wedropName));
+    let removed=false;
+    const result=clean(title).replace(/\b(?:de\s+)?\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\s*(?:mm|cm|m)\b/gi,match=>{
+      const dimension=productDimensions(match)[0];
+      if(confirmed.has(dimension))return match;
+      removed=true;
+      return '';
+    });
+    return {title:clean(result.replace(/\s*,\s*,/g,', ').replace(/\s+,\s*/g,', ').replace(/,\s*$/,'')),removed};
+  }
 
   // One in-flight generation per SKU/model/terms; starts as soon as the audit
   // identifies the product. Opening SEO reuses the same promise/results.
@@ -303,10 +319,15 @@
        }
        return;
       }
-      const options=aiOptions.map((v,i)=>({
-        ...v,name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i],
-        reason:v.reason||'Termos sugeridos na pesquisa de mercado'
-      }));
+      const options=aiOptions.map((v,i)=>{
+        const safe=titleWithoutUnverifiedDimensions(v.title,f.supplier);
+        const n=count(safe.title);
+        return {...v,title:safe.title,
+          valid:v.valid!==false&&n>=100&&n<=LIMIT,
+          warning:safe.removed?'Medida não confirmada no nome WeDrop removida. Confira os demais atributos antes da aprovação.':v.warning,
+          name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i],
+          reason:v.reason||'Termos sugeridos na pesquisa de mercado'};
+      });
       const ranking=globalThis.RASeoTitleScore?.rank(options,{
        keywords:researchKeywords,productTitle:f.title||f.supplier, researchStatus:researchResult?.researchStatus||'unverified'
       });
@@ -315,10 +336,12 @@
        return;
       }
       const used=new Set();
+      let firstEligible=null;
       for(const [i,o] of ranking.entries()){
         const n=count(o.title),score=o.score;
         const repeated=used.has(key(o.title));used.add(key(o.title));
-        const eligible=n===LIMIT&&!repeated&&o.valid!==false&&o.breakdown.emojis===10;
+        const eligible=n>=100&&n<=LIMIT&&!repeated&&o.valid!==false&&o.breakdown.emojis===10;
+        if(eligible&&!firstEligible)firstEligible=o;
         const card=el('article','seo-studio-card'+(eligible?' valid':' needs-review')+
          (o.ideal?' seo-studio-ideal':''));
         const meta=el('div','seo-studio-card-top');
@@ -367,6 +390,7 @@
         copy.onclick=()=>copyText(o.title,status);
         actions.append(choose,copy);card.append(actions);grid.append(card);
       }
+      return firstEligible;
     }
     const marketNotice=el('div','seo-studio-market-status','Ponte ChatGPT: pronta para gerar as quatro opções.');
     marketNotice.setAttribute('role','status');
@@ -420,8 +444,16 @@
         throw Error('O armazenamento não confirmou os quatro títulos.');
       }catch(error){throw Error('Os cartões não foram salvos no navegador; a aba ChatGPT permanecerá aberta. '+error.message);}
       displayResearch(result);
-      setLabel(marketNotice,'✓ 4 títulos importados e classificados por nota SEO de 0 a 100. O cartão 01 é a opção recomendada. A pontuação estima qualidade estrutural, não volume oficial de buscas.');
-      regenerate();
+      const recommended=regenerate();
+      if(recommended&&isCurrent()&&data.stages?.find(x=>x.key==='seo')?.reviewed!==true){
+        // A importação passa pela mesma fila de rascunhos por SKU da edição manual.
+        // Não aprovar a etapa em nome do vendedor nem publicar na Shopee.
+        onChoose(recommended.title);
+        grid.querySelector('.seo-studio-card.valid')?.classList.add('selected');
+        setLabel(marketNotice,'✓ Quatro títulos importados. O recomendado foi preenchido automaticamente no rascunho da SKU. Clique em Registrar etapa como conferida para salvar o check verde.');
+      }else{
+        setLabel(marketNotice,recommended?'✓ Quatro títulos importados. Conferência anterior preservada; escolha o título se desejar substituí-lo.':'⚠ Quatro títulos recebidos, mas nenhum possui 100 a 120 caracteres com medidas confirmadas. Gere novamente com dados reais da WeDrop.');
+      }
     }
     openChat.onclick=async()=>{
       try{
@@ -535,8 +567,16 @@
        void generateTitles(true,launch);
       }
     });
-    regenerate();
+    const restoredChoice=regenerate();
     if(researchResult){
+      // Rascunho que ainda contém uma sugestão antiga da Ponte: corrigir
+      // automaticamente a medida não comprovada, preservando edições manuais.
+      const currentDraft=clean(document.getElementById('optimizerWorkflowDraft')?.value||'');
+      const importedDraft=aiOptions?.some(v=>key(v.title)===key(currentDraft));
+      if(restoredChoice&&importedDraft&&data.stages?.find(x=>x.key==='seo')?.reviewed!==true){
+        onChoose(restoredChoice.title);
+        grid.querySelector('.seo-studio-card.valid')?.classList.add('selected');
+      }
       displayResearch(researchResult);
       setLabel(marketNotice,'✓ Quatro títulos e suas notas restaurados para esta SKU. Clique em Gerar novos títulos para uma NOVA pesquisa ChatGPT.');
     }else if(globalThis.RASeoChatGPT?.hasPending?.(data)){
