@@ -44,32 +44,58 @@ function makeContext({data=state,success=true,withModels=true}={}){
  const fn=vm.runInContext(fnSource+'\noptimizerDiscountRoutePublishedModels;',ctx);
  return {fn,ctx,nodes,requests,views,messages};
 }
-test('Etapa 08 confere modelos publicados e abre prévia específica sem executar POST',async()=>{
+test('Etapa 08 de variações conhecidas abre prévia por modelo sem GET pesado ou escrita',async()=>{
  const s=makeContext();
  assert.equal(await s.fn(product,campaign,key),true);
- assert.equal(s.requests.length,1);
- assert.equal(s.requests[0].options.method,undefined);
- assert.match(s.requests[0].url,/variants\/draft\?/);
+ assert.equal(s.requests.length,0);
  assert.equal(s.nodes['#optimizerFinalCampaignId'].value,campaign);
  assert.equal(s.nodes['#optimizerFinalDiscountOpen'].clicked,true);
  assert.equal(s.nodes['#optimizerFinalPending'].hidden,false);
- assert.equal(s.views[1],'execution');
- assert.equal(s.ctx.optimizerFinalSnapshot.modelSkus.length,3);
+ assert.equal(s.views[0],'execution');
 });
-test('Anúncio sem modelos mantém a rotina de item único',async()=>{
+test('Sem variações no rascunho usa a consulta normal e mantém caminho de item único',async()=>{
  const s=makeContext({withModels:false});
- assert.equal(await s.fn(product,campaign,key),false);
+ const plain={...product,variationConfig:{enabled:false}};
+ s.ctx.optimizerWorkflowPlan=plain;
+ assert.equal(await s.fn(plain,campaign,key),false);
+ assert.equal(s.requests.length,1);
+ assert.match(s.requests[0].url,/variants\\/draft\\?/);
  assert.equal(s.nodes['#optimizerFinalDiscountOpen'].clicked,undefined);
 });
-test('Modelos publicados que não conferem com o rascunho jamais liberam promoção',async()=>{
+test('Modelo não reconhecido no fallback nunca libera promoção',async()=>{
  const s=makeContext({data:{...state,allModelsConfirmed:false}});
- await assert.rejects(s.fn(product,campaign,key),/não coincidem/);
+ const plain={...product,variationConfig:{enabled:false}};
+ s.ctx.optimizerWorkflowPlan=plain;
+ await assert.rejects(s.fn(plain,campaign,key),/não coincidem/);
  assert.equal(s.nodes['#optimizerFinalDiscountOpen'].clicked,undefined);
 });
-test('Erro de consulta de anúncio com variações não cai silenciosamente no desconto de item único',async()=>{
+test('Erro com modelos suspeitos não cai no desconto de item único',async()=>{
  const s=makeContext({success:false});
- await assert.rejects(s.fn(product,campaign,key),/Não foi possível conferir as variações/);
+ const plain={...product,variationConfig:{enabled:false}};
+ s.ctx.optimizerWorkflowPlan=plain;s.ctx.optimizerExecPlan={modelVariations:{}};
+ await assert.rejects(s.fn(plain,campaign,key),/Não foi possível conferir as variações/);
  assert.equal(s.nodes['#optimizerFinalDiscountOpen'].clicked,undefined);
+});
+test('Check da etapa 08 depende da prévia assinada e da identidade atual da campanha',()=>{
+ const a=app.indexOf('function optimizerModelDiscountState(');
+ const b=app.indexOf('const finalDiscountNotice=',a);
+ assert.ok(a>0&&b>a);
+ const fn=app.slice(a,b);
+ const ctx={Date,optimizerDiscountFinalIdentityOf:w=>[w.sku,w.itemId,w.modelId].join('|'),
+  optimizerModelDiscountApproval:{key,campaign,modelCount:3,quoteAt:'2026-11-19T23:00:00Z',
+   receivedAt:Date.now(),token:'signed'},
+  optimizerModelDiscountVerified:null};
+ const state=vm.runInNewContext(fn+'\\noptimizerModelDiscountState;',ctx);
+ const quote={calculatedAt:'2026-11-19T23:00:00Z'};
+ assert.equal(state(product,quote,campaign).reviewed,true);
+ assert.equal(state(product,quote,'999').reviewed,false);
+ assert.equal(state(product,{calculatedAt:'other'},campaign).reviewed,false);
+ ctx.optimizerModelDiscountApproval.receivedAt=Date.now()-9*60*1000;
+ assert.equal(state(product,quote,campaign).reviewed,false);
+ ctx.optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:quote.calculatedAt};
+ assert.equal(state(product,quote,campaign).verified,true);
+ assert.equal(state(product,quote,'999').verified,false);
+ assert.match(app,/optimizerDiscountFinalPaint\\(\\);\\n  optimizerDiscountFinalStatus\\(p.action/);
 });
 test('Desconto de modelos já publicados não exige republicar fotos; preço/identidade são verificados',()=>{
  const start=server.indexOf('async function variationModelDiscountContext(req){');
