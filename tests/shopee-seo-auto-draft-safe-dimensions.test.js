@@ -13,9 +13,9 @@ function guard(title,wedropName){
  assert.ok(first>=0&&last>first,'função de verificação deve existir');
  const scope={};
  vm.runInNewContext(
-  "const clean=s=>String(s||'').normalize('NFC').replace(/\\s+/g,' ').trim();\\n"+
+  "const clean=s=>String(s||'').normalize('NFC').replace(/\\s+/g,' ').trim();\n"+
   studio.slice(first,last)+
-  "\\nglobalThis.guard=titleWithoutUnverifiedDimensions;",scope);
+  "\nglobalThis.guard=titleWithoutUnverifiedDimensions;",scope);
  return scope.guard(title,wedropName);
 }
 
@@ -38,11 +38,11 @@ test('medida validada no nome comercial da própria WeDrop permanece',()=>{
 });
 
 test('recebimento ChatGPT preenche automaticamente o rascunho, mas não marca revisão nem publica',()=>{
- assert.match(studio,/const recommended=regenerate\\(\\)/);
- assert.match(studio,/onChoose\\(recommended\\.title\\)/);
- assert.match(studio,/data\\.stages\\?\\.find\\(x=>x\\.key==='seo'\\)\\?\\.reviewed!==true/);
+ assert.match(studio,/const recommended=regenerate\(\)/);
+ assert.match(studio,/onChoose\(recommended\.title\)/);
+ assert.match(studio,/data\.stages\?\.find\(x=>x\.key==='seo'\)\?\.reviewed!==true/);
  assert.match(studio,/Registrar etapa como conferida/);
- assert.doesNotMatch(studio,/RASeoSaveReview\\(/);
+ assert.doesNotMatch(studio,/RASeoSaveReview\(/);
 });
 
 test('título de 110 caracteres continua selecionável após remover medida não comprovada',()=>{
