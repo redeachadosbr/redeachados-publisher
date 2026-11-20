@@ -36,7 +36,7 @@ test('retomada consulta sempre banco e informa slots confirmados para a Ponte',(
  const resume=app.slice(start,end);
  assert.match(resume,/api\/shopee\/optimizer\/images\/manual\?/);
  assert.match(resume,/const allMissing=Array\.from\(\{length:9\}/);
- assert.match(resume,/const missing=allMissing/);
+ assert.match(resume,/const missing=allMissing\.filter/);
  assert.match(resume,/completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief\.prompts/);
  assert.match(resume,/imageUrl:referenceUrl,prompts:brief\.prompts,completed:bridgeCompleted/);
  assert.match(resume,/optimizerBridgeRecoverFromExtension/);
@@ -47,7 +47,7 @@ test('retomada consulta sempre banco e informa slots confirmados para a Ponte',(
 test('painel oferece reinício completo apenas explicitamente, fora da ação principal',()=>{
  assert.match(html,/Recomeçar tudo desde a imagem 01 \(apaga fotos preparadas\)/);
  assert.match(html,/id="optimizerChatgptResume"[^>]*display:none/);
- const restart=app.slice(app.indexOf("$('#optimizerChatgptRestartAll')?.addEventListener"),
+ const restart=app.slice(app.indexOf('async function optimizerChatgptStartOver('),
    app.indexOf('function optimizerBridgeRecoverFromExtension'));
  assert.match(restart,/method:'DELETE'/);
  assert.match(restart,/confirm\(/);

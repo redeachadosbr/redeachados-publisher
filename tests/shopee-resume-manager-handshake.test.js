@@ -35,7 +35,7 @@ test('imagem 03 consulta a execução real da extensão antes de criar outra na 
  const cont=main.slice(main.indexOf('async function optimizerChatgptContinueFromServer('),
   main.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE'));
  assert.match(cont,/else if\(freshThird\)\{/);
- assert.match(cont,/await optimizerBridgeRetireSameSkuForNewThird\(w,brief,stored\)/);
+ assert.match(cont,/await optimizerBridgeRetireSameSkuForNewThird\(w,brief,stored,current\)/);
  assert.match(cont,/optimizerBridgeSkuHasRunningJob\(startResult\?\.error\)/);
  assert.match(cont,/A Ponte ainda está ocupada/);
 });

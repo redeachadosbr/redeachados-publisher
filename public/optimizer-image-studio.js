@@ -59,6 +59,7 @@
  };
  toolbar.append(
   chat,
+  ...($('#optimizerChatgptStartOver')?[$('#optimizerChatgptStartOver')]:[]),
   makeButton('▧ Gerar apenas a imagem selecionada','ra-toolbar-single',generateSingle),
   makeButton('☁ Importar imagens','ra-toolbar-import',()=>openExtra($('.optimizer-image-manual-fallback'))),
   makeButton('▣ Novas fotos na galeria','ra-toolbar-gallery',()=>{
@@ -66,6 +67,8 @@
   }),
   makeButton('ⓘ Ver regras','ra-toolbar-rules',()=>$('#optimizerCommercialShowRules')?.click())
  );
+ const bridgeDownload=$('#optimizerBridgeDownload');
+ if(bridgeDownload)toolbar.append(bridgeDownload);
  const workspace=el('div','ra-studio-workspace');
  const galleryColumn=el('div','ra-studio-gallery-column');
  galleryColumn.append(gallery);

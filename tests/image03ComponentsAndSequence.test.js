@@ -72,7 +72,7 @@ async function resume({text=sourceText,stored=[1,2,4,5],validationError=null,sin
   json:async(url,options)=>{requests.push({url,options});return {images:stored.map(slot=>({slot}))};},
   optimizerChatBridgeJob:null,optimizerChatBridgeBusy:false,
   optimizerBridgeThirdReferenceDataUrl:async()=>'',optimizerBridgeChatPauseState:()=>null,
-  optimizerChatBridgeVersion:'1.0.64',optimizerChatgptCleanChatAuthorized:false,
+  optimizerChatBridgeVersion:'1.0.65',optimizerChatgptCommandEpoch:0,optimizerChatgptResetBusy:false,optimizerChatgptCleanChatAuthorized:false,
   optimizerBridgeRetireSameSkuForNewThird:async(w,b,completed)=>retired.push(completed),
   optimizerBridgeRecoverFromExtension:async()=>({reason:'NO_RECOVERABLE_JOB'}),
   optimizerChatBridgeActiveClear:()=>{},optimizerChatBridgeNonce:'',optimizerChatBridgeSku:'',
@@ -87,10 +87,11 @@ async function resume({text=sourceText,stored=[1,2,4,5],validationError=null,sin
   :functionSource('optimizerChatgptContinueFromServer','// O coordenador da extensão espera');
  body=body.replace("'/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2'",
   JSON.stringify(new URL('../public/optimizer-visual-reference.js',import.meta.url).href));
- const validate=functionSource('optimizerRequireThirdChatgptDimensions','async function optimizerChatgptRender(');
+ const validate=functionSource('optimizerRequireThirdChatgptDimensions','async function optimizerChatgptDeferredSlots(');
  const call=singleSlot?'optimizerCommercialRequestChatgptSlot(optimizerWorkflowPlan,'+singleSlot+')'
   :'optimizerChatgptContinueFromServer()';
- const run=new Function(...Object.keys(params),validate+'\n'+body+'\nreturn '+call+';');
+ const deferred=source.slice(source.indexOf('async function optimizerChatgptDeferredSlots('),source.indexOf('let optimizerChatgptCommandEpoch='));
+ const run=new Function(...Object.keys(params),validate+'\n'+deferred+'\n'+body+'\nreturn '+call+';');
  const result=await run(...Object.values(params));
  return {result,sent,retired,requests,notice:elements.get('#optimizerChatgptActionStatus')?.textContent};
 }
@@ -126,19 +127,22 @@ test('Gerar 03 envia só essa imagem sem comando de reinício total recusado pel
  assert.ok(actual.requests.every(x=>!x.options?.method));
 });
 
-test('medidas ausentes, ambíguas ou falha de rede interrompem sem iniciar 04',async()=>{
+test('medidas ausentes, ambíguas ou falha de consulta deixam só 03 pendente',async()=>{
  for(const input of [{text:''},{text:'Dimensões: 33 x 10 x 26 cm'},
   {validationError:'Falha ao consultar WeDrop (HTTP 503)'}]){
   const actual=await resume(input);
-  assert.equal(actual.result.ok,false);
-  assert.equal(actual.sent.length,0);
+  assert.equal(actual.result.ok,true);
+  assert.equal(actual.result.slot,6);
+  const start=actual.sent.find(x=>x.kind==='RA_SITE_START').payload;
+  assert.deepEqual(start.completed,[1,2,4,5]);
+  assert.deepEqual(start.deferredSlots,[3]);
   assert.equal(actual.retired.length,0);
-  assert.match(actual.notice,/Não foi possível continuar a sequência/);
+  assert.match(actual.notice,/imagem 03 aguarda medidas/);
   assert.ok(actual.requests.every(x=>!x.options?.method));
  }
 });
 
-test('API interrompe na 03 sem gerar as posteriores quando faltam medidas',async()=>{
+test('API processa 04 a 09 e mantém 03 pendente quando faltam medidas',async()=>{
  const start=source.indexOf("$('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{");
  const end=source.indexOf("$('#optimizerImagesUpload')?.addEventListener",start);
  const handler=source.slice(start,end);
@@ -153,6 +157,22 @@ test('API interrompe na 03 sem gerar as posteriores quando faltam medidas',async
  };
  new Function(...Object.keys(params),handler)(...Object.values(params));
  await listener();
- assert.deepEqual(generated,[]);
+ assert.deepEqual(generated,[4,5,6,7,8,9]);
  assert.match(elements.get('#optimizerImagesStatus').textContent,/Imagem 03 pendente/);
+});
+
+test('nova SKU sem medidas inicia 01 e não declara 03 como salva',async()=>{
+ const actual=await resume({text:'',stored:[]});
+ assert.equal(actual.result.ok,true);
+ assert.equal(actual.result.slot,1);
+ const payload=actual.sent.find(x=>x.kind==='RA_SITE_START').payload;
+ assert.deepEqual(payload.completed,[]);
+ assert.deepEqual(payload.deferredSlots,[3]);
+ assert.equal(payload.restart,true);
+});
+test('somente 03 pendente informa 8/9 e não envia comando inválido',async()=>{
+ const actual=await resume({text:'',stored:[1,2,4,5,6,7,8,9]});
+ assert.equal(actual.result.reason,'DIMENSIONS_PENDING');
+ assert.equal(actual.sent.length,0);
+ assert.match(actual.notice,/8\/9 imagens salvas/);
 });

@@ -18,7 +18,7 @@
 #optimizerImagesPanel .ra-studio-progress{display:grid;gap:2px;min-width:110px;text-align:center;background:#e4f9ee;padding:12px;border-radius:10px;color:#087946}
 #optimizerImagesPanel .ra-studio-progress strong{font-size:25px;line-height:1.2}
 #optimizerImagesPanel .ra-studio-progress small{font-size:11px}
-#optimizerImagesPanel .ra-studio-toolbar{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:8px;padding:11px;background:#fff;border:1px solid var(--ra-border);border-radius:14px;align-items:stretch}
+#optimizerImagesPanel .ra-studio-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:11px;background:#fff;border:1px solid var(--ra-border);border-radius:14px;align-items:stretch}
 #optimizerImagesPanel .ra-studio-toolbar button{min-height:52px;padding:8px 12px;border:1px solid #c8dffb;border-radius:10px;background:#fff;color:#1651a1;font-size:12px;line-height:1.35;font-weight:800;white-space:normal}
 #optimizerImagesPanel .ra-studio-toolbar #optimizerChatgptAuto{background:linear-gradient(120deg,#0974f7,#0754dc);color:white;border-color:#0754dc;min-height:52px;margin:0}
 #optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-import{color:#087343;border-color:#a5dfc4}
@@ -150,3 +150,6 @@
  .optimizer-chat-clean-actions{flex-direction:column;align-items:stretch}
  .optimizer-chat-clean-actions button{width:100%;min-width:0}
 }
+
+#optimizerImagesPanel .ra-studio-toolbar #optimizerChatgptStartOver{background:#fff7eb;border-color:#e8bf83;color:#87540d}
+#optimizerImagesPanel .ra-studio-toolbar #optimizerBridgeDownload{grid-column:1/-1;font-size:12px;color:#24568e;justify-self:start;padding:4px}

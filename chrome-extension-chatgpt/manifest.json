@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Rede Achados BR — Ponte ChatGPT para Shopee Manager",
+  "version": "1.0.65",
+  "description": "Geração por SKU com Começar do zero. Imagem 03 pendente de medidas não bloqueia as demais posições; fotos salvas e sessões de outros produtos ficam preservadas.",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "scripting",
+    "unlimitedStorage",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://redeachados-shopee.onrender.com/*",
+    "https://chatgpt.com/*",
+    "https://*.oaiusercontent.com/*",
+    "https://*.openai.com/*",
+    "https://cf.shopee.com.br/*",
+    "https://*.susercontent.com/*",
+    "https://*.shopeeusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Ponte ChatGPT ↔ Shopee Manager",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://redeachados-shopee.onrender.com/*"
+      ],
+      "js": [
+        "site-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "minimum_chrome_version": "120"
+}

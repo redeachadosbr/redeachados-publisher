@@ -11975,6 +11975,24 @@ async function optimizerRequireThirdChatgptDimensions(w,brief){
   throw Error('IMAGEM 03 NÃO INICIADA: os valores confirmados não aparecem na orientação que seria enviada ao ChatGPT.');
  return measures;
 }
+// Uma pendência de medidas pertence somente à imagem 03.
+async function optimizerChatgptDeferredSlots(w,brief,missing){
+ if(!missing.includes(3))return [];
+ try{await optimizerRequireThirdChatgptDimensions(w,brief);return [];}
+ catch(error){
+  if(!optimizerImagesSameSku(w))throw error;
+  return [3];
+ }
+}
+function optimizerBridgeSupportsDeferred(){
+ const [major=0,minor=0,patch=0]=String(optimizerChatBridgeVersion||'').split('.').map(Number);
+ return major>1||(major===1&&(minor>0||patch>=65));
+}
+function optimizerBridgeRequireDeferredSupport(slots){
+ if(slots.length&&!optimizerBridgeSupportsDeferred())
+  throw Error('Atualize a Ponte para v1.0.65 pelo botão Baixar Ponte atualizada. Ela permite gerar as outras imagens deixando apenas a 03 pendente de medidas.');
+}
+let optimizerChatgptCommandEpoch=0,optimizerChatgptResetBusy=false;
 async function optimizerChatgptRender(w){
  try{
   const brief=await optimizerChatgptMakeBrief(w);
@@ -12049,7 +12067,9 @@ async function optimizerBridgeThirdReferenceDataUrl(w,images=[]){
  return reference;
 }
 async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
- if(!optimizerImagesSameSku(w))return;
+ const epoch=optimizerChatgptCommandEpoch;
+ const isCurrent=()=>epoch===optimizerChatgptCommandEpoch&&optimizerImagesSameSku(w);
+ if(!isCurrent()||optimizerChatgptResetBusy)return;
  const status=$('#optimizerImagesStatus');
  // Solicitação explícita da imagem 03 nunca reutiliza um prompt antigo
  // mantido na extensão, mesmo que a flag "busy" tenha sido desligada
@@ -12059,6 +12079,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   await optimizerChatBridgeRelease('Imagem 03: encerrando a sessão anterior para reenviar os valores confirmados da WeDrop.');
  else if(slot===3&&optimizerChatBridgeBusy)
   await optimizerChatBridgeRelease('Imagem 03: descartando o comando anterior sem medidas para carregar o roteiro WeDrop atualizado.');
+ if(!isCurrent())return;
  if(optimizerChatBridgeBusy){
   const job=optimizerChatBridgeJob;
   if(optimizerChatBridgeIdentity(job,w)&&job?.slots?.length===1&&Number(job.slots[0])===Number(slot)){
@@ -12077,7 +12098,9 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  }
  try{
   if(slot!==3&&optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
+  if(!isCurrent())return;
   const brief=await optimizerChatgptMakeBrief(w);
+  if(!isCurrent())return;
   if(slot===3){
    const measurements=await optimizerRequireThirdChatgptDimensions(w,brief);
    optimizerCommercialActionMessage('Enviando ao ChatGPT a Imagem 03 com dimensões WeDrop verificadas: '+
@@ -12090,7 +12113,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   if(editMode){
    if(!optimizerImageCorrectionPreviewMap.has(slot))throw Error('A imagem '+slot+' não está salva. Não é possível editar sem a fotografia atual.');
    referenceDataUrl=await optimizerImageEditReference(w,slot);
-   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante o carregamento da imagem.');
+   if(!isCurrent())throw Error('A SKU mudou durante o carregamento da imagem.');
    const pos=String(slot).padStart(2,'0');
    if(editMode==='improve')prompts[slot-1]=[
     brief.prompts[slot-1],
@@ -12104,7 +12127,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId
   }));
-  if(!optimizerImagesSameSku(w))return;
+  if(!isCurrent())return;
   const original=(current.images||[]).find(x=>Number(x.slot)===slot);
   const shaToKeep=original?.sha256?{[slot]:original.sha256}:{};
   if(slot===3&&!editMode){
@@ -12112,14 +12135,14 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
    optimizerCommercialActionMessage('Imagem 03: foto real da SKU preparada como anexo e cotas WeDrop confirmadas. Enviando o NOVO roteiro ao ChatGPT.');
   }
   if(slot===3)
-   await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)));
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)),isCurrent);
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
   const refs=(brief.referenceCandidates||[]).slice(0,4);
   if(!refs.length)throw Error('Nenhuma foto oficial da Shopee corresponde ao Item ID desta SKU.');
   let lastError='',busyRetried=false;
   optimizerChatBridgeRetryingSource=true;
   for(let i=0;i<refs.length;i++){
-   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a tentativa. Nenhuma imagem foi alterada.');
+   if(!isCurrent())throw Error('A SKU mudou durante a tentativa. Nenhuma imagem foi alterada.');
    optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
    sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
    optimizerChatBridgeRemember(w,[slot],shaToKeep);
@@ -12136,6 +12159,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
     restart:false
    }},location.origin);
    const reply=await ack;
+   if(!isCurrent())return;
    if(reply.ok){
     optimizerChatBridgeRetryingSource=false;
     return;
@@ -12146,7 +12170,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
    if(slot===3&&!busyRetried&&optimizerBridgeSkuHasRunningJob(lastError)){
     busyRetried=true;
     await optimizerChatBridgeRelease('Ponte ocupada: reconciliando a execução real da mesma SKU antes de solicitar a imagem 03.');
-    await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)));
+    await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)),isCurrent);
     optimizerCommercialActionMessage('Execução antiga da SKU liberada. Tentando novamente somente a imagem 03 com as medidas WeDrop.');
     i--;continue;
    }
@@ -12158,10 +12182,11 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   throw Error('A Ponte não conseguiu iniciar a imagem '+String(slot).padStart(2,'0')+
    ': '+lastError+'. As fotos já preparadas continuam salvas.');
  }catch(e){
+  if(!isCurrent())return;
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
   optimizerCommercialActionMessage(status.textContent,true);
- }finally{optimizerChatBridgeRetryingSource=false;}
+ }finally{if(isCurrent())optimizerChatBridgeRetryingSource=false;}
 }
 async function optimizerChatgptCopyAll({open=false}={}){
  const w=optimizerWorkflowPlan;
@@ -12398,6 +12423,9 @@ function optimizerChatBridgeActiveClear(nonce){
 }
 function optimizerChatBridgeSwitchSku(newSku){
  const target=String(newSku||'').trim();
+ if(optimizerWorkflowPlan&&String(optimizerWorkflowPlan.sku)!==target){
+  optimizerChatgptCommandEpoch++;optimizerChatgptContinueBusy=false;
+ }
  const local=optimizerChatBridgeJob,active=optimizerChatBridgeActive();
  const obsolete=[local,active].filter(x=>x?.nonce&&String(x.sku)!==target);
  if(!obsolete.length)return Promise.resolve(false);
@@ -12497,7 +12525,7 @@ async function optimizerChatBridgeConfirmed(job){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   optimizerChatBridgeNotice(slots.size===9
    ?'9/9 imagens comerciais salvas na SKU '+job.sku+'. Confira todas antes de executar na Shopee.'
-   :'Imagem salva na SKU '+job.sku+'.');
+   :slots.size+'/9 imagens salvas na SKU '+job.sku+'.'+(!slots.has(3)&&!job.slots.includes(3)?' Imagem 03 pendente de medidas confirmadas.':''));
  }
  return complete;
 }
@@ -12674,7 +12702,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  if(m.kind==='RA_EXTENSION_PROGRESS'){
   optimizerBridgeChatPauseMark(m);
   optimizerChatBridgeWatchDetectedImage(m);
-  const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
+  const done=/^9\/9 imagens (?:armazenadas|concluídas)|^Sequência disponível concluída/.test(String(m.status||''));
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':''));
   optimizerCommercialActionMessage('Ponte ChatGPT · imagem '+String(Math.min(9,Number(m.slot)||1)).padStart(2,'0')+
@@ -12682,7 +12710,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    Boolean(m.error)||/falh|pausad|recusad|interrompid/i.test(String(m.status||'')));
   const paused=/pausad[ao]|interrompid[ao]|cancelad[ao]|falha (?:no |de )?(?:upload|importação)/i.test(m.status||'');
   if(paused){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;}
-  else if(!done){optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;}
+  else if(!done&&!job.complete){optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;}
   if(done)void optimizerChatBridgeConfirmed(job).then(complete=>{
    if(!complete)optimizerChatBridgeNotice('Aguardando o sistema confirmar todas as imagens novas da SKU '+job.sku+'.');
   }).catch(e=>optimizerChatBridgeNotice('Conferência pendente: '+e.message));
@@ -12737,6 +12765,9 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const extension=prepared.blob.type==='image/jpeg'?'jpg':'png';
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
+  if(optimizerChatBridgeJob?.nonce!==job.nonce||job.stopped||!optimizerChatBridgeIdentity(w,optimizerWorkflowPlan)){
+   optimizerChatBridgeAck(m,false,'Geração anterior substituída.');return;
+  }
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
    filename:Number(m.slot)===3&&prepared.filename==='chatgpt-auto-03-arte-final-com-cotas.png'?
     'chatgpt-auto-03-arte-final-com-cotas.png':
@@ -12753,84 +12784,82 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
 });
 // Ação visível: o usuário pode reiniciar uma sequência concluída ou travada.
 // Reutiliza a confirmação e a limpeza limitada à SKU da ação já existente.
-$('#optimizerChatgptStartOver')?.addEventListener?.('click',()=>{
- const w=optimizerWorkflowPlan,button=$('#optimizerChatgptRestartAll');
- if(!w||!optimizerImagesSameSku(w)){
-  optimizerChatBridgeNotice('Abra a etapa Imagens da SKU que deseja reiniciar.');return;
- }
- if(!button||button.disabled)return;
- button.click();
-});
-// A new nine-image action is atomic: clear only commercial staging and
-// start a fresh extension job from image 01. No nested click/confirm recursion.
-$('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
- const w=optimizerWorkflowPlan,button=$('#optimizerChatgptRestartAll');
- const status=$('#optimizerChatgptBridgeStatus');
- let near=$('#optimizerChatgptActionStatus');
- if(!near&&button){
-  near=document.createElement('div');near.id='optimizerChatgptActionStatus';
-  near.setAttribute('role','status');
-  near.style.cssText='grid-column:1/-1;flex-basis:100%;width:100%;box-sizing:border-box;margin:8px 0;padding:10px;border-radius:8px;background:#eaf2ff;color:#18355e;font-size:14px;font-weight:600;line-height:1.5;white-space:normal;overflow-wrap:anywhere';
-  button.insertAdjacentElement('afterend',near);
- }
- const notify=message=>{if(status)status.textContent=message;if(near)near.textContent=message;};
- if(!w||!optimizerImagesSameSku(w)){notify('Selecione uma SKU válida antes de gerar as imagens.');return;}
- if(button.disabled)return;
- button.disabled=true;
+$('#optimizerChatgptStartOver')?.addEventListener?.('click',()=>void optimizerChatgptStartOver());
+$('#optimizerChatgptRestartAll')?.addEventListener?.('click',()=>void optimizerChatgptStartOver());
+async function optimizerChatgptStartOver(){
+ const w=optimizerWorkflowPlan,button=$('#optimizerChatgptStartOver');
+ const notify=message=>{optimizerChatBridgeNotice(message);optimizerCommercialActionMessage(message);};
+ if(!w||!optimizerImagesSameSku(w)){notify('Abra a etapa Imagens da SKU que deseja reiniciar.');return {ok:false};}
+ if(optimizerChatgptResetBusy)return {ok:false,error:'Reinício já em andamento.'};
+ // Invalidar consultas anteriores antes de qualquer await: elas não podem reativar a SKU antiga.
+ const epoch=++optimizerChatgptCommandEpoch;
+ const current=()=>epoch===optimizerChatgptCommandEpoch&&optimizerImagesSameSku(w);
+ optimizerChatgptResetBusy=true;optimizerChatgptContinueBusy=false;
+ if(button)button.disabled=true;
  try{
-  optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady){
-   window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
-   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.26 e recarregue o Chrome.');
-  }
-  // Validate the original photo and the 9 scene prompts before mutating anything.
+  if(!await optimizerChatBridgeWaitReady())throw Error('Ative a Ponte ChatGPT e recarregue o Manager.');
   const brief=await optimizerChatgptMakeBrief(w);
-  await optimizerRequireThirdChatgptDimensions(w,brief);
-  if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Fotografia oficial do Item ID ou roteiro de 9 imagens indisponível. Nenhuma imagem preparada será apagada.');
-  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a preparação.');
-  const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
-  if(!optimizerImagesSameSku(w))throw Error('A SKU foi alterada.');
-  const slots=(current.images||[]).map(row=>Number(row.slot)).filter(slot=>Number.isInteger(slot)&&slot>=1&&slot<=9);
-  if(slots.length&&!confirm('Iniciar as 9 imagens desde 01/09 para a SKU '+w.sku+'? As '+slots.length+' imagens comerciais atualmente preparadas serão substituídas. As fotos originais da Shopee permanecem intactas.'))return;
-  notify('Iniciando nova sequência da SKU '+w.sku+' desde 01/09...');
-  // Stop old queue and extension before deleting staged assets.
-  await optimizerChatBridgeRelease('Encerrando tarefa anterior para iniciar desde a imagem 01.');
+  if(!current())return {ok:false};
+  if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Foto oficial ou roteiro indisponível.');
+  const deferredSlots=await optimizerChatgptDeferredSlots(w,brief,[1,2,3,4,5,6,7,8,9]);
+  optimizerBridgeRequireDeferredSupport(deferredSlots);
+  const key={sku:w.sku,item_id:w.itemId,model_id:w.modelId};
+  const before=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams(key));
+  if(!current())return {ok:false};
+  const slots=[...new Set((before.images||[]).map(row=>Number(row.slot)).filter(n=>Number.isInteger(n)&&n>=1&&n<=9))];
+  if(!confirm('Começar do zero a geração da SKU '+w.sku+'?'+
+    (slots.length?' As '+slots.length+' imagens comerciais preparadas desta SKU serão removidas.':' A geração começa na imagem 01.')+
+    ' Fotos de outras SKUs e fotos publicadas na Shopee serão mantidas.'+
+    (deferredSlots.length?' A imagem 03 ficará pendente de medidas; as demais serão geradas.':'')))return {ok:false,cancelled:true};
+  await optimizerChatBridgeSwitchSku(w.sku);
+  await optimizerChatBridgeRelease('Encerrando a geração anterior para começar do zero na SKU '+w.sku+'.');
+  if(!current())return {ok:false};
   optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
   optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
   optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
-  sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);
-  sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
+  sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
   for(const slot of slots){
-   if(!optimizerImagesSameSku(w))throw Error('SKU alterada durante a limpeza.');
-   const result=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot}),{method:'DELETE'});
-   if(result.deleted!==true)throw Error('Não foi possível limpar a posição '+slot+'. Nova geração não iniciada.');
+   if(!current())throw Error('SKU alterada durante o reinício.');
+   const result=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({...key,slot}),{method:'DELETE'});
+   if(result.deleted!==true)throw Error('Não foi possível limpar a posição '+slot+'.');
   }
-  const after=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
-  if((after.images||[]).length)throw Error('O servidor ainda possui imagens comerciais anteriores. Nova geração não iniciada.');
+  const after=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams(key));
+  if(!current())return {ok:false};
+  if((after.images||[]).length)throw Error('Ainda há imagens anteriores no servidor. Confira a galeria antes de tentar novamente.');
   optimizerImagesSavedSlots.clear();optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
-  optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
-  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
-  optimizerChatBridgeRemember(w);
+  optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerExecReset();
+  const nonce=crypto.randomUUID();optimizerChatBridgeNonce=nonce;optimizerChatBridgeSku=w.sku;
+  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,nonce);
+  optimizerChatBridgeRemember(w,[1,2,3,4,5,6,7,8,9].filter(slot=>!deferredSlots.includes(slot)));
   optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
   $('#optimizerChatgptAbort').hidden=false;
-  notify('Enviando imagem 01/09 da SKU '+w.sku+' à extensão. A próxima começará após confirmação da importação.');
+  const ack=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',nonce,18000);
   window.postMessage({kind:'RA_SITE_START',payload:{
-   nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-   imageUrl:brief.bridgeOriginal,prompts:brief.prompts,completed:[],
-   // Reinício TOTAL da posição 01 autoriza invalidar o nonce anterior da mesma SKU.
-   restart:true
+   nonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+   imageUrl:brief.bridgeOriginal,prompts:brief.prompts,completed:[],deferredSlots,restart:true
   }},location.origin);
-  const issuedNonce=optimizerChatBridgeNonce;
-  setTimeout(()=>{
-   if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
-    void optimizerChatBridgeRelease('Extensão não confirmou o início da sequência 01/09. Atualize ou reative a Ponte ChatGPT e tente novamente.');
-    notify('A extensão não confirmou o comando. Nenhuma imagem foi gerada nesta tentativa; as fotos originais da Shopee foram preservadas.');
-   }
-  },8000);
+  const result=await ack;
+  if(!current())return {ok:false};
+  if(!result.ok)throw Error(result.error||'A Ponte não confirmou o reinício.');
+  notify('Nova sequência confirmada para a SKU '+w.sku+', começando em 01/09.'+
+   (deferredSlots.length?' Imagem 03 pendente de medidas; as outras oito seguem normalmente.':''));
   void optimizerImagesLoad();
- }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;notify('Falha ao iniciar a imagem 01/09: '+e.message);}
- finally{button.disabled=false;}
-});
+  return {ok:true,nonce,sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),slot:1};
+ }catch(error){
+  if(current()){
+   await optimizerChatBridgeRelease('Reinício não confirmado: '+String(error.message||error));
+   notify('Não foi possível começar do zero: '+String(error.message||error));
+   void optimizerImagesLoad();
+  }
+  return {ok:false,error:String(error.message||error)};
+ }finally{
+  optimizerChatgptResetBusy=false;if(button)button.disabled=false;
+  if(epoch===optimizerChatgptCommandEpoch){const auto=$('#optimizerChatgptAuto');if(auto)auto.disabled=false;}
+ }
+}
 // Recuperação não destrutiva: posições já confirmadas continuam no servidor.
 function optimizerBridgeRecoverFromExtension(payload){
  const requestId=crypto.randomUUID();
@@ -12857,16 +12886,16 @@ function optimizerBridgeSkuHasRunningJob(error){
 // Ao pedir NOVA imagem 03, primeiro perguntar à extensão pelo nonce REAL
 // da sessão da mesma SKU. Só esse nonce pode ser encerrado; um nonce local
 // já substituído não libera uma execução remota. Nunca tocar nos arquivos.
-async function optimizerBridgeRetireSameSkuForNewThird(w,brief,savedSlots=[]){
+async function optimizerBridgeRetireSameSkuForNewThird(w,brief,savedSlots=[],isCurrent=()=>true){
  const payload={
   sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
   completed:[...new Set(savedSlots.filter(n=>Number.isInteger(n)&&n>=1&&n<=9))],
   imageUrl:brief.bridgeOriginal,prompts:brief.prompts
  };
  for(let attempt=0;attempt<4;attempt++){
-  if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a reconciliação da Ponte.');
+  if(!isCurrent()||!optimizerImagesSameSku(w))throw Error('SKU mudou durante a reconciliação da Ponte.');
   const result=await optimizerBridgeRecoverFromExtension(payload);
-  if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a verificação da sessão.');
+  if(!isCurrent()||!optimizerImagesSameSku(w))throw Error('SKU mudou durante a verificação da sessão.');
   if(['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(result?.reason))return;
   if(!result?.ok||typeof result.nonce!=='string'||!result.nonce){
    if(optimizerBridgeSkuHasRunningJob(result?.error))
@@ -12902,6 +12931,8 @@ function optimizerWaitBridgeReply(kind,nonce,timeoutMs=18000){
 }
 async function optimizerChatgptContinueFromServer(){
  const w=optimizerWorkflowPlan,button=$('#optimizerChatgptAuto');
+ const epoch=optimizerChatgptCommandEpoch;
+ const current=()=>epoch===optimizerChatgptCommandEpoch&&optimizerImagesSameSku(w);
  const status=$('#optimizerChatgptBridgeStatus');
  let near=$('#optimizerChatgptActionStatus');
  if(!near&&button){
@@ -12913,12 +12944,13 @@ async function optimizerChatgptContinueFromServer(){
   button.insertAdjacentElement('afterend',near);
  }
  const notify=(message,isError=false)=>{
+  if(epoch!==optimizerChatgptCommandEpoch)return;
   if(status)status.textContent=message;
   if(near){near.textContent=message;near.style.background=isError?'#fff1ef':'#eaf2ff';near.style.color=isError?'#a02a21':'#18355e';}
  };
  notify('Consultando a primeira posição pendente diretamente no servidor...');
- if(!w||!optimizerImagesSameSku(w)){notify('Abra a etapa Imagens de uma SKU válida antes de continuar.',true);return;}
- if(!button||optimizerChatgptContinueBusy||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
+ if(!w||!current()){notify('Abra a etapa Imagens de uma SKU válida antes de continuar.',true);return;}
+ if(!button||optimizerChatgptResetBusy||optimizerChatgptContinueBusy||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
  optimizerChatgptContinueBusy=true;button.disabled=true;
  try{
   // Gerar/continuar retoma a primeira posição pendente NO CHATGPT.
@@ -12931,7 +12963,7 @@ async function optimizerChatgptContinueFromServer(){
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Foto oficial da Shopee do Item ID atual ou os nove roteiros não estão disponíveis. As fotos comerciais já salvas continuam intactas.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
-  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
+  if(!current())throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
   const allMissing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
   if(!allMissing.length){
@@ -12946,20 +12978,20 @@ async function optimizerChatgptContinueFromServer(){
    const message='9/9 imagens já preparadas para esta SKU. Para outro produto, selecione a nova SKU. Para refazer esta, use Começar do zero.';
    notify(message);return {ok:false,error:message};
   }
-  // Só informar como concluídas as posições realmente salvas no servidor.
-  // Marcar 03 como concluída para contorná-la fazia a Ponte saltar para 04.
-  if(allMissing.includes(3)){
-   const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
-   notify('Dimensões da imagem 03 conferidas: '+confirmed.map(x=>x.label+' '+x.value).join(' · ')+'.');
+  const deferredSlots=await optimizerChatgptDeferredSlots(w,brief,allMissing);
+  if(!current())return {ok:false};
+  const missing=allMissing.filter(slot=>!deferredSlots.includes(slot));
+  if(!missing.length){
+   notify('8/9 imagens salvas. Apenas a imagem 03 aguarda medidas confirmadas na Etapa 01. Outras SKUs podem ser iniciadas normalmente.');
+   return {ok:false,reason:'DIMENSIONS_PENDING'};
   }
-  const missing=allMissing;
+  optimizerBridgeRequireDeferredSupport(deferredSlots);
   const bridgeCompleted=stored;
-   // A Ponte 1.0.59 só aceita restart total com zero posições e imagem 01.
-   // Uma retomada 02/09, 03/09 etc. jamais deve fingir ser reinício completo.
-   const fullStartFromZero=bridgeCompleted.length===0&&missing.length===9&&missing[0]===1;
+  const fullStartFromZero=bridgeCompleted.length===0&&missing[0]===1;
   const first=String(missing[0]).padStart(2,'0');
   const preparedThirdReference=Number(missing[0])===3?
    await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
+  if(!current())return {ok:false};
   const pausedDirty=optimizerBridgeChatPauseState();
   const resumeDirty=Boolean(pausedDirty&&optimizerChatBridgeIdentity(pausedDirty,w));
   // A Ponte >=1.0.64 substitui exclusivamente a sessão que comprovou
@@ -12989,6 +13021,7 @@ async function optimizerChatgptContinueFromServer(){
    if(pendingUploads)notify('Recuperando '+pendingUploads+' arquivo(s) capturado(s) antes de continuar na imagem '+first+'/09.');
   }
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
+  if(!current())return {ok:false};
   const refs=brief.referenceCandidates; // Somente CDNs oficiais Shopee, jamais WeDrop.
   let referenceIndex=0,referenceUrl=refs[0],recovered=null;
   if(resumeDirty&&(supportsDirtyRecovery||optimizerChatgptCleanChatAuthorized)){
@@ -13006,7 +13039,7 @@ async function optimizerChatgptContinueFromServer(){
    // Antes de um START novo, consultar a extensão, recuperar seu nonce real
    // e finalizar SOMENTE a execução anterior desta SKU, caso ela exista.
    // Nenhuma foto no servidor é excluída, nem se retoma um prompt antigo.
-   await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored,current);
    recovered={reason:'NO_RECOVERABLE_JOB'};
    notify('Imagem 03/09: sessão anterior da Ponte reconciliada. Criando NOVO comando com cotas WeDrop verificadas, preservando '+stored.length+'/9 imagens.');
   }else{
@@ -13016,18 +13049,20 @@ async function optimizerChatgptContinueFromServer(){
     referenceIndex=i;referenceUrl=refs[i];
     recovered=await optimizerBridgeRecoverFromExtension({
      sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
-     completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief.prompts
+     completed:bridgeCompleted,imageUrl:referenceUrl,prompts:brief.prompts,deferredSlots
     });
+    if(!current())return {ok:false};
     if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
        !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
     notify('Referência '+(i+1)+' não foi aceita pela Ponte. Testando outra foto/CDN oficial do mesmo Item ID sem remover imagens salvas...');
    }
   }
-  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
+  if(!current())throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
   if(recovered.ok){
    // Só encerrar uma sessão anterior se seu nonce NÃO for o recuperado.
    if(optimizerChatBridgeJob?.nonce&&optimizerChatBridgeJob.nonce!==recovered.nonce)
     await optimizerChatBridgeRelease('Sessão antiga substituída pela reconciliação.');
+   if(!current())return {ok:false};
    optimizerChatBridgeNonce=recovered.nonce;optimizerChatBridgeSku=w.sku;
    sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
    optimizerChatBridgeRemember(w,missing);
@@ -13038,11 +13073,13 @@ async function optimizerChatgptContinueFromServer(){
    const wakeAck=optimizerWaitBridgeReply('RA_EXTENSION_WAKE_RESULT',optimizerChatBridgeNonce,18000);
    window.postMessage({kind:'RA_SITE_WAKE',nonce:optimizerChatBridgeNonce},location.origin);
    const wakeResult=await wakeAck;
+   if(!current())return {ok:false};
    if(!wakeResult?.ok)throw Error('A Ponte não confirmou a reativação: '+(wakeResult?.error||'sem confirmação'));
   }else if(recovered.reason==='NO_RECOVERABLE_JOB'||recovered.reason==='ALREADY_COMPLETE'){
    // Sem job recuperável na extensão: novo trabalho começando na primeira vaga
    // do servidor, sem restart total nem remoção dos arquivos já salvos.
    if(optimizerChatBridgeJob)await optimizerChatBridgeRelease('Sessão antiga encerrada; fotos já salvas preservadas.');
+   if(!current())return {ok:false};
    optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
    optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
    sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);
@@ -13060,15 +13097,17 @@ async function optimizerChatgptContinueFromServer(){
     const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-     imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+     imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,deferredSlots,
      referenceDataUrl:preparedThirdReference,restart:fullStartFromZero,
-      replaceDirtyChat:dirtyReplace
+      replaceDirtyChat:dirtyReplace&&!fullStartFromZero
     }},location.origin);
     startResult=await startAck;
+    if(!current())return {ok:false};
     if(startResult?.ok){if(dirtyReplace)optimizerBridgeChatPauseClear();break;}
     if(optimizerBridgeSkuHasRunningJob(startResult?.error)){
      await optimizerChatBridgeRelease('Ponte ainda tem execução ativa: conciliando nonce antes da nova imagem 03.');
-     await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
+     await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored,current);
+     if(!current())return {ok:false};
      // Novo comando apenas UMA vez; não deixar um clique virar loop infinito.
      optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
      sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
@@ -13077,11 +13116,12 @@ async function optimizerChatgptContinueFromServer(){
      const secondAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,
+      imageUrl:referenceUrl,prompts:brief.prompts,completed:bridgeCompleted,deferredSlots,
       referenceDataUrl:preparedThirdReference,restart:fullStartFromZero,
-      replaceDirtyChat:dirtyReplace
+      replaceDirtyChat:dirtyReplace&&!fullStartFromZero
      }},location.origin);
      startResult=await secondAck;
+     if(!current())return {ok:false};
      if(startResult?.ok){if(dirtyReplace)optimizerBridgeChatPauseClear();break;}
      throw Error('A Ponte ainda está ocupada na SKU '+w.sku+
       '. Abra o ícone da extensão, use Parar na tarefa anterior e depois Gerar 03. As imagens 01 e 02 foram preservadas. '+String(startResult?.error||'').slice(0,180));
@@ -13100,14 +13140,16 @@ async function optimizerChatgptContinueFromServer(){
   }else{
    throw Error(recovered.error||'Não foi possível recuperar o estado da extensão.');
   }
+  if(deferredSlots.length)notify('Geração confirmada para a SKU '+w.sku+'. A imagem 03 aguarda medidas; as demais continuam. '+stored.length+'/9 salvas.');
   void optimizerImagesLoad();
   // Só confirmar à Ponte APÓS reconciliação da sessão e solicitação de wake.
   return {ok:true,nonce:optimizerChatBridgeNonce,sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),slot:missing[0]};
  }catch(e){
+  if(!current())return {ok:false,error:'Comando anterior substituído.'};
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto salva foi apagada.',true);
   return {ok:false,error:String(e.message||e)};
- }finally{optimizerChatgptContinueBusy=false;if(button)button.disabled=false;}
+ }finally{if(epoch===optimizerChatgptCommandEpoch){optimizerChatgptContinueBusy=false;if(button)button.disabled=false;}}
 }
 // O coordenador da extensão espera um resultado REAL, não apenas button.click().
 // Expor somente a mesma ação de interface após conferir SKU/item/modelo ativos.
@@ -13742,16 +13784,17 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
- let count=0,errorMessage='';
+ let count=0,errorMessage='',dimensionPending=false;
  try{
   // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
   for(let slot=1;slot<=9;slot++){
    if(optimizerImagesStopRequested||!optimizerImagesSameSku(w))break;
    if(optimizerImagesSavedSlots.has(slot))continue;
    if(slot===3){
-    const verified=await optimizerVerifiedDimensionSpec(w);
-    if((verified?.measurements?.length||0)<2)
-     throw Error('Imagem 03 pendente de dimensões WeDrop confirmadas. Confira as medidas na Etapa 01 para continuar a partir da imagem 03.');
+    let verified=null;
+    try{verified=await optimizerVerifiedDimensionSpec(w);}catch{}
+    if(!optimizerImagesSameSku(w))break;
+    if((verified?.measurements?.length||0)<2){dimensionPending=true;continue;}
    }
    status.textContent='OpenAI gerando imagem '+slot+' de 9. '+optimizerImagesSavedSlots.size+'/9 concluídas. Não feche o anúncio.';
    await optimizerImagesGenerateSlot(w,slot,false);
@@ -13772,7 +13815,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSameSku(w)){
    status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
     :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
-    :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
+    :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas.'+(dimensionPending?' Imagem 03 pendente de medidas; as demais foram processadas.':' Use Gerar / retomar quando quiser.');
   }
  }
 });

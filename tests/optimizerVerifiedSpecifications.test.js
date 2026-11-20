@@ -253,8 +253,8 @@ test('geração do slot 03 verifica as cotas da SKU antes de enviar comando à P
  assert.match(single,/if\(slot===3\)\{\s*const measurements=await optimizerRequireThirdChatgptDimensions\(w,brief\)/);
  const continu=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer('),
   app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE'));
- assert.match(continu,/if\(allMissing\.includes\(3\)\)/);
- assert.match(continu,/await optimizerRequireThirdChatgptDimensions\(w,brief\)/);
+ assert.match(continu,/await optimizerChatgptDeferredSlots\(w,brief,allMissing\)/);
+ assert.match(continu,/allMissing\.filter\(slot=>!deferredSlots\.includes\(slot\)\)/);
  const card=app.slice(app.indexOf('let importThirdButton=null,thirdFallbackButton=null'),
   app.indexOf("const adjust=optimizerMake('button'",app.indexOf('let importThirdButton=null,thirdFallbackButton=null')));
  assert.match(card,/measureButton=null/);

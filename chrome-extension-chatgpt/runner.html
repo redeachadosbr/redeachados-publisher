@@ -1,0 +1,34 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Rede Achados BR — Geração de 9 imagens</title>
+<style>body{font:15px system-ui,sans-serif;padding:28px;background:#f5f8fc;color:#173454;max-width:780px;margin:auto}article{background:white;border:1px solid #d5e2ef;padding:24px;border-radius:16px;box-shadow:0 6px 25px #abc3db24}h1{font-size:24px}#status{background:#eff6ff;padding:14px;border-radius:8px;white-space:pre-wrap}button{background:#1253aa;color:white;padding:12px;border:0;border-radius:7px;cursor:pointer;margin-right:8px}small{color:#58758e}#progress{margin-top:18px} .repair{margin-top:16px;padding:14px;background:#fff9eb;border:1px solid #e9d3a4;border-radius:10px} .repair summary{cursor:pointer;font-weight:750;color:#6b4a16}.repair label{display:block;margin:9px 0} .repair select,.repair input{width:100%;padding:10px;border:1px solid #b8cadd;border-radius:7px;box-sizing:border-box} .repair button{margin-top:10px} .repair small{display:block;margin-top:8px}p{line-height:1.55} .choices{margin-top:16px;padding:15px;border:1px solid #aecce6;border-radius:12px;background:#f8fbff}
+.choices[hidden]{display:none}
+.choices h2{font-size:18px;margin:4px 0 7px}
+.choices p{margin:6px 0;color:#405a73}
+#candidateGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:12px 0}
+.candidate{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px;border:2px solid #d0dce7;border-radius:10px;background:white;cursor:pointer}
+.candidate:has(input:checked){border-color:#1554a5;background:#eaf3ff}
+.candidate img{display:block;width:100%;aspect-ratio:1;object-fit:contain;background:#edf2f7;border-radius:6px}
+.candidate .placeholder{width:100%;aspect-ratio:1;display:grid;place-items:center;background:#e4edf6;text-align:center;font-size:12px}
+.candidate small{overflow-wrap:anywhere}
+#confirmCandidate{background:#167343;font-weight:700}
+#choiceStatus{font-weight:650}
+.candidate button.candidate-remove{background:#a82e2e;font-size:13px;padding:9px}
+.candidate[data-reference="true"]{border-color:#cf9d55;background:#fff7eb}
+#discardAllCandidates{background:#ad4545}#restoreCandidates{background:#687989}
+#discardAllCandidates[hidden],#restoreCandidates[hidden]{display:none}
+
+</style>
+<article><h1>Rede Achados BR — ChatGPT · v<span id="bridgeVersion">1.0.65</span></h1><p>Esta aba coordena o ChatGPT para gerar cada imagem do anúncio individual ou KIT e importá-la na posição correta do Shopee Manager. Não publica o anúncio.</p>
+<p id="status">Iniciando…</p><p id="progress"></p><button id="resume">Retomar / escolher imagem pendente</button><button id="recoverReadyImage" type="button" hidden style="background:#167343">Recuperar e enviar automaticamente</button><button id="startOver" type="button" style="background:#87540d">↻ Começar do zero · SKU no Manager</button><button id="pause" style="background:#a32626">Parar automação</button><section id="choices" class="choices" hidden>
+<h2>Recuperação excepcional: mais de uma imagem</h2>
+<p id="choiceSubtitle">Selecione visualmente a foto correta do anúncio ou kit e confirme o envio. Nada será gerado novamente nesta etapa.</p>
+<div id="candidateGrid" role="radiogroup" aria-label="Imagens candidatas encontradas no ChatGPT"></div>
+<p id="choiceStatus" role="status"></p>
+<button id="confirmCandidate" type="button">Confirmar imagem e enviar ao Shopee Manager</button>
+<button id="reloadCandidates" type="button">Atualizar imagens encontradas</button>
+<button id="discardAllCandidates" type="button">Excluir todas desta lista</button>
+<button id="restoreCandidates" type="button">Restaurar opções excluídas</button>
+<small>Excluir retira a opção desta recuperação. Não remove imagens do ChatGPT e não apaga fotos já importadas no Shopee Manager.</small>
+<button id="openCandidateChat" type="button">Ver conversa no ChatGPT</button>
+</section>
+<details class="repair"><summary>Recuperação manual excepcional</summary><p>Use somente quando não houver vínculo comprovado com o pedido ou houver imagens diferentes na mesma resposta.</p><button id="manualRecovery" type="button">Conferir imagens da conversa</button></details>
+<button id="restartPending" type="button" hidden style="background:#90611e;margin-top:12px">↻ Recomeçar somente imagem pendente</button><p id="restartHint" hidden><small>As imagens confirmadas ficam preservadas. Se o ChatGPT já recebeu o pedido, confirme antes de gerar outra versão desta posição.</small></p><details id="repair" class="repair" hidden><summary>Recuperação excepcional da conversa · <span id="repairSku">SKU</span></summary><p>O envio foi preservado. Somente se a conversa original não puder ser identificada automaticamente, selecione a conversa correta ou informe seu link.</p><label>Conversa ChatGPT aberta<select id="chatChoice"><option value="">Selecionar conversa…</option></select></label><label>Ou cole o endereço da conversa (https://chatgpt.com/c/…) <input id="chatLink" type="url" placeholder="https://chatgpt.com/c/..." autocomplete="off"></label><button id="refreshChats" type="button">Atualizar conversas</button><button id="associateChat" type="button">Vincular e recuperar imagem existente</button><small>Confira a SKU antes de vincular. Não use conversas de outros anúncios. O envio não publica a foto na Shopee.</small></details><p><small>Uma execução por vez, uma imagem por vez. A próxima posição começa somente após o Manager confirmar o recebimento. Pausar interrompe a automação; um pedido já enviado pode continuar no ChatGPT. Após 9/9, esta aba permanece disponível para a próxima SKU.</small></p></article><script src="state.js"></script><script src="image-safety.js"></script><script src="flow-policy.js"></script><script src="scene-rules.js"></script><script src="runner.js"></script></html>

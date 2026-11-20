@@ -83,3 +83,6 @@ ENV NODE_ENV=production
 EXPOSE 10000
 CMD ["npm","start"]
 
+
+# Ponte: reinício isolado por SKU e imagem 03 pendente sem bloquear a sequência.
+RUN node --check chrome-extension-chatgpt/background.js && node --check chrome-extension-chatgpt/runner.js && node --check chrome-extension-chatgpt/flow-policy.js && node --test tests/bridgeStartOverAndDeferred.test.js
