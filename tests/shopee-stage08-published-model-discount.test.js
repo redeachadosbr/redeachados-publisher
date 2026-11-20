@@ -144,3 +144,18 @@ test('modal abre prévia segura por variação, sem executar desconto de item ú
  assert.match(server,/else if\(live\.has_model===true&&/);
  assert.match(server,/verifyModelDiscountReadback\(\{options,models,prices/);
 });
+
+test('botão EXECUTAR executa prévia assinada e POST de desconto por modelo em um único comando',()=>{
+ const start=app.indexOf('async function optimizerExecuteModelDiscountOneClick(');
+ const end=app.indexOf('RAExecutionPrimaryAction=async(',start);
+ assert.ok(start>0&&end>start);
+ const segment=app.slice(start,end);
+ assert.match(segment,/variants-discount\\/preview/);
+ assert.match(segment,/variants-discount\\/execute/);
+ assert.match(segment,/approvalToken:data\\.approvalToken,confirm:true/);
+ assert.match(segment,/optimizerModelOneClickUncertainKey=operationKey/);
+ assert.match(segment,/applied\\.verified!==true/);
+ assert.match(segment,/optimizerRootAuditRefresh\\(true,true\\)/);
+ assert.doesNotMatch(segment,/update_price|update_item|update_stock|init_tier_variation/);
+ assert.match(app,/await optimizerExecuteModelDiscountOneClick\\(w,campaign\\)/);
+});

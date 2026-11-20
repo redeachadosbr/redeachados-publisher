@@ -7904,7 +7904,106 @@ globalThis.RAExecutionCurrentStatus=()=>({
   discount:Number(optimizerDiscountFinalQuote.discountPct)
  }:null
 });
-globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
+globalThis.// O botão "EXECUTAR NA SHOPEE" autoriza uma única tentativa da promoção
+// POR MODELO, com leitura -> prévia assinada -> POST -> readback.
+// Não enviar anúncios-pai, mídia, estoque nem repetir em resposta incerta.
+let optimizerModelOneClickInFlight=false,optimizerModelOneClickUncertainKey='';
+async function optimizerExecuteModelDiscountOneClick(w,campaign){
+ const key=optimizerDiscountFinalIdentityOf(w),operationKey=key+'|'+campaign;
+ const stillCurrent=()=>optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)===key&&
+  String($('#optimizerExecDiscountCampaign')?.value||'').trim()===campaign;
+ const say=(message,level='info')=>{
+  if(stillCurrent()){
+   optimizerDiscountFinalStatus(message,level);
+   optimizerExecNotice(message,level);
+   finalDiscountNotice(message,level==='error'?'warning':level);
+  }
+ };
+ if(optimizerModelOneClickInFlight)return;
+ if(optimizerModelOneClickUncertainKey===operationKey){
+  say('A tentativa anterior não teve confirmação conclusiva. Confira a campanha na Shopee antes de autorizar outro envio.','warning');
+  return;
+ }
+ if(!/^\\d{1,18}$/.test(campaign)){
+  say('Informe a campanha Minha Promoção antes de executar as três cores.','warning');return;
+ }
+ optimizerModelOneClickInFlight=true;
+ try{
+  say('Conferindo as três cores, os custos WeDrop e os preços aprovados. Nenhuma alteração enviada.','info');
+  const response=await fetch('/api/shopee/optimizer/variants-discount/preview',{
+   method:'POST',credentials:'same-origin',cache:'no-store',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign}),
+   signal:AbortSignal.timeout(90000)
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.ok!==true)
+   throw Error('A prévia das variações foi recusada: '+String(data.error||'HTTP '+response.status));
+  if(!stillCurrent())return;
+  const p=data.preview||{};
+  const options=Array.isArray(p.models)?p.models:[];
+  if(p.itemId!==String(w.itemId)||p.sku!==w.sku||p.discountId!==campaign||
+     options.length!==3||new Set(options.map(m=>String(m.modelId))).size!==3||
+     options.some(m=>!m.modelId||!Number.isFinite(Number(m.promo))||
+      !(Number(m.profit)>0)||!(Number(m.margin)>=Math.max(8,Number(p.minMarginPct)||8))))
+   throw Error('A prévia não comprovou as três variações e margens esperadas. Nenhum desconto foi enviado.');
+  // Não reaproveitar a prévia de outra campanha ou recálculo.
+  const quote=optimizerDiscountFinalQuote;
+  if(quote&&p.quoteAt!==String(quote.calculatedAt||''))
+   throw Error('A cotação mudou durante a conferência. Atualize a etapa 8 antes de executar.');
+  const summary=options.map(m=>m.name+' R$ '+Number(m.promo).toFixed(2).replace('.',',')).join(' · ');
+  if(p.action==='already'){
+   optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:p.quoteAt,verifiedAt:Date.now()};
+   optimizerDiscountFinalSent=true;
+   optimizerModelOneClickUncertainKey='';
+   optimizerDiscountFinalPaint();
+   say('✓ A Shopee já confirmou o desconto das três variações: '+summary+'. Nenhum reenvio.','success');
+   optimizerRootAuditCache.delete(key);
+   await optimizerRootAuditRefresh(true,true);
+   return;
+  }
+  if(!data.approvalToken||!['add','update'].includes(p.action))
+   throw Error('A Shopee não devolveu autorização válida para a promoção.');
+  say('Prévia segura validada. Aplicando SOMENTE o desconto das três cores: '+summary,'info');
+  const confirmResponse=await fetch('/api/shopee/optimizer/variants-discount/execute',{
+   method:'POST',credentials:'same-origin',cache:'no-store',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+    discountId:campaign,approvalToken:data.approvalToken,confirm:true}),
+   signal:AbortSignal.timeout(120000)
+  });
+  const applied=await confirmResponse.json().catch(()=>({}));
+  if(!stillCurrent())return;
+  if(applied.uncertain===true||applied.status==='confirmation_pending'){
+   optimizerModelOneClickUncertainKey=operationKey;
+   say('A Shopee recebeu o envio, mas ainda não confirmou as três cores. Não haverá reenvio automático. '+String(applied.error||applied.message||''),'warning');
+   await optimizerRootAuditRefresh(true,true);return;
+  }
+  if(!confirmResponse.ok||applied.ok!==true)
+   throw Error(String(applied.error||'A Shopee recusou a aplicação do desconto.'));
+  if(applied.verified!==true){
+   optimizerModelOneClickUncertainKey=operationKey;
+   say('Resposta recebida, mas falta comprovar os três descontos na campanha. Sem repetir o envio.','warning');
+   await optimizerRootAuditRefresh(true,true);return;
+  }
+  optimizerModelOneClickUncertainKey='';
+  optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:p.quoteAt,verifiedAt:Date.now()};
+  optimizerDiscountFinalSent=true;
+  optimizerDiscountFinalPaint();
+  say('✓ Desconto PUBLICADO e confirmado pela API Shopee para Vermelha, Azul e Preta. '+summary,'success');
+  optimizerRootAuditCache.delete(key);
+  await optimizerRootAuditRefresh(true,true);
+ }catch(error){
+  const uncertain=error?.name==='TimeoutError'||error?.name==='AbortError'||/Failed to fetch|NetworkError/i.test(String(error?.message||''));
+  if(uncertain)optimizerModelOneClickUncertainKey=operationKey;
+  say('Etapa 08 não concluída: '+String(error.message||error)+
+   (uncertain?' O resultado da escrita pode ser incerto; nenhum reenvio automático.':' Nenhum reenvio das outras etapas.'),'warning');
+ }finally{
+  optimizerModelOneClickInFlight=false;
+  globalThis.RAExecutionDialog?.refresh?.();
+ }
+}
+RAExecutionPrimaryAction=async(onlyStage=null)=>{
  const w=optimizerWorkflowPlan;
  if(!w||optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
  const identity=[w.sku,String(w.itemId),String(w.modelId||0)].join('|');
@@ -8038,19 +8137,20 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
   // A ação principal para um anúncio com modelos não pode cair no executor
   // de item único: abrir a prévia POR MODELO e preservar as sete etapas.
   if(one?.id==='discount'&&w.variationConfig?.enabled===true){
-   globalThis.RAExecutionDialog?.close?.();
-   optimizerDiscountOpenReview();
-   if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
-   if(!same())return;
-   const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
+   // Este clique é EXECUÇÃO, não apenas conferência: aplicar desconto dos
+   // três modelos com prévia assinada e leitura posterior na mesma chamada.
+   const campaign=String($('#optimizerExecDiscountCampaign')?.value||
+     $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||'').trim();
    if(!/^\d{1,18}$/.test(campaign)){
-    optimizerDiscountFinalStatus('Informe o ID da campanha Minha Promoção para conferir o desconto das três cores.','warning');
+    globalThis.RAExecutionDialog?.close?.();
+    optimizerDiscountOpenReview();
+    optimizerDiscountFinalStatus('Informe a campanha Minha Promoção. Nenhum desconto foi enviado.','warning');
     return;
    }
-   if(!optimizerModelDiscountState(w,optimizerDiscountFinalQuote,campaign).verified){
-    optimizerDiscountFinalSent=false;
-    await optimizerDiscountFinalPrepare();
-   }else await optimizerRootAuditRefresh(true,true);
+   $('#optimizerExecDiscountCampaign').value=campaign;
+   globalThis.RAExecutionDialog?.close?.();
+   optimizerDiscountOpenReview();
+   await optimizerExecuteModelDiscountOneClick(w,campaign);
    return;
   }
   const scope=$('#optimizerExecutionScope');
