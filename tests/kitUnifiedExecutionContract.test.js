@@ -391,7 +391,7 @@ test('previa do kit confere etapa 08 sem sinalizar aplicacao na Shopee',()=>{
  assert.match(app,/const prepared=Boolean\(same\(preview\)&&preview\.status==='prepared'/);
  assert.match(app,/kitDiscountReviewed=kitMode&&optimizerKitDiscountReviewState\(data\)\.prepared/);
  assert.match(app,/optimizerKitDiscountReviewState\(w\)\.prepared/);
- assert.match(app,/const reviewed=kit\?prepared:matching&&optimizerDiscountApprovalReady\(\)/);
+ assert.match(app,/const reviewed=kit\?prepared:matching&&\(model\.reviewed\|\|optimizerDiscountApprovalReady\(\)\)/);
  assert.match(app,/card\.classList\.toggle\('optimizer-workflow-reviewed',Boolean\(sent\|\|reviewed\)\)/);
  assert.match(app,/prepared\?'✓ Conferência registrada · ainda não publicado'/);
  assert.match(existing,/reviewSaved:result\.reviewSaved===true,preview:result/);
