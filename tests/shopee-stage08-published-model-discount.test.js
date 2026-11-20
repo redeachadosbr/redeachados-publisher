@@ -145,17 +145,18 @@ test('modal abre prévia segura por variação, sem executar desconto de item ú
  assert.match(server,/verifyModelDiscountReadback\(\{options,models,prices/);
 });
 
-test('botão EXECUTAR executa prévia assinada e POST de desconto por modelo em um único comando',()=>{
+test('botão EXECUTAR passa da prévia assinada ao endpoint de publicação por modelos',()=>{
  const start=app.indexOf('async function optimizerExecuteModelDiscountOneClick(');
  const end=app.indexOf('RAExecutionPrimaryAction=async(',start);
  assert.ok(start>0&&end>start);
  const segment=app.slice(start,end);
- assert.match(segment,/variants-discount\\/preview/);
- assert.match(segment,/variants-discount\\/execute/);
- assert.match(segment,/approvalToken:data\\.approvalToken,confirm:true/);
- assert.match(segment,/optimizerModelOneClickUncertainKey=operationKey/);
- assert.match(segment,/applied\\.verified!==true/);
- assert.match(segment,/optimizerRootAuditRefresh\\(true,true\\)/);
+ assert.ok(segment.includes('/api/shopee/optimizer/variants-discount/preview'));
+ assert.ok(segment.includes('/api/shopee/optimizer/variants-discount/execute'));
+ assert.ok(segment.includes('approvalToken:data.approvalToken,confirm:true'));
+ assert.ok(segment.includes('optimizerModelOneClickUncertainKey=operationKey'));
+ assert.ok(segment.includes('applied.verified!==true'));
+ assert.ok(segment.includes('optimizerRootAuditRefresh(true,true)'));
  assert.doesNotMatch(segment,/update_price|update_item|update_stock|init_tier_variation/);
- assert.match(app,/await optimizerExecuteModelDiscountOneClick\\(w,campaign\\)/);
+ assert.ok(app.includes('await optimizerExecuteModelDiscountOneClick(w,campaign)'));
+ assert.ok(segment.includes('/^\\d{1,18}$/'));
 });
