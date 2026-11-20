@@ -170,7 +170,7 @@
   const modelId=String(data?.modelId??data?.selectedModelId??'0');
   if(!sku||!itemId)return Promise.reject(Error('Carregue a SKU antes de pesquisar títulos.'));
   return new Promise((resolve,reject)=>{
-   let done=false,started=false,startAckTimer=null,recoveryTimer=null,recoveryNonce='';
+   let done=false,started=false,startAckTimer=null,recoveryTimer=null,recoveryNonce='',noPendingTimer=null,autoRecoveryCapable=false,recoveryAfterIdle=false;
    // Se a mensagem de entrega foi perdida, consultar a resposta já guardada
    // na Ponte sem reabrir ChatGPT nem reiniciar pesquisas da SKU.
    const armRecovery=()=>{
@@ -180,7 +180,7 @@
      if(done)return;
      recoveryNonce=crypto.randomUUID();
      window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{
-      nonce:recoveryNonce,sku,itemId,modelId
+      nonce:recoveryNonce,sku,itemId,modelId,automatic:true
      }},ORIGIN);
      armRecovery();
     },8000);
@@ -189,6 +189,7 @@
     if(done)return;done=true;window.clearTimeout(timer);window.clearTimeout(probeTimer);
     window.clearTimeout(startAckTimer);
     window.clearTimeout(recoveryTimer);recoveryTimer=null;
+    window.clearTimeout(noPendingTimer);noPendingTimer=null;
     window.removeEventListener('message',listener);
     if(error)reject(error instanceof Error?error:Error(String(error)));
     else resolve(result);
@@ -201,7 +202,8 @@
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
       (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=46))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a Ponte 1.0.47 para abrir automaticamente a aba dos títulos. Sua SKU e o trabalho salvo permanecem intactos.'));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Atualize a Ponte para retomar os títulos automaticamente. Sua SKU e o trabalho salvo permanecem intactos.'));
+     autoRecoveryCapable=parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=66)));
      if(resumeOnly&&parts[0]===1&&parts[1]===0&&parts[2]<47)return finish(null,null);
      started=true;window.clearTimeout(probeTimer);
      startAckTimer=window.setTimeout(()=>finish(Error('A Ponte não confirmou a abertura dos títulos em 15 segundos. A aba do ChatGPT foi preservada; não é preciso refazer a SKU.')),15000);
@@ -212,12 +214,13 @@
     // Entrega de recuperação utiliza um nonce próprio, mas a identidade da
     // SKU, anúncio e variação deve continuar idêntica à pesquisa em andamento.
     if(m.kind==='RA_EXTENSION_SEO_RECOVER_RESULT'&&m.nonce===recoveryNonce){
-     if(m.ok!==true||!m.rawText)return;
+     if(m.ok!==true||!m.rawText){if(recoveryAfterIdle)finish(null,null);return;}
      if(String(m.sku)!==sku||String(m.itemId)!==itemId||String(m.modelId)!==modelId)return;
      try{
       const result=parse(m.rawText);
       finish(null,{...result,requestIdentity:{nonce:recoveryNonce,sku,itemId,modelId},recovered:true});
      }catch(error){
+      if(recoveryAfterIdle)return finish(error);
       try{onProgress('Resposta localizada, mas o JSON precisa de revisão: '+error.message);}catch{}
      }
      return;
@@ -226,7 +229,19 @@
     if(m.kind==='RA_EXTENSION_SEO_RESUME_RESULT'){
      window.clearTimeout(startAckTimer);
      if(m.ok!==true)return finish(Error(m.error||'Não foi possível retomar a pesquisa.'));
-     if(!m.pending)return finish(null,null);
+     if(!m.pending){
+      // Mesmo sem tarefa ativa, a Ponte 1.0.66 pode ter guardado a resposta
+      // pronta desta SKU. Consultar automaticamente uma vez, sem abrir aba.
+      if(!autoRecoveryCapable)return finish(null,null);
+      recoveryAfterIdle=true;
+      recoveryNonce=crypto.randomUUID();
+      window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{
+       nonce:recoveryNonce,sku,itemId,modelId,automatic:true
+      }},ORIGIN);
+      noPendingTimer=window.setTimeout(()=>finish(null,null),10000);
+      try{onProgress('Procurando resposta concluída desta SKU na Ponte, sem gerar outra pesquisa…');}catch{}
+      return;
+     }
      armRecovery();
      try{onProgress('Retomando a importação automática dos quatro títulos desta SKU…');}catch{}
      return;
