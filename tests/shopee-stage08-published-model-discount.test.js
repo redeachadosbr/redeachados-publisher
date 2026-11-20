@@ -32,6 +32,8 @@ function makeContext({data=state,success=true,withModels=true}={}){
   optimizerWorkflowPlan:product,optimizerExecPlan:null,
   optimizerFinalSnapshot:null,optimizerFinalSnapshotKey:'',
   optimizerDiscountFinalIdentityOf:w=>[w.sku,w.itemId,w.modelId].join('|'),
+  optimizerModelDiscountState:()=>({reviewed:false,verified:false}),
+  optimizerDiscountFinalQuote:{calculatedAt:'2026-11-19T23:00:00Z'},
   optimizerFinalPendingPaint:value=>views.push(value),
   optimizerWorkflowActivateOnly:view=>views.push(view),
   optimizerDiscountFinalStatus:(...args)=>messages.push(args),
