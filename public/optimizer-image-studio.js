@@ -17,6 +17,8 @@
  const gallery=panel.querySelector('.optimizer-commercial-gallery-section');
  const heading=main?.querySelector('.optimizer-commercial-heading');
  const chat=$('#optimizerChatgptAuto');
+ // Capturar antes de mover main para o painel avançado ainda desconectado.
+ const startOver=$('#optimizerChatgptStartOver'),bridgeDownload=$('#optimizerBridgeDownload');
  const select=$('#optimizerImageCorrectionSlot');
  const rework=aside?.querySelector('.optimizer-image-rework');
  if(!layout||!main||!aside||!gallery||!heading||!chat||!select||!rework)return;
@@ -59,7 +61,7 @@
  };
  toolbar.append(
   chat,
-  ...($('#optimizerChatgptStartOver')?[$('#optimizerChatgptStartOver')]:[]),
+  ...(startOver?[startOver]:[]),
   makeButton('▧ Gerar apenas a imagem selecionada','ra-toolbar-single',generateSingle),
   makeButton('☁ Importar imagens','ra-toolbar-import',()=>openExtra($('.optimizer-image-manual-fallback'))),
   makeButton('▣ Novas fotos na galeria','ra-toolbar-gallery',()=>{
@@ -67,7 +69,6 @@
   }),
   makeButton('ⓘ Ver regras','ra-toolbar-rules',()=>$('#optimizerCommercialShowRules')?.click())
  );
- const bridgeDownload=$('#optimizerBridgeDownload');
  if(bridgeDownload)toolbar.append(bridgeDownload);
  const workspace=el('div','ra-studio-workspace');
  const galleryColumn=el('div','ra-studio-gallery-column');
