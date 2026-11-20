@@ -23,7 +23,7 @@ function harness(){
  return {api:ctx.RASeoChatGPT,sent,last:kind=>sent.filter(m=>m.kind===kind).at(-1),
   receive:m=>{for(const fn of [...listeners])fn({source:win,origin:ORIGIN,data:m});},
   tick:ms=>{time+=ms;for(const [id,t] of [...scheduled])if(t.at<=time){scheduled.delete(id);t.fn();}},
-  ready(){this.receive({kind:'RA_EXTENSION_READY',version:'1.0.47'});}
+  ready(version='1.0.47'){this.receive({kind:'RA_EXTENSION_READY',version});}
  };
 }
 test('recupera automaticamente JSON retido após perda do evento de entrega SEO, sem recriar pesquisa',async()=>{
@@ -62,4 +62,42 @@ test('nunca mistura títulos de outra SKU na recuperação automática',async()=
  assert.equal(result.requestIdentity.sku,sku.sku);
  h.api.acknowledgeRecovery(result);
  assert.equal(h.last('RA_SITE_SEO_RECOVER_ACK').sku,sku.sku);
+});
+
+test('importa automaticamente resultado pronto mesmo sem job pendente na Ponte 1.0.66',async()=>{
+ const h=harness();const pending=h.api.resume(sku);
+ h.ready('1.0.66');
+ const resume=h.last('RA_SITE_SEO_RESUME').payload;
+ h.receive({kind:'RA_EXTENSION_SEO_RESUME_RESULT',nonce:resume.nonce,ok:true,pending:false});
+ const recovery=h.last('RA_SITE_SEO_RECOVER')?.payload;
+ assert.ok(recovery?.nonce);
+ assert.equal(recovery.automatic,true);
+ assert.equal(recovery.sku,sku.sku);
+ assert.equal(recovery.itemId,sku.itemId);
+ assert.equal(recovery.modelId,sku.modelId);
+ assert.equal(h.sent.filter(x=>x.kind==='RA_SITE_SEO_START').length,0);
+ h.receive({kind:'RA_EXTENSION_SEO_RECOVER_RESULT',...recovery,ok:true,rawText:raw});
+ const result=await pending;
+ assert.equal(result.recovered,true);
+ assert.equal(result.titles.length,4);
+ h.api.acknowledgeRecovery(result);
+ assert.equal(h.last('RA_SITE_SEO_RECOVER_ACK').nonce,recovery.nonce);
+});
+
+test('resposta ausente termina a tentativa silenciosa sem gerar novo título',async()=>{
+ const h=harness();const pending=h.api.resume(sku);h.ready('1.0.66');
+ const begin=h.last('RA_SITE_SEO_RESUME').payload;
+ h.receive({kind:'RA_EXTENSION_SEO_RESUME_RESULT',nonce:begin.nonce,ok:true,pending:false});
+ const recovery=h.last('RA_SITE_SEO_RECOVER').payload;
+ h.receive({kind:'RA_EXTENSION_SEO_RECOVER_RESULT',nonce:recovery.nonce,ok:false,error:'Nenhum resultado da SKU'});
+ assert.equal(await pending,null);
+ assert.equal(h.sent.filter(x=>x.kind==='RA_SITE_SEO_START').length,0);
+});
+
+test('Ponte anterior não inicia varredura silenciosa sem proteção por SKU',async()=>{
+ const h=harness();const pending=h.api.resume(sku);h.ready('1.0.65');
+ const begin=h.last('RA_SITE_SEO_RESUME').payload;
+ h.receive({kind:'RA_EXTENSION_SEO_RESUME_RESULT',nonce:begin.nonce,ok:true,pending:false});
+ assert.equal(await pending,null);
+ assert.equal(h.sent.filter(x=>x.kind==='RA_SITE_SEO_RECOVER').length,0);
 });
