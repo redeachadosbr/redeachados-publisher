@@ -170,10 +170,25 @@
   const modelId=String(data?.modelId??data?.selectedModelId??'0');
   if(!sku||!itemId)return Promise.reject(Error('Carregue a SKU antes de pesquisar títulos.'));
   return new Promise((resolve,reject)=>{
-   let done=false,started=false,startAckTimer=null;
+   let done=false,started=false,startAckTimer=null,recoveryTimer=null,recoveryNonce='';
+   // Se a mensagem de entrega foi perdida, consultar a resposta já guardada
+   // na Ponte sem reabrir ChatGPT nem reiniciar pesquisas da SKU.
+   const armRecovery=()=>{
+    if(done||recoveryTimer)return;
+    recoveryTimer=window.setTimeout(()=>{
+     recoveryTimer=null;
+     if(done)return;
+     recoveryNonce=crypto.randomUUID();
+     window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{
+      nonce:recoveryNonce,sku,itemId,modelId
+     }},ORIGIN);
+     armRecovery();
+    },8000);
+   };
    const finish=(error,result)=>{
     if(done)return;done=true;window.clearTimeout(timer);window.clearTimeout(probeTimer);
     window.clearTimeout(startAckTimer);
+    window.clearTimeout(recoveryTimer);recoveryTimer=null;
     window.removeEventListener('message',listener);
     if(error)reject(error instanceof Error?error:Error(String(error)));
     else resolve(result);
@@ -194,21 +209,37 @@
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
      return;
     }
+    // Entrega de recuperação utiliza um nonce próprio, mas a identidade da
+    // SKU, anúncio e variação deve continuar idêntica à pesquisa em andamento.
+    if(m.kind==='RA_EXTENSION_SEO_RECOVER_RESULT'&&m.nonce===recoveryNonce){
+     if(m.ok!==true||!m.rawText)return;
+     if(String(m.sku)!==sku||String(m.itemId)!==itemId||String(m.modelId)!==modelId)return;
+     try{
+      const result=parse(m.rawText);
+      finish(null,{...result,requestIdentity:{nonce:recoveryNonce,sku,itemId,modelId},recovered:true});
+     }catch(error){
+      try{onProgress('Resposta localizada, mas o JSON precisa de revisão: '+error.message);}catch{}
+     }
+     return;
+    }
     if(m.nonce!==nonce)return;
     if(m.kind==='RA_EXTENSION_SEO_RESUME_RESULT'){
      window.clearTimeout(startAckTimer);
      if(m.ok!==true)return finish(Error(m.error||'Não foi possível retomar a pesquisa.'));
      if(!m.pending)return finish(null,null);
+     armRecovery();
      try{onProgress('Retomando a importação automática dos quatro títulos desta SKU…');}catch{}
      return;
     }
     if(m.kind==='RA_EXTENSION_SEO_PROGRESS'){
      window.clearTimeout(startAckTimer);
+     armRecovery();
      try{onProgress(String(m.status||'').slice(0,240));}catch{}return;
     }
     if(m.kind==='RA_EXTENSION_SEO_START_RESULT'){
      window.clearTimeout(startAckTimer);
      if(m.ok===false)return finish(Error(m.error||'A extensão rejeitou a pesquisa.'));
+     armRecovery();
      try{onProgress(m.reused?'Pesquisa existente retomada na aba ChatGPT.':'Ponte iniciou a pesquisa SEO. Conferindo a aba ChatGPT…');}catch{}
      return;
     }
