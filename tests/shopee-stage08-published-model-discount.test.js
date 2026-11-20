@@ -59,7 +59,7 @@ test('Sem variações no rascunho usa a consulta normal e mantém caminho de ite
  s.ctx.optimizerWorkflowPlan=plain;
  assert.equal(await s.fn(plain,campaign,key),false);
  assert.equal(s.requests.length,1);
- assert.match(s.requests[0].url,/variants\\/draft\\?/);
+ assert.match(s.requests[0].url,/variants\/draft\?/);
  assert.equal(s.nodes['#optimizerFinalDiscountOpen'].clicked,undefined);
 });
 test('Modelo não reconhecido no fallback nunca libera promoção',async()=>{
@@ -85,7 +85,7 @@ test('Check da etapa 08 depende da prévia assinada e da identidade atual da cam
   optimizerModelDiscountApproval:{key,campaign,modelCount:3,quoteAt:'2026-11-19T23:00:00Z',
    receivedAt:Date.now(),token:'signed'},
   optimizerModelDiscountVerified:null};
- const state=vm.runInNewContext(fn+'\\noptimizerModelDiscountState;',ctx);
+ const state=vm.runInNewContext(fn+'\noptimizerModelDiscountState;',ctx);
  const quote={calculatedAt:'2026-11-19T23:00:00Z'};
  assert.equal(state(product,quote,campaign).reviewed,true);
  assert.equal(state(product,quote,'999').reviewed,false);
@@ -95,7 +95,7 @@ test('Check da etapa 08 depende da prévia assinada e da identidade atual da cam
  ctx.optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:quote.calculatedAt};
  assert.equal(state(product,quote,campaign).verified,true);
  assert.equal(state(product,quote,'999').verified,false);
- assert.match(app,/optimizerDiscountFinalPaint\\(\\);\\n  optimizerDiscountFinalStatus\\(p.action/);
+ assert.match(app,/optimizerDiscountFinalPaint\(\);\n  optimizerDiscountFinalStatus\(p.action/);
 });
 test('Desconto de modelos já publicados não exige republicar fotos; preço/identidade são verificados',()=>{
  const start=server.indexOf('async function variationModelDiscountContext(req){');
