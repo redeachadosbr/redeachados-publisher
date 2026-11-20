@@ -7904,7 +7904,7 @@ globalThis.RAExecutionCurrentStatus=()=>({
   discount:Number(optimizerDiscountFinalQuote.discountPct)
  }:null
 });
-globalThis.// O botão "EXECUTAR NA SHOPEE" autoriza uma única tentativa da promoção
+// O botão "EXECUTAR NA SHOPEE" autoriza uma única tentativa da promoção
 // POR MODELO, com leitura -> prévia assinada -> POST -> readback.
 // Não enviar anúncios-pai, mídia, estoque nem repetir em resposta incerta.
 let optimizerModelOneClickInFlight=false,optimizerModelOneClickUncertainKey='';
@@ -8003,7 +8003,7 @@ async function optimizerExecuteModelDiscountOneClick(w,campaign){
   globalThis.RAExecutionDialog?.refresh?.();
  }
 }
-RAExecutionPrimaryAction=async(onlyStage=null)=>{
+globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
  const w=optimizerWorkflowPlan;
  if(!w||optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
  const identity=[w.sku,String(w.itemId),String(w.modelId||0)].join('|');
