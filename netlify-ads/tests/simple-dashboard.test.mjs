@@ -32,7 +32,7 @@ const makeNode=(id)=>({
  addEventListener(type,fn){listeners[id+':'+type]=fn},
  reset(){},querySelector(){return {addEventListener(){}}},
  querySelectorAll(){return []},scrollIntoView(){},
- insertAdjacentElement(){},insertAdjacentHTML(){},
+ insertAdjacentElement(){},insertAdjacentHTML(){},appendChild(child){this.child=child},
  classList:{add(){},remove(){},toggle(){return true}}
 });
 const get=id=>{if(!dom.has(id))dom.set(id,makeNode(id));return dom.get(id)};
@@ -60,7 +60,7 @@ test('valida sintaxe, instalação do script e filtros no HTML',()=>{
  assert.match(index,/id="historyRecentFilter"/);
  assert.match(source,/historyRecentFilter/);
 });
-test('painel lê curva e média do cadastro, ordena recentes e apura valor conferido',()=>{
+test('produtos lê curva e média do cadastro, ordena recentes e apura valor conferido',()=>{
  runInNewContext(source,context);
  const html=get('simpleProductRows').innerHTML;
  assert.ok(html.indexOf('SKU-A')<html.indexOf('SKU-B'));
