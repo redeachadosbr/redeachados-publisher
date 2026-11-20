@@ -19,7 +19,7 @@ test('resultado SEO preservado até o Manager salvar e confirmar ACK da mesma SK
  assert.match(bridge,/seoUnconfirmedResults\.delete\(/);
  assert.match(bridge,/RA_SITE_SEO_ACK/);
  assert.match(bridge,/RA_EXTENSION_SEO_START_RESULT/);
- assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.11-auto-recovery/);
+ assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.12-auto-recover-complete/);
  assert.match(index,/title-studio\.js\?v=1\.21\.29-auto-recovery/);
 });
 
@@ -32,6 +32,6 @@ test('clique dos títulos abre a aba imediatamente antes da pesquisa assíncrona
  assert.match(bridge,/Ponte v1\.0\.47 não detectada/);
  assert.match(studio,/RASeoChatGPT\?\.prepare\?\.\(data\)/);
  assert.match(studio,/void generateTitles\(true,launch\)/);
- assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.11-auto-recovery/);
+ assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.12-auto-recover-complete/);
  assert.match(index,/title-studio\.js\?v=1\.21\.29-auto-recovery/);
 });
