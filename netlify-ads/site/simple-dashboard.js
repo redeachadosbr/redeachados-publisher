@@ -58,7 +58,7 @@ css.textContent=[
  '.simple-mode #changeHistoryPanel{margin-top:0}',
  '.simple-mode .hero-icon{display:none}',
  '.simple-finance h2{margin:0 0 5px}',
- '.simple-finance .s-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}',
+ '.simple-finance .s-grid{display:none!important}',
  '.simple-finance .s-card{border:1px solid #5a5141;border-radius:12px;padding:14px;background:#201e1b}',
  '.simple-finance .s-card small{color:#d8c9aa;font-size:12px}',
  '.simple-finance .s-card strong{display:block;font-size:23px;margin-top:5px;word-break:break-word}',
@@ -80,17 +80,17 @@ css.textContent=[
  '.simple-finance .s-table th{text-transform:none;font-size:12px;color:#ded2c0}',
  '.simple-finance .s-table td small{display:block;color:#c6bfb6}',
  '.simple-finance .s-tag{font-size:11px;padding:4px 7px;border-radius:6px;background:#30313a;display:inline-block}',
- '#simpleModeToggle{margin-left:auto}',
+ '.simple-mode .tabs .tab[data-tab="painel"]{display:none!important}',
  '@media(max-width:900px){.simple-finance .s-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.simple-finance .s-form{grid-template-columns:repeat(2,minmax(0,1fr))}}',
  '@media(max-width:520px){.simple-finance .s-grid{grid-template-columns:1fr 1fr}.simple-finance .s-card strong{font-size:18px}.simple-finance .s-form{grid-template-columns:1fr}.simple-finance .s-field.wide{grid-column:span 1}}'
 ].join('\n');
 document.head.append(css);
-tab.insertAdjacentHTML('afterbegin','<button class="tab" data-tab="painel" type="button">▦ Painel geral</button>');
-tab.insertAdjacentHTML('beforeend','<button id="simpleModeToggle" type="button" class="btn-secondary mini non-print">Modo completo</button>');
+// O Painel Geral foi removido da navegação a pedido do lojista.
+// Apenas duas abas: Produtos e Alterações.
 const panel=document.createElement('section');
-panel.id='painel';panel.className='view simple-finance';
+panel.id='painel';panel.className='simple-finance product-finance-panel';
 panel.innerHTML=
-'<div class="panel"><div class="row-between"><div><div class="overline">Controle financeiro manual · somente leitura Shopee</div><h2>Resultado dos anúncios</h2><p class="subtle">Lucro ou prejuízo por SKU, com histórico de períodos e alterações.</p></div><button class="btn-secondary mini" type="button" id="simpleOpenChanges">Registrar alteração</button></div>'+
+'<div class="panel"><div class="row-between"><div><div class="overline">Controle financeiro manual · somente leitura Shopee</div><h2>Financeiro por produto</h2><p class="subtle">Acompanhe o resultado de cada SKU sem recomendações automáticas de Ads.</p></div><button class="btn-secondary mini" type="button" id="simpleOpenChanges">Registrar alteração</button></div>'+
 '<div class="s-toolbar"><div class="s-field"><label for="simplePeriod">Período financeiro</label><select id="simplePeriod"><option value="all">Todo o histórico</option><option value="month">Este mês</option><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option></select></div><div class="s-field"><label for="simpleRecent">Últimas alterações dos anúncios</label><select id="simpleRecent"><option value="all">Todos os produtos (mais recentes primeiro)</option><option value="today">Alterados hoje</option><option value="7">Alterados nos últimos 7 dias</option><option value="15">Alterados nos últimos 15 dias</option><option value="30">Alterados nos últimos 30 dias</option><option value="none">Sem alterações registradas</option></select></div><div class="s-field"><label for="simpleSearch">Buscar produto</label><input id="simpleSearch" type="search" placeholder="SKU ou nome" autocomplete="off"></div></div>'+
 '<div class="s-grid"><div class="s-card"><small>Receita líquida informada</small><strong id="sRevenue">—</strong></div><div class="s-card"><small>Gasto Ads informado</small><strong id="sAds">—</strong></div><div class="s-card"><small>Lucro/prejuízo apurado</small><strong id="sNet">—</strong></div><div class="s-card"><small>Produtos sem apuração completa</small><strong class="s-amber" id="sPending">—</strong></div></div>'+
 '<p class="s-muted" id="sCoverage">Os totais incluem apenas períodos completos e conferidos. Não são uma conciliação automática com a Shopee.</p>'+
@@ -110,7 +110,7 @@ panel.innerHTML=
 '<div class="s-actions"><button type="submit" class="btn-primary" id="simpleSaveFinance">Salvar resultado</button><button type="button" class="btn-secondary" id="simpleCancelFinance">Limpar formulário</button></div></form></details>'+
 '<h3>Histórico financeiro lançado</h3><p class="s-muted">Edite ou exclua lançamentos incorretos. O histórico de alterações de anúncios permanece na aba Alterações.</p>'+
 '<div class="s-table"><table><thead><tr><th>Produto</th><th>Período</th><th>Gasto Ads</th><th>Resultado</th><th>Conferência</th><th></th></tr></thead><tbody id="simpleLedgerRows"></tbody></table></div></div>';
-tab.insertAdjacentElement('afterend',panel);
+document.getElementById('produtos').appendChild(panel);
 document.body.classList.add('simple-mode');
 const badge=document.querySelector('.top .pill');
 if(badge)badge.textContent='Painel de lucro e histórico de Ads';
@@ -120,16 +120,11 @@ const sub=document.querySelector('.hero p');
 if(sub)sub.textContent='Você decide o que ajustar. O aplicativo registra o histórico e mostra resultados financeiros informados por produto.';
 const originalSwitch=switchTab;
 switchTab=function(name){
- if(document.body.classList.contains('simple-mode')&&['simulador','evolucao','regras'].includes(name))name='painel';
+ if(['simulador','evolucao','regras','painel'].includes(name))name='produtos';
  originalSwitch(name);
- if(name==='painel')render();
+ if(name==='produtos')render();
 };
-tab.querySelector('[data-tab="painel"]').addEventListener('click',()=>switchTab('painel'));
-$('simpleModeToggle').addEventListener('click',()=>{
- const simple=document.body.classList.toggle('simple-mode');
- $('simpleModeToggle').textContent=simple?'Modo completo':'Modo simples';
- if(simple)switchTab('painel');
-});
+// Modo simples fixo; não há mais abas de recomendação ou simulador no menu.
 $('simpleOpenChanges').addEventListener('click',()=>switchTab('historico'));
 let editingId=null;
 function reset(){
@@ -278,5 +273,5 @@ $('simpleCancelFinance').addEventListener('click',reset);
 $('sSku').addEventListener('change',productMarketCurveSummary);
 const previousSetHistory=setHistory;
 setHistory=function(rows){const ok=previousSetHistory(rows);render();return ok;};
-reset();render();switchTab('painel');
+reset();render();switchTab('produtos');
 })();
