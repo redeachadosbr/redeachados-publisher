@@ -1,0 +1,124 @@
+/* Rede Achados BR Ads — visual claro, simples e legível (20/11/2026).
+   Somente CSS: não muda cálculos, histórico nem sincronização. */
+:root{
+  color-scheme:light;
+  --bg:#f4f7fb;--panel:#fff;--panel2:#f8fafc;--line:#dce4ee;
+  --text:#172b45;--muted:#63748a;--gold:#24659a;--gold2:#18527d;
+  --green:#137b4b;--red:#bc3545;--blue:#2563a8;--radius:16px;
+}
+html{color-scheme:light}
+body.simple-mode{background:#f4f7fb!important;color:#172b45!important;font-size:14px}
+.simple-mode .wrap{max-width:1300px}
+.simple-mode .top{margin-bottom:14px}
+.simple-mode .brand strong{color:#172b45}
+.simple-mode .brand small{color:#64748b}
+.simple-mode .logo{color:#235b93;border-color:#c9dff0;background:#e7f1fa;box-shadow:none}
+.simple-mode .pill{background:#ebf3ff;color:#235b93;border-color:#c9dff0}
+.simple-mode .hero{background:linear-gradient(115deg,#fff,#eaf3fb)!important;border:1px solid #d4e4f1!important;box-shadow:0 4px 18px #2a517b0b;border-radius:18px;padding:22px 26px}
+.simple-mode .hero h1{font-size:clamp(21px,2.8vw,29px);color:#1a3554}
+.simple-mode .hero p{color:#526c84}
+.simple-mode .eyebrow,.simple-mode .overline{color:#2e6b9e}
+.simple-mode .tabs{gap:9px;margin:16px 0 19px}
+.simple-mode .tabs .tab{background:#fff!important;color:#37516e!important;border:1px solid #d1dce9!important;padding:12px 22px;border-radius:11px;font-size:14px}
+.simple-mode .tabs .tab.active{background:#e4f0fb!important;color:#145688!important;border:1px solid #81b2df!important;box-shadow:inset 0 0 0 1px #a8cced}
+.simple-mode .tabs .tab[data-tab="simulador"],.simple-mode .tabs .tab[data-tab="evolucao"],.simple-mode .tabs .tab[data-tab="regras"],.simple-mode .tabs .tab[data-tab="painel"]{display:none!important}
+.simple-mode .panel,.simple-mode #painel>.panel{background:#fff!important;color:#172b45;border:1px solid #d9e3ed!important;box-shadow:0 5px 18px #2a517b0b;border-radius:16px}
+.simple-mode .panel h2,.simple-mode .panel h3,.simple-mode .section-head h2{color:#203b58}
+.simple-mode .subtle,.simple-mode .tiny,.simple-mode .tip,.simple-mode .input-note,.simple-mode .muted-line{color:#65788e!important}
+.simple-mode .field label,.simple-mode .s-field label,.simple-mode .hist-toolbar label{color:#394e66!important;font-size:13px}
+.simple-mode .field input,.simple-mode .field select,.simple-mode .filter-inline,.simple-mode .s-field input,.simple-mode .s-field select,
+.simple-mode input[type="date"],.simple-mode input[type="search"],.simple-mode textarea{
+  background:#fff!important;color:#182e48!important;border:1px solid #c8d5e4!important;border-radius:10px;
+  padding:11px 12px;box-shadow:none!important;font-size:13px;
+}
+.simple-mode input::placeholder{color:#8a98aa!important}
+.simple-mode .field input:focus,.simple-mode .field select:focus,.simple-mode .s-field input:focus,
+.simple-mode .s-field select:focus,.simple-mode textarea:focus{
+  outline:2px solid #93bee6!important;outline-offset:1px;
+}
+.simple-mode select option{background:#fff;color:#172b45}
+.simple-mode .btn-primary{background:#286da5!important;color:white!important;border:1px solid #246397!important;box-shadow:none!important}
+.simple-mode .btn-primary:hover{background:#205b8e!important}
+.simple-mode .btn-secondary,.simple-mode .table-actions button{background:#f2f7fc!important;color:#205b89!important;border:1px solid #b9d1e5!important;box-shadow:none!important}
+.simple-mode .btn-secondary:hover{background:#e6f1fb!important}
+.simple-mode details,.simple-mode #simpleFinanceDetails{background:#fbfcfe!important;border:1px solid #d8e4f0!important;color:#263e55;border-radius:12px}
+.simple-mode summary{color:#236292!important}
+.simple-mode .checkline{color:#526b83}
+.simple-mode .checkline input,.simple-mode .change-choice input{accent-color:#2c74ab}
+.simple-mode .change-choice{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.simple-mode .change-choice label{background:#f8fafc!important;color:#2e445f!important;border:1px solid #d4deea!important;border-radius:10px;padding:12px 11px;font-size:13px}
+.simple-mode .change-choice label:has(input:checked){background:#e7f2fd!important;border-color:#81b5de!important;color:#164e7d!important}
+.simple-mode .history-split{margin-top:0!important}
+.simple-mode #historico>.panel:first-child{display:none!important}
+.simple-mode .hist-toolbar,.simple-mode .hist-period-filter{gap:12px}
+.simple-mode .hist-toolbar .field,.simple-mode .hist-period-filter .field{min-width:160px}
+.simple-mode .hist-range-summary{color:#52697f}
+.simple-mode .hist-range-summary.warn{color:#9c5710}
+.simple-mode table{border-collapse:collapse;color:#253c56}
+.simple-mode th{background:#f0f5fb!important;color:#496581!important;border-bottom:1px solid #d5e1ec}
+.simple-mode td{color:#2b4058!important;border-bottom:1px solid #e3ebf2}
+.simple-mode td strong{color:#203d5d!important}
+.simple-mode tbody tr:hover{background:#f8fbff}
+.simple-mode .curve-badge{border-color:#d9e4ed;background:#eef2f8;color:#3a5571}
+.simple-mode .curve-badge.A,.simple-mode .curve-badge.B{background:#e8f6ed;color:#136d43;border-color:#b5dec4}
+.simple-mode .curve-badge.C{background:#fff4e2;color:#9b6317;border-color:#efdab3}
+.simple-mode .curve-badge.D,.simple-mode .curve-badge.E{background:#fff0f0;color:#ad3946;border-color:#edc4ca}
+.simple-mode .ads-status-select{background:#edf4fb!important;color:#275982!important;border:1px solid #c6d9eb!important}
+.simple-mode .ads-status-select.active{background:#eaf7f0!important;color:#167048!important;border-color:#b2dfc5!important}
+.simple-mode .ads-status-select.removed{background:#fff1f1!important;color:#a53743!important;border-color:#efcbd0!important}
+.simple-mode .price-mode-btn{background:#f4f8fc!important;color:#36536e!important;border:1px solid #d3deea!important}
+.simple-mode .price-mode-btn.active{background:#e5f1fc!important;border-color:#8eb9dd!important;color:#155587!important}
+.simple-mode .price-mode-btn small{color:#687d92!important}
+.simple-mode .price-output{background:#eff7ff!important;border-color:#b8d1e7!important;color:#1b5c8d!important}
+.simple-mode .backup-panel{background:#f5f9fe!important;border:1px dashed #b3cbdf!important;color:#4e6176}
+.simple-mode .backup-panel p{color:#647489!important}
+.simple-mode .curve-help,.simple-mode .market-level,.simple-mode .market-rules,.simple-mode .kit-toggle,
+.simple-mode .calc-card,.simple-mode .stats-strip .stat,.simple-mode .metric{
+  background:#f5f9fd!important;border-color:#d5e2ed!important;color:#2d4b68!important;
+}
+.simple-mode .curve-help.ok,.simple-mode .mini-indicator.ok{background:#e9f6ef!important;color:#176c49!important;border-color:#bdddc7!important}
+.simple-mode .curve-help.warn,.simple-mode .mini-indicator.warn{background:#fff7e8!important;color:#985e14!important;border-color:#ead4ad!important}
+.simple-mode .curve-help.bad,.simple-mode .mini-indicator.bad{background:#fff1f1!important;color:#a93544!important;border-color:#ecc4c9!important}
+.simple-mode .calc-card .k,.simple-mode .stats-strip .stat .k,.simple-mode .metric .lab{color:#647c94!important}
+.simple-mode .calc-card .v,.simple-mode .stats-strip .stat .v,.simple-mode .metric .value{color:#1d4060!important}
+.simple-mode .catalog-counts{color:#5f7387}
+.simple-mode .s-muted,.simple-mode .s-table td small{color:#63788f!important}
+.simple-mode .simple-finance .s-card,.simple-mode .simple-finance details{background:#f7fafe!important;color:#243d5c!important;border-color:#d9e4ed!important}
+.simple-mode .simple-finance .s-tag{background:#edf4fb!important;color:#345a7f!important}
+.simple-mode .simple-finance .s-green{color:#137b4b!important}
+.simple-mode .simple-finance .s-red{color:#ba3543!important}
+.simple-mode #painel{margin-top:20px}
+.simple-mode #painel .s-grid{display:none!important}
+.simple-mode #painel .s-table table{background:#fff}
+.simple-mode .foot{color:#7c8998;border-color:#dce5ee}
+.simple-mode #cloudBar{
+  background:#edf5fc!important;color:#20456b!important;border-bottom:1px solid #c9dae9!important;
+  box-shadow:0 2px 10px #1c42600d!important;font-size:12px!important;
+}
+.simple-mode #cloudBar .cloudSub,.simple-mode #cloudState{color:#55708b!important}
+.simple-mode #cloudBar button{background:#e0ecf7!important;color:#205e8b!important;border:1px solid #b9d2e7!important}
+.simple-mode #cloudGate{background:#f0f5facc!important}
+.simple-mode #cloudGate .panelGate{background:white!important;color:#1c3552!important;border:1px solid #d4e3ef!important}
+.simple-mode #cloudGate input{background:white!important;color:#1a354d!important;border-color:#aec8dc!important}
+.simple-mode #cloudGate button{background:#276da3!important;color:white!important}
+.simple-mode .simple-sku-picker{position:relative;display:flex;flex-direction:column;gap:7px}
+.simple-mode .simple-sku-search{font-size:15px!important;font-weight:600;width:100%!important;padding:13px 42px 13px 13px!important}
+.simple-mode .simple-sku-clear{position:absolute;right:8px;top:6px;background:#edf4fb;border:0;border-radius:7px;color:#466b8b;min-height:32px;padding:2px 9px}
+.simple-mode .simple-sku-results{position:absolute;z-index:60;top:51px;left:0;right:0;max-height:300px;overflow-y:auto;background:#fff;box-shadow:0 14px 36px #16334b2b;border:1px solid #a8bfd3;border-radius:12px;padding:4px}
+.simple-mode .simple-sku-results[hidden]{display:none!important}
+.simple-mode .simple-sku-results button{display:block;width:100%;text-align:left;border:0;background:#fff;color:#2b4059;padding:11px 12px;border-radius:7px;font-size:13px;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.simple-mode .simple-sku-results button:hover,.simple-mode .simple-sku-results button[aria-selected="true"]{background:#e9f3fd;color:#174c77}
+.simple-mode .simple-sku-results button strong{font-weight:800;color:#1d5681}
+.simple-mode .simple-sku-hint{font-size:12px;color:#5e7286;min-height:16px}
+.simple-mode .simple-sku-chosen{font-size:12px;border-radius:8px;padding:8px 10px;background:#eaf5ee;color:#1c7048;border:1px solid #c2e1cf}
+.simple-mode .simple-sku-chosen[hidden]{display:none!important}
+.simple-mode #changeSku{display:none!important}
+@media(max-width:760px){
+ .simple-mode .wrap{padding:16px 12px 50px}
+ .simple-mode .hero{padding:17px}
+ .simple-mode .panel{padding:15px!important}
+ .simple-mode .change-choice{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .simple-mode .tabs .tab{flex:1;text-align:center}
+ .simple-mode .field-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){.simple-mode .change-choice{grid-template-columns:1fr 1fr}.simple-mode .brand strong{font-size:16px}}

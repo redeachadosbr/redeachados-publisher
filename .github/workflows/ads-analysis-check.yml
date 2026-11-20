@@ -22,6 +22,7 @@ jobs:
         run: |
           node --check netlify-ads/site/ads-single-analysis.js
           node --check netlify-ads/site/simple-dashboard.js
+          node --check netlify-ads/site/ads-simple-search.js
           node --check netlify-ads/site/decision-finance.js
           node --check netlify-ads/site/ads-sku-rename.js
-          node --test netlify-ads/tests/ads-single-analysis.test.mjs netlify-ads/tests/ads-sku-rename.test.mjs netlify-ads/tests/ads-sku-ui.test.mjs netlify-ads/tests/simple-dashboard.test.mjs
+          node --test netlify-ads/tests/ads-single-analysis.test.mjs netlify-ads/tests/ads-sku-rename.test.mjs netlify-ads/tests/ads-sku-ui.test.mjs netlify-ads/tests/simple-dashboard.test.mjs netlify-ads/tests/ads-simple-ux.test.mjs
