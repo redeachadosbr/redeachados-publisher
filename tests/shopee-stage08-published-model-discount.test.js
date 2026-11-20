@@ -79,7 +79,7 @@ test('Desconto de modelos já publicados não exige republicar fotos; preço/ide
  assert.match(code,/live\.has_model!==true/);
  assert.match(code,/validateVariationDetails\(x\.details,\{requirePhotos:false/);
  assert.match(code,/models\.length!==details\.options\.length/);
- assert.match(code,/model\.model_sku/);
+ assert.match(code,/m\.model_sku/);
  assert.match(code,/Math\.abs\(link\.unitCost-Number\(quote\.unitCost\)\)/);
  const execute=server.slice(server.indexOf("app.post('/api/shopee/optimizer/variants-discount/execute'"));
  assert.match(execute,/verifyDiscountPreview/);
