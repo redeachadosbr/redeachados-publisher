@@ -7924,7 +7924,7 @@ async function optimizerExecuteModelDiscountOneClick(w,campaign){
   say('A tentativa anterior não teve confirmação conclusiva. Confira a campanha na Shopee antes de autorizar outro envio.','warning');
   return;
  }
- if(!/^\\d{1,18}$/.test(campaign)){
+ if(!/^\d{1,18}$/.test(campaign)){
   say('Informe a campanha Minha Promoção antes de executar as três cores.','warning');return;
  }
  optimizerModelOneClickInFlight=true;
@@ -7943,17 +7943,17 @@ async function optimizerExecuteModelDiscountOneClick(w,campaign){
   const p=data.preview||{};
   const options=Array.isArray(p.models)?p.models:[];
   if(p.itemId!==String(w.itemId)||p.sku!==w.sku||p.discountId!==campaign||
-     options.length!==3||new Set(options.map(m=>String(m.modelId))).size!==3||
+     options.length<2||new Set(options.map(m=>String(m.modelId))).size!==options.length||
      options.some(m=>!m.modelId||!Number.isFinite(Number(m.promo))||
       !(Number(m.profit)>0)||!(Number(m.margin)>=Math.max(8,Number(p.minMarginPct)||8))))
-   throw Error('A prévia não comprovou as três variações e margens esperadas. Nenhum desconto foi enviado.');
+   throw Error('A prévia não comprovou todas as variações e margens esperadas. Nenhum desconto foi enviado.');
   // Não reaproveitar a prévia de outra campanha ou recálculo.
   const quote=optimizerDiscountFinalQuote;
   if(quote&&p.quoteAt!==String(quote.calculatedAt||''))
    throw Error('A cotação mudou durante a conferência. Atualize a etapa 8 antes de executar.');
   const summary=options.map(m=>m.name+' R$ '+Number(m.promo).toFixed(2).replace('.',',')).join(' · ');
   if(p.action==='already'){
-   optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:p.quoteAt,verifiedAt:Date.now()};
+   optimizerModelDiscountVerified={key,campaign,modelCount:options.length,quoteAt:p.quoteAt,verifiedAt:Date.now()};
    optimizerDiscountFinalSent=true;
    optimizerModelOneClickUncertainKey='';
    optimizerDiscountFinalPaint();
@@ -7987,7 +7987,7 @@ async function optimizerExecuteModelDiscountOneClick(w,campaign){
    await optimizerRootAuditRefresh(true,true);return;
   }
   optimizerModelOneClickUncertainKey='';
-  optimizerModelDiscountVerified={key,campaign,modelCount:3,quoteAt:p.quoteAt,verifiedAt:Date.now()};
+  optimizerModelDiscountVerified={key,campaign,modelCount:options.length,quoteAt:p.quoteAt,verifiedAt:Date.now()};
   optimizerDiscountFinalSent=true;
   optimizerDiscountFinalPaint();
   say('✓ Desconto PUBLICADO e confirmado pela API Shopee para Vermelha, Azul e Preta. '+summary,'success');
