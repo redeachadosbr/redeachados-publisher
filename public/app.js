@@ -4749,7 +4749,7 @@ $('#optimizerFinalDiscountOpen')?.addEventListener('click',async()=>{
  const input=$('#optimizerFinalCampaignId');
  const campaign=String(input?.value||$('#optimizerExecDiscountCampaign')?.value||'').trim();
  if(!/^\d{1,18}$/.test(campaign)){
-  finalDiscountNotice('Informe acima o ID numérico da campanha Minha Promoção para conferir os dois modelos.','warning');
+  finalDiscountNotice('Informe acima o ID numérico da campanha Minha Promoção para conferir os modelos.','warning');
   input?.focus();return;
  }
  input.value=campaign;
@@ -4782,9 +4782,13 @@ $('#optimizerFinalDiscountOpen')?.addEventListener('click',async()=>{
    campaign,modelCount:p.models.length};
   const apply=$('#optimizerFinalModelDiscountApply');
   apply.hidden=p.action==='already';apply.disabled=p.action==='already';
+  if(p.action==='already'){
+   optimizerDiscountFinalSent=true;
+   optimizerDiscountFinalPaint();
+  }
   finalDiscountNotice(p.action==='already'?
    'Todos os modelos já constam na campanha com o preço correto. Nenhum reenvio necessário.':
-   'Prévia validada. Confira as duas cores e clique em Confirmar e aplicar desconto nas variações.','success');
+   'Prévia validada. Confira as '+p.models.length+' variações e clique em Confirmar e aplicar desconto.','success');
  }catch(error){finalDiscountNotice('Desconto ainda não liberado: '+error.message,'warning');}
  finally{btn.disabled=false;}
 });
@@ -4810,6 +4814,12 @@ $('#optimizerFinalModelDiscountApply')?.addEventListener('click',async()=>{
   const data=await response.json().catch(()=>({}));
   if(!response.ok||data.ok!==true)throw Error(data.error||'Shopee não confirmou os descontos.');
   finalDiscountNotice(data.message,data.verified?'success':'warning');
+  if(data.verified===true&&p.key===optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)){
+   optimizerDiscountFinalSent=true;
+   optimizerDiscountFinalPaint();
+   optimizerExecNotice('Etapa 08 confirmada pela API Shopee para '+p.modelCount+
+    ' modelos, sem reenviar fotos, estoque ou outras etapas.','success');
+  }
   btn.hidden=data.verified===true;
  }catch(error){
   finalDiscountNotice('Resultado da promoção não confirmado: '+error.message+
@@ -5471,6 +5481,43 @@ async function optimizerDiscountReadOnlyPreview(request){
   throw error;
  }
 }
+// A etapa 08 nunca envia item_promotion_price em um anúncio com modelos.
+// Conferir get_model_list e abrir a prévia de model_list já existente.
+// A própria prévia exige aprovação explícita antes de QUALQUER POST na Shopee.
+async function optimizerDiscountRoutePublishedModels(w,campaign,key){
+ const query=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+ let response,data;
+ try{
+  response=await fetch('/api/shopee/optimizer/variants/draft?'+query,{
+   credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)});
+  data=await response.json().catch(()=>({}));
+ }catch(error){
+  if(w.variationConfig?.enabled===true||optimizerExecPlan?.modelVariations)
+   throw Error('Não foi possível consultar os modelos da Shopee: '+error.message);
+  return false;
+ }
+ if(!response.ok||data.ok!==true){
+  if(w.variationConfig?.enabled===true||optimizerExecPlan?.modelVariations)
+   throw Error('Não foi possível conferir as variações: '+String(data.error||response.status));
+  return false;
+ }
+ if(data.liveHasModel!==true)return false;
+ if(data.allModelsConfirmed!==true)
+  throw Error('As SKUs do rascunho não coincidem com todos os modelos publicados. Confira a etapa 06 antes da promoção; nenhum modelo será recriado.');
+ if(optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)!==key)return true;
+ optimizerFinalSnapshot={...data,checkedAt:Date.now()};
+ optimizerFinalSnapshotKey=key;
+ $('#optimizerFinalCampaignId').value=campaign;
+ optimizerFinalPendingPaint(optimizerFinalSnapshot);
+ optimizerWorkflowActivateOnly('execution');
+ const wrap=$('#optimizerFinalPending');
+ wrap.hidden=false;
+ optimizerDiscountFinalStatus('Anúncio com '+data.modelSkus.length+
+  ' variações confirmado na Shopee. Abrindo prévia específica por modelo, sem repetir imagens ou alterar estoque.','success');
+ $('#optimizerFinalDiscountOpen').click();
+ wrap.scrollIntoView?.({behavior:'smooth',block:'start'});
+ return true;
+}
 async function optimizerDiscountFinalPrepare({automatic=false}={}){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
  if(!w||!q||optimizerDiscountFinalBusy||optimizerDiscountFinalSent)return;
@@ -5485,6 +5532,7 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  optimizerDiscountFinalBusy=true;optimizerDiscountFinalPaint();
  optimizerDiscountFinalStatus('Conferindo preço e promoção na API Shopee sem publicar...','info');
  try{
+  if(await optimizerDiscountRoutePublishedModels(w,campaign,key))return;
   const data=await optimizerDiscountReadOnlyPreview({
    sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign,
    allowDeferredPreview:true,allowOver25:optimizerMarketExceptionConsent(q),

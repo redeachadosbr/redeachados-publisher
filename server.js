@@ -5616,14 +5616,17 @@ async function variationModelDiscountContext(req){
  const x=await variationContext(req);
  const discountId=String(req.body?.discountId||req.query?.discountId||'').trim();
  if(!/^\d{1,18}$/.test(discountId))throw Error('Informe o ID da campanha Minha Promoção.');
- const details=validateVariationDetails(x.details,{requirePhotos:true,
+ // Uma promoção sobre modelos JÁ PUBLICADOS não é uma nova publicação de
+ // fotos/estoques. A Shopee é a fonte de verdade aqui: só aceitar NORMAL e
+ // has_model=true; manter conferência de identidade, SKU, custo e preços abaixo.
+ const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+ if(live.has_model!==true||String(live.item_status).toUpperCase()!=='NORMAL')
+  throw Error('A Shopee ainda não confirmou as variações neste anúncio ativo.');
+ const details=validateVariationDetails(x.details,{requirePhotos:false,
   approvedReview:x.review?.stages?.variants});
  if(details.options.length<2)throw Error('Conclua as variações antes de preparar a campanha.');
  const suppliers=await verifiedVariationSupplierCosts(x,{...details,
   reviewed:variationEvidenceApproved(x.details,x.review)});
- const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
- if(live.has_model!==true||String(live.item_status).toUpperCase()!=='NORMAL')
-  throw Error('A Shopee ainda não confirmou as variações neste anúncio ativo.');
  const modelsResult=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/get_model_list',
   accessToken:x.auth.accessToken,shopId:x.auth.shopId,query:{item_id:Number(x.itemId)}});
  const models=modelsResult.response?.model||[];

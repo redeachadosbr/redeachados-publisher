@@ -1,0 +1,28 @@
+name: Conferir etapa 08 com variações publicadas
+on:
+  pull_request:
+    branches: [shopee-service]
+    paths:
+      - 'server.js'
+      - 'public/app.js'
+      - 'tests/shopee-stage08-published-model-discount.test.js'
+      - 'tests/shopee-model-execution-recovery.test.js'
+      - '.github/workflows/shopee-stage08-model-discount-check.yml'
+  push:
+    branches: [fix/shopee-stage08-model-discount-20261120]
+permissions:
+  contents: read
+jobs:
+  stage08-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Validar sintaxe
+        run: node --check server.js && node --check public/app.js
+      - name: Validar etapa 08 e recuperacao de modelos
+        run: node --test tests/shopee-stage08-published-model-discount.test.js tests/shopee-model-execution-recovery.test.js
