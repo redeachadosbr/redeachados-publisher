@@ -1,4 +1,4 @@
-PONTE CHATGPT REDE ACHADOS BR — v1.0.65
+PONTE CHATGPT REDE ACHADOS BR — v1.0.67
 
 1. Extraia o ZIP para uma pasta fixa no computador.
 2. Abra chrome://extensions e ative o Modo do desenvolvedor.
@@ -6,6 +6,7 @@ PONTE CHATGPT REDE ACHADOS BR — v1.0.65
    Se substituir os arquivos na mesma pasta da instalação atual, use Recarregar no cartão da extensão.
 4. Mantenha apenas uma Ponte ativa. Recarregue o Shopee Manager com Ctrl+Shift+R.
 5. Na etapa Imagens, use Começar do zero ao lado de Gerar / continuar.
+6. Na etapa Título SEO, deixe a aba do ChatGPT aberta até o Manager confirmar a importação automática dos quatro títulos. A Ponte recupera respostas prontas após reconexão, sem iniciar nova pesquisa e sem misturar SKUs.
 
 A confirmação informa a SKU e quantas imagens comerciais serão removidas. Nenhum anúncio publicado é alterado. Imagens de outras SKUs ficam preservadas.
 Sem medidas confirmadas, a imagem 03 fica pendente e as outras oito podem ser geradas. O contador mostra somente posições salvas. Após corrigir as medidas na Etapa 01, Gerar / continuar retoma a imagem 03.
