@@ -85,6 +85,19 @@
     return {raw:JSON.stringify(obj),titles:group,mode:'title-fields'};
    }
   }
+  // Títulos visualmente numerados quando o ChatGPT não segue o JSON pedido.
+  const numbered=[];
+  for(const line of s.split(/\r?\n/)){
+   const m=line.trim().match(/^(?:#{1,4}\s*)?(?:(?:\*\*)?(?:t[ií]tulo|op[cç][aã]o)\s*)?([1-4])(?:\*\*)?\s*[:.)\-–]\s*(.+)$/i);
+   if(m)numbered.push({number:Number(m[1]),title:m[2].replace(/^[\s*"'“”]+|[\s*"'“”]+$/g,'').trim()});
+  }
+  for(let i=numbered.length-4;i>=0;i--){
+   const group=numbered.slice(i,i+4);
+   if(group.every((v,n)=>v.number===n+1)&&meaningful(group)){
+    const obj={titles:group.map(v=>({title:v.title})),keywords:[],sources:[],researchStatus:'unverified'};
+    return {raw:JSON.stringify(obj),titles:obj.titles,mode:'numbered'};
+   }
+  }
   return null;
  }
  function responseComplete(raw){return !!extractFour(raw);}
@@ -196,13 +209,17 @@
   }
   if(action==='result'){
    const selectors='[data-message-author-role="assistant"], [data-testid="conversation-turn-assistant"], article[data-role="assistant"]';
-   const assistants=[...document.querySelectorAll(selectors)].filter(el=>visible(el)||Boolean(String(el?.innerText||el?.textContent||'').trim()));
+   const userNodes=[...document.querySelectorAll('[data-message-author-role="user"], [data-testid="conversation-turn-user"]')];
+   const lastUser=userNodes.at(-1);
+   // Não importar do histórico anterior ou do próprio prompt da SKU.
+   const afterUser=el=>!lastUser||!lastUser.compareDocumentPosition||
+    Boolean(lastUser.compareDocumentPosition(el)&4);
+   const assistants=[...document.querySelectorAll(selectors)]
+    .filter(el=>afterUser(el)&&(visible(el)||Boolean(String(el?.innerText||el?.textContent||'').trim())));
+   const roots=assistants.filter(el=>!assistants.some(parent=>parent!==el&&parent.contains?.(el)));
    const fallback=[...document.querySelectorAll('main .markdown, main .prose, main pre, main pre code, main [data-testid="conversation-turn-assistant"]')]
     .filter(el=>visible(el)&&!el.closest?.('[contenteditable="true"], form'));
-   const last=assistants[assistants.length-1];
-   // Uma resposta longa pode ser dividida em vários blocos markdown e code.
-   // Capturar o container do ÚLTIMO turno do assistente inteiro, em vez de
-   // pegar apenas o maior dos últimos cinco elementos individuais.
+   const last=roots.at(-1);
    const texts=[];
    const offer=node=>{
     const t=String(node?.innerText||node?.textContent||'').trim();
@@ -212,28 +229,24 @@
    };
    if(last){
     offer(last);
+    // O ChatGPT pode dividir uma única resposta em múltiplos turnos visuais.
+    // Juntar somente mensagens do assistente posteriores ao último usuário.
+    if(roots.length>1)offer({innerText:roots.map(part=>part.innerText||part.textContent||'').join('\n')});
     const markdown=[...last.querySelectorAll?.('.markdown, .prose, pre, pre code, [data-testid="code-block"]')||[]].filter(visible);
     for(const part of markdown)offer(part);
     if(markdown.length>1){
-     // Somente blocos do mesmo turno do assistente (não misturar outra SKU).
-     const roots=markdown.filter(part=>!markdown.some(ancestor=>ancestor!==part&&ancestor.contains?.(part)));
-     offer({innerText:roots.map(part=>part.innerText||part.textContent||'').join('\n')});
+     const parts=markdown.filter(part=>!markdown.some(parent=>parent!==part&&parent.contains?.(part)));
+     offer({innerText:parts.map(part=>part.innerText||part.textContent||'').join('\n')});
     }
    }else{
-    const lastBlock=fallback[fallback.length-1];
-    const parent=lastBlock?.closest?.('[data-testid="conversation-turn"], [data-testid="conversation-turn-assistant"], article');
-    if(parent&&!parent.matches?.('[data-message-author-role="user"], [data-testid="conversation-turn-user"]'))offer(parent);
-    // Últimos blocos, unicamente como recuperação de layout sem turnos.
-    for(const part of fallback.slice(-20))offer(part);
-    if(fallback.length>1)offer({innerText:fallback.slice(-20).map(x=>x.innerText||x.textContent||'').join('\n')});
+    // A recuperação sem seletor principal também exige vínculo a um turno do assistente.
+    const anchored=fallback.filter(part=>{
+     const parent=part.closest?.('[data-message-author-role="assistant"], [data-testid="conversation-turn-assistant"], article[data-role="assistant"]');
+     return parent&&afterUser(parent);
+    });
+    for(const part of anchored.slice(-20))offer(part);
+    if(anchored.length>1)offer({innerText:anchored.slice(-20).map(x=>x.innerText||x.textContent||'').join('\n')});
    }
-   // Em versões recentes do ChatGPT, respostas longas podem ficar fora dos
-   // seletores de turno. Tentar o conteúdo do MAIN inteiro (somente a aba SEO)
-   // e então document.body, nunca colher outras abas ou outros sites.
-   const main=document.querySelector('main')||document.querySelector('[role=main]');
-   if(!last&&main)offer(main);
-   if(!last&&!texts.some(t=>(t.match(/["“]title["”]\s*:/gi)||[]).length>=4)&&document.body)
-    offer(document.body);
    // Em vez do texto mais extenso, preferir a ÚLTIMA representação contendo
    // as quatro chaves, normalmente o texto final do assistente.
    const candidates=texts.map(raw=>({raw,titles:(raw.match(/["“]title["”]\s*:/gi)||[]).length}));
@@ -241,10 +254,9 @@
    complete.sort((a,b)=>Number(a.titles===4)-Number(b.titles===4)||a.raw.length-b.raw.length);
    const choice=complete.length?complete[complete.length-1]:candidates.sort((a,b)=>b.titles-a.titles||b.raw.length-a.raw.length)[0];
    const raw=(choice?.raw||'').slice(-115000);
-   const generating=Boolean(document.querySelector('[data-testid="stop-button"]')||
-    document.querySelector('button[aria-label="Parar de gerar"],button[aria-label="Stop generating"]'));
-   const userNodes=[...document.querySelectorAll('[data-message-author-role="user"], [data-testid="conversation-turn-user"]')];
-   const userRaw=String(userNodes.at(-1)?.innerText||userNodes.at(-1)?.textContent||'');
+   const generating=[...document.querySelectorAll('[data-testid="stop-button"], button[aria-label="Parar de gerar"], button[aria-label="Stop generating"]')]
+    .some(button=>visible(button)&&button.getAttribute?.('aria-hidden')!=='true'&&button.disabled!==true);
+   const userRaw=String(lastUser?.innerText||lastUser?.textContent||'');
    return {raw,userRaw,generating,users:userTurns(),assistantCount:assistants.length||(fallback.length?1:0),
     diagnostics:{blocks:texts.length,titleFields:candidates[0]?.titles||0,chars:raw.length}};
   }
@@ -326,9 +338,11 @@
    await delay(950);
    const state=await operate(job.tabId,'result');
    if(state.users<1&&state.assistantCount<1)continue;
-   if(!state.generating&&state.raw!==beforeRaw&&responseComplete(state.raw)){
-    stable=state.raw===previous?stable+1:0;previous=state.raw;
-    if(stable>=2)return extractFour(state.raw);
+   const extracted=state.raw!==beforeRaw?extractFour(state.raw):null;
+   if(extracted){
+    stable=state.raw===previous?stable+1:1;previous=state.raw;
+    // Evitar bloqueio por botão de geração fantasma após 12 leituras estáveis.
+    if((!state.generating&&stable>=3)||stable>=12)return extracted;
    }else{stable=0;previous='';}
   }
   throw Error('A pesquisa continua na aba ChatGPT. Ao voltar à etapa SEO, a captura será retomada automaticamente.');
@@ -478,12 +492,17 @@
    Date.now()-Number(cached.at||0)<4*60*60*1000;
   let extracted=cacheValid?extractFour(cached.rawText):null;
   let diagnostics=null;
+  // O título da aba é insuficiente: validar o SKU/ID/variação do último pedido.
+  const promptMatches=result=>{
+   const source=String(result?.userRaw||'');
+   return [['sku',sku],['itemId',itemId],['modelId',modelId]]
+    .every(([key,value])=>source.includes('"'+key+'":'+JSON.stringify(value)));
+  };
   if(!extracted){
    for(let i=0;i<7;i++){
     const result=await operate(tab.id,'result');
     diagnostics=result.diagnostics||null;
-    if(result.generating)throw Error('O ChatGPT ainda está concluindo a pesquisa. A importação automática continuará aguardando.');
-    extracted=extractFour(result.raw);
+    if(promptMatches(result))extracted=extractFour(result.raw);
     if(extracted)break;
     if(i<6)await delay(700);
    }
@@ -495,13 +514,13 @@
     .filter(t=>t.id!==tab.id&&allowed(t.url)&&seoTab(t)&&(!saved||t.id!==saved.tabId||same(saved,identity)));
    for(const candidate of others.slice(0,6)){
     const result=await operate(candidate.id,'result').catch(()=>null);
-    const found=!result?.generating&&extractFour(result?.raw);
+    const found=result&&promptMatches(result)&&extractFour(result.raw);
     if(found){tab=candidate;isOwned=true;extracted=found;diagnostics=result.diagnostics;break;}
    }
   }
   if(!extracted)throw Error('A Ponte não identificou 4 títulos completos na resposta. '+
    'Capturados: '+(diagnostics?.chars||0)+' caracteres; '+(diagnostics?.titleFields||0)+
-   ' campos title. Use Importar resposta copiada na tela SEO para resgatar a conversa sem refazer a pesquisa.');
+   ' campos title. A última resposta não apresentou quatro títulos completos vinculados a esta SKU.');
   await chrome.storage.session.set({[CACHE_KEY]:{sku,itemId,modelId,tabId:tab.id,
    chatUrl:tab.url||'',rawText:extracted.raw,at:Date.now()}});
   pendingRecovery={nonce,sku,itemId,modelId,siteTabId,tabId:tab.id,owned:isOwned};
