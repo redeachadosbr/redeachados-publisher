@@ -15,6 +15,21 @@ const sleep=ms=>new Promise((resolve,reject)=>{
  const timer=setTimeout(()=>{waits.delete(cancel);resolve();},ms);waits.add(cancel);
 });
 function cancelWaits(){for(const cancel of [...waits])cancel();if(ackResolver){const resolve=ackResolver;ackResolver=null;resolve({ok:false,error:'Pausa solicitada.'});}}
+// O prazo do loop não protege um await que nunca retorna. Consultas de mídia
+// precisam de prazo próprio e devem liberar o runner quando o usuário pausa.
+function readWithDeadline(task,timeoutMs,label,onCancel=()=>{}){
+ return new Promise((resolve,reject)=>{
+  let done=false;
+  const finish=(error,value)=>{
+   if(done)return;done=true;clearTimeout(timer);waits.delete(cancel);
+   if(error)reject(error);else resolve(value);
+  };
+  const cancel=()=>{onCancel();finish(Error('Pausa solicitada. A consulta foi interrompida.'));};
+  const timer=setTimeout(()=>{onCancel();finish(Error('CAPTURA_PENDENTE: '+label+' excedeu o tempo de resposta.'));},timeoutMs);
+  waits.add(cancel);
+  Promise.resolve().then(task).then(value=>finish(null,value),error=>finish(error));
+ });
+}
 async function assertActive(job=executionContext){
  if(!job)return;
  const latest=await getJob();
@@ -39,7 +54,10 @@ async function op(tabId,operation,payload={}){
  if(executionContext)await assertActive();
  const tab=await chrome.tabs.get(tabId).catch(()=>null);
  if(!tab||!allowedChat(tab.url))throw Error('O ChatGPT foi fechado ou mudou de página. Abra uma conversa comum do ChatGPT e clique em Retomar.');
- const [r]=await chrome.scripting.executeScript({target:{tabId},func:ImageSafety.dom,args:[operation,payload]});
+ const read=()=>chrome.scripting.executeScript({target:{tabId},func:ImageSafety.dom,args:[operation,payload]});
+ const bounded=['capture','response','draft','snapshot','identify','guard'].includes(operation);
+ const [r]=await (bounded?readWithDeadline(read,operation==='capture'?20000:15000,'consulta da imagem no ChatGPT'):read());
+ if(executionContext)await assertActive();
  return r?.result||{};
 }
 async function waitChatTab(tabId){
@@ -353,11 +371,21 @@ async function ensureSubmitted(job,tab,request){
 const validImageSource=src=>{try{const u=new URL(src);return u.protocol==='https:'&&['chatgpt.com','oaiusercontent.com','openai.com'].some(d=>u.hostname===d||u.hostname.endsWith('.'+d));}catch{return false;}};
 async function captureFromSource(src){
  if(!validImageSource(src))return '';
- for(const mode of ['include','omit'])try{
-   const r=await fetch(src,{credentials:mode,signal:AbortSignal.timeout(30000)});if(!r.ok)continue;
-  const b=await r.blob();if(!/^image\/(png|jpeg|webp)/.test(b.type)||b.size<2048||b.size>12*1024*1024)continue;
-  return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(b);});
- }catch{}
+ for(const mode of ['include','omit']){
+  if(executionContext)await assertActive();
+  const controller=new AbortController();let reader;
+  try{
+   const dataUrl=await readWithDeadline(async()=>{
+    const r=await fetch(src,{credentials:mode,signal:controller.signal});if(!r.ok)return '';
+    const b=await r.blob();if(controller.signal.aborted)return '';
+    if(!/^image\/(png|jpeg|webp)/.test(b.type)||b.size<2048||b.size>12*1024*1024)return '';
+    return await new Promise((resolve,reject)=>{reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.onabort=()=>reject(Error('Leitura interrompida.'));reader.readAsDataURL(b);});
+   },10000,'download da imagem',()=>{controller.abort();if(reader?.readyState===1)reader.abort();});
+   if(dataUrl)return dataUrl;
+  }catch{
+   if(executionContext)await assertActive();
+  }
+ }
  return '';
 }
 // Último recurso automático quando a imagem está pronta, mas os bytes da
@@ -433,23 +461,34 @@ async function awaitImage(job,tab,request){
     settledKey='';await sleep(2000);continue;
    }
    // Uma resposta pronta pode liberar os bytes segundos após exibir a prévia.
+   await report(job,'Imagem '+job.slot+'/9 confirmada; capturando o arquivo para importar automaticamente…');
    let cap;
    try{cap=await op(tab,'capture',evidence);}
    catch(error){
-    captureAttempts++;
-    await report(job,'ChatGPT ainda preparando o arquivo original. Tentativa '+captureAttempts+'; mantendo a mesma imagem sem reenviar o pedido…');
-    await sleep(5000);continue;
+    await assertActive(job);
+    // Uma consulta travada não impede os outros meios de leitura da MESMA foto.
+    cap=await op(tab,'response',evidence);
+    await report(job,'A leitura no ChatGPT demorou; tentando outra forma de capturar a mesma imagem…');
    }
    if(!ownResponse(request,cap)||cap.generating||cap.key!==r.key||cap.imageCount!==1){
     settledKey='';await sleep(2000);continue;
    }
-   if(!cap?.dataUrl&&cap?.source)cap={...cap,dataUrl:await captureFromSource(cap.source)};
+   if(!cap?.dataUrl&&cap?.source){
+    await report(job,'Lendo o arquivo da imagem '+job.slot+'/9; a consulta tem limite de tempo…');
+    cap={...cap,dataUrl:await captureFromSource(cap.source)};
+   }
+   await assertActive(job);
    if(!cap?.dataUrl){
     await report(job,'A imagem já existe, mas a URL de mídia não liberou o arquivo. Tentando importar apenas a imagem visível da conversa original…');
     const cropped=await captureVisibleReadyImage(job,tab,cap.key);
     if(cropped)cap={...cap,dataUrl:cropped,captureMethod:'cropped-visible-image'};
    }
    if(cap?.dataUrl&&/^data:image\/(png|jpeg|webp);base64,/i.test(cap.dataUrl)){
+    const final=await op(tab,'response',evidence),finalDraft=await op(tab,'draft');
+    if(!ownResponse(request,final)||final.generating||final.key!==cap.key||
+       final.imageCount!==1||String(finalDraft.text||'').trim()){
+     settledKey='';await sleep(2000);continue;
+    }
     request.capturedImageKey=cap.key;
     request.captureReceipt={nonce:job.nonce,sku:job.sku,itemId:job.itemId,modelId:job.modelId,
      slot:job.slot,chatUrl:request.chatUrl,userMessageId:request.userMessageId||'',imageKey:cap.key,capturedAt:Date.now()};
@@ -973,14 +1012,35 @@ document.getElementById('recoverReadyImage').onclick=async()=>{
  try{
   if(await managerAlreadySavedPendingKitImage(job))return;
   if(await showPendingKitChoice(job,{userRequested:true}))return;
-  if(running){output.textContent='A imagem atual ainda está sendo verificada; nenhum novo pedido foi enviado.';return;}
+  if(!await interruptImageRead(job))return;
   choices.hidden=true;
-  if(await resumeWithManager(job))return;
+  const latest=await getJob();
+  if(!latest||latest.nonce!==job.nonce||latest.slot!==job.slot){
+   output.textContent='A sessão ou a posição mudou. Confira a SKU no Manager antes de recuperar.';return;
+  }
+  if(await resumeWithManager(latest))return;
   output.textContent='Retomada não confirmada: '+(managerResumeError||'Abra '+(job.kitMode?'o kit ':'a SKU ')+job.sku+' no Shopee Manager e confira a galeria de imagens.')+' Nenhuma imagem foi recriada.';
  }catch(e){
   output.textContent='Recuperação da imagem: '+String(e.message||e);
  }
 };
+// Recuperar deve interromper a consulta antiga antes de pedir ao Manager a
+// retomada. Não cria um segundo loop nem envia novamente o prompt existente.
+async function interruptImageRead(job){
+ if(!running)return true;
+ const latest=await getJob();
+ if(!latest||latest.nonce!==job.nonce||latest.slot!==job.slot)return false;
+ if(latest.pending){output.textContent='A imagem já foi capturada; aguardando a confirmação do Manager.';return false;}
+ output.textContent='Interrompendo a consulta anterior para recuperar a imagem já gerada…';
+ if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
+ pendingWake=null;
+ if(!await BridgeState.control(job.nonce,'paused'))return false;
+ cancelWaits();
+ for(let i=0;i<80&&running;i++)await new Promise(resolve=>setTimeout(resolve,125));
+ const current=await getJob();
+ if(running){output.textContent='A consulta anterior ainda está encerrando. A imagem e o pedido foram preservados; tente Recuperar novamente.';return false;}
+ return Boolean(current&&current.nonce===job.nonce&&current.slot===job.slot&&!current.pending);
+}
 document.getElementById('manualRecovery').onclick=async()=>{
  const job=await getJob();if(!job||running)return;
  try{await showImageChoices(job);}catch(e){output.textContent=String(e.message||e);}

@@ -577,13 +577,25 @@
       if(!chosen||info.generating||!info.submitted)return info;
       if(count!==1)return {...info,captureError:'Selecione e confirme a imagem correta na aba da extensão.'};
       const {img,src}=chosen;
-      let dataUrl='',captureError='';
+      let dataUrl='',captureError='',captureTimer,reader;
+      const controller=new AbortController();
       try{
-        const r=await fetch(src,{credentials:'include'});
-        if(!r.ok)throw Error('HTTP '+r.status);
-        const blob=await r.blob();
-        if(!/^image\/(?:png|jpeg|webp)/i.test(blob.type)||blob.size<1024||blob.size>12*1024*1024)throw Error('A resposta da imagem possui tipo ou tamanho inválido.');
-        dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});
+        // Abrange cabeçalhos, corpo E FileReader. Abort sozinho não libera
+        // necessariamente um fetch/reader suspenso, por isso há também um race.
+        dataUrl=await Promise.race([
+          (async()=>{
+            const r=await fetch(src,{credentials:'include',signal:controller.signal});
+            if(!r.ok)throw Error('HTTP '+r.status);
+            const blob=await r.blob();
+            if(controller.signal.aborted)throw Error('Leitura interrompida.');
+            if(!/^image\/(?:png|jpeg|webp)/i.test(blob.type)||blob.size<1024||blob.size>12*1024*1024)throw Error('A resposta da imagem possui tipo ou tamanho inválido.');
+            return await new Promise((resolve,reject)=>{reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.onabort=()=>reject(Error('Leitura interrompida.'));reader.readAsDataURL(blob);});
+          })(),
+          new Promise((_,reject)=>{captureTimer=setTimeout(()=>{
+            controller.abort();if(reader?.readyState===1)reader.abort();
+            reject(Error('Tempo de leitura da imagem excedido (12 s).'));
+          },12000);})
+        ]);
       }catch(error){
         try{
           const canvas=document.createElement('canvas');
@@ -591,6 +603,13 @@
           canvas.getContext('2d').drawImage(img,0,0);
           dataUrl=canvas.toDataURL('image/png');
         }catch(e){captureError=`fetch: ${String(error.message||error)} | canvas: ${String(e.message||e)}`;}
+      }finally{clearTimeout(captureTimer);}
+      if(dataUrl){
+        // A foto ou a resposta podem mudar durante o download. Nunca devolver
+        // bytes antigos com um recibo novo nem importar durante geração.
+        const latest=await dom('response',payload);
+        if(!latest.submitted||latest.generating||latest.imageCount!==1||latest.key!==info.key||latest.url!==info.url)
+          return {...latest,dataUrl:'',captureError:'A imagem mudou durante a leitura; verificando novamente.'};
       }
       return {...info,dataUrl,captureError,width:img.naturalWidth||chosen.width,
         height:img.naturalHeight||chosen.height,source:src};
