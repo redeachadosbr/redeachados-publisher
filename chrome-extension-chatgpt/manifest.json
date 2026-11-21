@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR — Ponte ChatGPT para Shopee Manager",
-  "version": "1.0.65",
-  "description": "Geração por SKU com Começar do zero. Imagem 03 pendente de medidas não bloqueia as demais posições; fotos salvas e sessões de outros produtos ficam preservadas.",
+  "version": "1.0.67",
+  "description": "Importação automática de imagens com prazo de captura e recuperação da mesma posição; preserva pedidos, SKUs, imagens salvas e recuperação SEO.",
   "permissions": [
     "tabs",
     "activeTab",

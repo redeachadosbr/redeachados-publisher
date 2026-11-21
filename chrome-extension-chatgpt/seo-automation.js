@@ -458,6 +458,26 @@
    if(active&&same(active,identity))active.suppressOutcome=true;
    return {ok:true,rawText:savedResult.raw,...identity};
   }
+  // Recuperação automática: SOMENTE a aba que a Ponte já vinculou a esta SKU.
+  // Nunca vasculhar conversas pessoais ou resultados de outra SKU silenciosamente.
+  if(payload?.automatic===true){
+   if(!same(saved,identity)||!Number.isInteger(saved.tabId))
+    return {ok:false,error:'Ainda não há resposta vinculada a esta SKU na Ponte.'};
+   const assigned=await chrome.tabs.get(saved.tabId).catch(()=>null);
+   if(!assigned||!allowed(assigned.url))
+    return {ok:false,error:'A aba vinculada à SKU não está disponível.'};
+   const result=await operate(assigned.id,'result').catch(()=>null);
+   if(!result||result.generating)
+    return {ok:false,error:'A resposta ainda está sendo gerada.'};
+   const parsed=extractFour(result.raw);
+   if(!parsed)return {ok:false,error:'Os quatro títulos ainda não estão completos.'};
+   await chrome.storage.session.set({[CACHE_KEY]:{
+    sku,itemId,modelId,tabId:assigned.id,chatUrl:assigned.url||'',
+    rawText:parsed.raw,at:Date.now()}});
+   pendingRecovery={...identity,siteTabId,tabId:assigned.id,owned:true};
+   if(active&&same(active,identity))active.suppressOutcome=true;
+   return {ok:true,rawText:parsed.raw,...identity};
+  }
   // Prioridade absoluta à aba que esta extensão abriu; nunca consultar todas
   // as conversas pessoais sem uma solicitação explícita do usuário.
   const owned=(await chrome.storage.session.get(TAB_KEY))[TAB_KEY];

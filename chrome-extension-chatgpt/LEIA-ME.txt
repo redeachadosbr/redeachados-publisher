@@ -1,12 +1,26 @@
-PONTE CHATGPT REDE ACHADOS BR — v1.0.65
+PONTE CHATGPT REDE ACHADOS BR — v1.0.67
 
-1. Extraia o ZIP para uma pasta fixa no computador.
-2. Abra chrome://extensions e ative o Modo do desenvolvedor.
-3. Se a Ponte instalada usa outra pasta, desative a antiga e clique em Carregar sem compactação. Selecione a pasta extraída que contém manifest.json.
-   Se substituir os arquivos na mesma pasta da instalação atual, use Recarregar no cartão da extensão.
-4. Mantenha apenas uma Ponte ativa. Recarregue o Shopee Manager com Ctrl+Shift+R.
-5. Na etapa Imagens, use Começar do zero ao lado de Gerar / continuar.
+ATUALIZAR E RECUPERAR A IMAGEM JÁ GERADA
 
-A confirmação informa a SKU e quantas imagens comerciais serão removidas. Nenhum anúncio publicado é alterado. Imagens de outras SKUs ficam preservadas.
-Sem medidas confirmadas, a imagem 03 fica pendente e as outras oito podem ser geradas. O contador mostra somente posições salvas. Após corrigir as medidas na Etapa 01, Gerar / continuar retoma a imagem 03.
-O botão na aba da Ponte leva ao produto aberto mais recentemente no Manager. A confirmação acontece no Manager e mostra a SKU antes de remover qualquer imagem.
+1. Extraia o ZIP. Copie os arquivos de dentro da pasta extraída para a MESMA pasta que você usa na Ponte instalada, substituindo os arquivos antigos. O manifest.json deve ficar diretamente nessa pasta.
+2. Abra chrome://extensions e clique em Recarregar no cartão da Ponte. Confira a versão 1.0.67. Se necessário, ative o Modo do desenvolvedor para mostrar o botão.
+3. Atualize o Shopee Manager com Ctrl+Shift+R, mantendo a mesma SKU aberta e a conversa do ChatGPT com a imagem pronta.
+4. Abra o painel da Ponte pelo ícone da extensão e clique em Recuperar e enviar automaticamente. Confira se a imagem aparece na posição correspondente do Manager.
+
+Para preservar o pedido pendente, atualize a instalação existente. Não remova a extensão nem instale a atualização em outra pasta. Se o painel antigo mostrar erro após Recarregar, feche apenas esse painel e abra-o novamente pelo ícone da Ponte; mantenha a conversa do ChatGPT aberta.
+Mantenha apenas uma Ponte ativa. Não use Começar do zero para recuperar esta imagem: esse comando inicia outro pedido.
+
+CORREÇÕES DA VERSÃO 1.0.67
+
+- A leitura do arquivo no ChatGPT tem prazo de 12 segundos, incluindo o download e a conversão. Se travar, a Ponte tenta os pixels carregados da mesma imagem.
+- A consulta ao Chrome e o download alternativo também têm prazo e podem ser interrompidos pela pausa.
+- A mensagem muda para captura/importação quando a imagem está pronta, sem ficar presa na mensagem de estabilização durante o download.
+- Recuperar e enviar automaticamente interrompe uma consulta pendente antes de reconciliar a mesma posição com o Manager.
+- A imagem é conferida novamente após a captura. Conversa, pedido, SKU e posição continuam vinculados; não há novo prompt para recuperar um pedido já enviado.
+- Preserva a recuperação automática de títulos da versão 1.0.66.
+
+A extensão importa imagens para a galeria do Shopee Manager; não publica o anúncio. Imagem 03 sem medidas confirmadas permanece pendente sem bloquear as demais posições.
+
+PRIMEIRA INSTALAÇÃO
+
+Se ainda não possui a Ponte, extraia para uma pasta fixa. Em chrome://extensions, ative o Modo do desenvolvedor, clique em Carregar sem compactação e escolha a pasta que contém manifest.json.
