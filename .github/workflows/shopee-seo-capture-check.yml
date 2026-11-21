@@ -1,0 +1,34 @@
+name: Validar captura automática de títulos SEO
+
+on:
+  push:
+    branches:
+      - shopee-service
+      - fix/seo-capture-4-titles-20261121
+  pull_request:
+    branches:
+      - shopee-service
+
+jobs:
+  seo-capture:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Conferir sintaxe do módulo e da Ponte
+        run: |
+          node --check chrome-extension-chatgpt/seo-automation.js
+          node --check chrome-extension-chatgpt/site-bridge.js
+          node --check public/seo-chatgpt-bridge.js
+          node --check public/title-studio.js
+      - name: Testar captura, retomada e segurança por SKU
+        run: |
+          node --test tests/seoExtensionCapture20261121.test.js tests/seoAutomaticImport.test.js tests/seoChatgptBridge.test.js tests/seoMissedDeliveryRecovery.test.js tests/shopee-seo-reattach-sku.test.js
+      - name: Conferir versão e pacote de instalação
+        run: |
+          node -e "const p=require('./chrome-extension-chatgpt/manifest.json'); if(p.version!=='1.0.67') process.exit(1);"
+          unzip -t public/downloads/Ponte_ChatGPT_Rede_Achados_BR_v1.0.67.zip
