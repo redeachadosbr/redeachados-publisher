@@ -127,10 +127,8 @@ test('Etapa 10 utiliza somente a SKU principal Shopee, sem exigir anuncio dos co
   builder.indexOf("$('#kitWizardOpenTechnical')?.addEventListener('click'"));
  assert.match(click,/kitWizardResumeTargetForExecution/);
  assert.match(click,/await saveDraft\(\)/);
- // Rascunho novo executa a criação comercial direta; anúncio existente segue o otimizador.
- assert.match(click,/if\(kitWizardIsNewUnpublished\(\)\)/);
- assert.match(click,/await kitWizardExecuteNewListingDirect\(\)/);
- assert.doesNotMatch(click,/kitPublicationReadiness|add_kit_item/);
+ // A etapa 10 é exclusiva de otimização e não deve abrir criação/logística.
+ assert.doesNotMatch(click,/kitWizardIsNewUnpublished|kitWizardExecuteNewListingDirect|kitPublicationReadiness|add_kit_item|kitLogisticId|kitWeightKg/);
  const flow=builder.slice(builder.indexOf('async function kitWizardResumeTargetForExecution()'),
   builder.indexOf('let kitWizardExecutionOpening='));
  // A principal pode diferir da ordem alfabética do kit; respeitar a escolha persistida.
