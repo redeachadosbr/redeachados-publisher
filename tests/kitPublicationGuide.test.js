@@ -39,12 +39,14 @@ test('envio de fotos e prévia ainda exigem validação; publicar exige confirma
 });
 
 
-test('etapa 10 nao exibe o assistente de seis passos e usa o botao unico para anuncios novos',()=>{
+test('etapa 10 nao exibe o assistente e usa o botao unico para otimizar anuncios existentes',()=>{
  const audit=js.slice(js.indexOf('function kitWizardExecutionAudit(){'),
   js.indexOf('function kitWizardUpdateProgress(){'));
  assert.match(audit,/panel\.hidden=true/);
  assert.doesNotMatch(audit,/panel\.hidden=!newListing/);
- assert.match(js,/if\(kitWizardIsNewUnpublished\(\)\)\{[\s\S]*?await kitWizardExecuteNewListingDirect\(\)/);
+ const click=js.slice(js.indexOf("$('#kitWizardOpenExecution')?.addEventListener('click'"),js.indexOf("$('#kitWizardOpenTechnical')?.addEventListener"));
+ assert.match(click,/await kitWizardResumeTargetForExecution\(\)/);
+ assert.doesNotMatch(click,/kitWizardExecuteNewListingDirect|kitReadinessCheck/);
  const direct=js.slice(js.indexOf('async function kitWizardExecuteNewListingDirect(){'),
   js.indexOf('async function kitDiscountPrepare(){'));
  assert.ok(direct.length>1500);
