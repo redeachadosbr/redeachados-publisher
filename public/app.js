@@ -4611,6 +4611,9 @@ let optimizerExecScopeOwner='',optimizerExecPrepareError='';
 let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
+ const w=optimizerWorkflowPlan;
+ if(w?.kitOptimization?.kitSku)
+  globalThis.RAKitWizardExecutionProgress?.({kitSku:w.kitOptimization.kitSku,sku:w.sku,itemId:w.itemId,message,state});
 }
 function optimizerExecReset(){
  // Um request de pré-execução antigo não pode ocupar a fila da próxima SKU.
@@ -6232,7 +6235,10 @@ async function optimizerExecutionPrepare({preserveStartError=false,fromExecution
    $('#optimizerExecutionScope').value=requestedStage;
    const requestBody=JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
      stage:requestedStage,
-     campaignId:String($('#optimizerExecDiscountCampaign')?.value||
+     ...(w.kitOptimization?.kitSku&&requestedStage==='discount_adjust'&&
+      globalThis.RAKitWizardExecutionReviews?.()?.kitSku===w.kitOptimization.kitSku&&
+      globalThis.RAKitWizardExecutionReviews?.()?.stages?.includes('discount')?{kitDiscountReviewed:true}:{}),
+     campaignId:String((w.kitOptimization?.kitSku?$('#kitOptimizeDiscountId')?.value:'')||$('#optimizerExecDiscountCampaign')?.value||
       $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
       optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
      ...(['all','discount','discount_adjust'].includes($('#optimizerExecutionScope').value)&&optimizerDiscountApprovalReady()&&
@@ -6511,6 +6517,8 @@ function kitAutoSweepPreferredStage(audit){
   !['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true).map(x=>x.id);
  if(!missing.length)return 'all';
  const approved=new Set(globalThis.RAKitWizardExecutionReviews?.()?.stages||[]);
+ if(missing.includes('seo')&&approved.has('seo'))return 'seo';
+ if(missing.includes('description')&&approved.has('description'))return 'description';
  if(missing.every(x=>['video','fiscal','discount'].includes(x))&&
     (!missing.includes('video')||!approved.has('video'))){
   if(missing.includes('fiscal'))return 'fiscal';
@@ -6526,10 +6534,14 @@ async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
  const pending=new Set(stages.map(x=>x.id));
  // A auditoria pode estar pendente em uma única etapa embora o plano geral
  // não tenha ações. Procurar cada escopo APROVADO, sem inventar mídia/revisão.
+ const approved=new Set(globalThis.RAKitWizardExecutionReviews?.()?.stages||[]);
  const candidates=[firstStage,
+  ...['seo','description'].filter(stage=>pending.has(stage)),
   ...['video','technical','images','seo','description','fiscal','variants','discount']
-   .filter(stage=>pending.has(stage))
+   .filter(stage=>pending.has(stage)),
+  ...(pending.has('discount')&&approved.has('discount')?['discount_adjust']:[])
  ].filter((stage,i,list)=>list.indexOf(stage)===i);
+ const attempted=new Set(target.attemptedFingerprints||[]);
  const diagnostics=[];
  for(const stage of candidates){
   if(!kitAutoSweepMatches(target))return {plan:null,diagnostics:['O Item ID mudou durante a preparacao.']};
@@ -6540,6 +6552,10 @@ async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
   if(plan?.selectedStage===stage&&plan.sku===target.sku&&
      String(plan.itemId)===String(target.itemId)&&plan.canExecute===true&&
      Array.isArray(plan.actions)&&plan.actions.length){
+   if(attempted.has(plan.fingerprint)){
+    diagnostics.push(stage+': plano já tentado; conferir o resultado sem reenviar.');
+    continue;
+   }
    if(stage!==firstStage)optimizerExecNotice('Plano geral sem alteracoes prontas. Etapa '+stage+
     ' validada separadamente para a mesma SKU; demais pendencias preservadas.','info');
    return {plan,diagnostics};
@@ -6593,7 +6609,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     if(job.state==='failed'&&job.result?.phase!=='retry_allowed')
      optimizerExecNotice('Falha anterior: conferindo dados atuais da Shopee antes de decidir o que ainda precisa de execução. Nenhum envio duplicado será iniciado.','warning');
     const query=new URLSearchParams({sku:target.sku,
-     item_id:target.itemId,model_id:target.modelId});
+     item_id:target.itemId,model_id:target.modelId,refresh:'1'});
     const fresh=await json('/api/shopee/optimizer/execution/root-audit?'+query,{
      signal:AbortSignal.timeout(50000)});
     if(!kitAutoSweepMatches(target))return;
@@ -6624,6 +6640,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
      (onlyDiscount?'. Preparando exclusivamente Minha Promoção.':
       '. Preparando somente os campos ainda diferentes e já aprovados.'),'info');
+    target.attemptedFingerprints=[...attempted];
     const prepared=await kitAutoSweepChoosePlan(target,audit,executionScope);
     if(!kitAutoSweepMatches(target))return;
     const plan=prepared.plan;
@@ -6698,6 +6715,7 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   const executionScope=onlyDiscount?'discount':kitAutoSweepPreferredStage(audit);
   scope.value=executionScope;
   if(audit?.complete===true){
+   await optimizerKitAutoFinalizeFromAudit(w,audit);
    return {ok:true,alreadyCurrent:true,message:'Auditoria da Shopee confirmou todas as 9 etapas. Nada precisa ser reenviado.'};
   }
   const state=await optimizerExecutionRefresh(true);
@@ -7602,6 +7620,9 @@ function optimizerRootAuditRender(audit){
  if(!panel)return;
  panel.replaceChildren();
  if(!audit){panel.hidden=true;return;}
+ const w=optimizerWorkflowPlan;
+ if(w?.kitOptimization?.kitSku)
+  globalThis.RAKitWizardExecutionAudit?.({kitSku:w.kitOptimization.kitSku,sku:w.sku,itemId:w.itemId,audit});
  panel.hidden=false;
  const title=document.createElement('strong');
  title.textContent='Motor raiz · 9 etapas · conferência real na Shopee';

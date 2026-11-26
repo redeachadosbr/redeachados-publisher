@@ -3022,29 +3022,41 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      const productNames=verifiedKit.live.components.map(p=>String(p.name||''));
      reviewState.kitOptimization={...kitLink,componentNames:productNames};
      const storedTitle=String(verifiedKit.draft.creative?.title||'');
-     const matchesKit=storedTitle===String(kitLink.title||'')&&
-      String(reviewState.draftTitle||'')===storedTitle&&
-      String(reviewState.titleOrigin||'')==='kit-wedrop';
-     if(['all','seo'].includes(selectedStage)&&matchesKit&&
-        reviewState.stages?.seo?.reviewed!==true){
-      validateReview({stage:'seo',reviewed:true,title:storedTitle},{kitProductNames:productNames});
-      await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
-       stage:'seo',reviewed:true,title:storedTitle,titleOrigin:'kit-wedrop'
-      });
-      reviewState.stages={...reviewState.stages,
-       seo:{reviewed:true,reviewedAt:new Date().toISOString()}};
+     const storedDescription=String(verifiedKit.draft.creative?.description||'');
+     // Restaurar somente os textos do mesmo kit e vínculo validado.
+     for(const [stage,field,origin,value,linkValue] of [
+      ['seo','draftTitle','titleOrigin',storedTitle,kitLink.title],
+      ['description','draftDescription','descriptionOrigin',storedDescription,kitLink.description]
+     ]){
+      if(!['all',stage].includes(selectedStage)||!value||value!==String(linkValue||''))continue;
+      if(reviewState[field]===value&&reviewState[origin]==='kit-wedrop'&&reviewState.stages?.[stage]?.reviewed===true)continue;
+      const input=stage==='seo'?{title:value}:{description:value};
+      try{
+       validateReview({stage,reviewed:true,...input},{kitProductNames:productNames});
+       await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+        stage,reviewed:true,...input,[origin]:'kit-wedrop'
+       });
+       reviewState[field]=value;reviewState[origin]='kit-wedrop';
+       reviewState.stages={...reviewState.stages,[stage]:{reviewed:true,reviewedAt:new Date().toISOString()}};
+      }catch(error){
+       reviewState[field]=value;
+       reviewState.stages={...reviewState.stages,[stage]:{reviewed:false}};
+       if(selectedStage===stage)throw error;
+      }
      }
     }
     // Recuperação da Etapa 08: a autorização única da Etapa 10 não deve
     // exigir uma segunda visita à prévia quando a campanha é inequívoca.
     // Apenas consultas oficiais e persistência local; nenhuma escrita Shopee.
-    if(kitLink&&selectedStage==='discount'&&(
+    const kitDiscountAdjustAuthorized=selectedStage==='discount_adjust'&&req.body?.kitDiscountReviewed===true;
+    if(kitLink&&(selectedStage==='discount'||kitDiscountAdjustAuthorized)&&(
        reviewState.kitDiscountPreview?.status!=='prepared'||
        !Number.isFinite(Date.parse(reviewState.kitDiscountPreview?.preparedAt||''))||
        Date.now()-Date.parse(reviewState.kitDiscountPreview.preparedAt)>24*3600000)){
       let candidateId=String(reviewState.kitDiscountPreview?.discountId||
        reviewState.kitDiscountPublication?.discountId||
-       (previous?.sku===sku&&String(previous?.plan?.itemId)===String(itemId)?previous?.plan?.kitDiscount?.discountId:null)||'').trim();
+       (previous?.sku===sku&&String(previous?.plan?.itemId)===String(itemId)?previous?.plan?.kitDiscount?.discountId:null)||
+       (kitDiscountAdjustAuthorized?req.body?.campaignId:'')||'').trim();
       let discountDiscoveryDetail='';
       if(!/^[1-9]\d{0,17}$/.test(candidateId)){
        const found=await discoverKitDiscountCampaigns({cfg,auth,
@@ -3065,7 +3077,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         kitSku:String(kitLink.kitSku),discountId:candidateId,secret:stateSecret()});
        if(String(prepared.itemId)!==String(itemId)||
           String(prepared.modelId||'0')!==String(modelId)||
-          prepared.priceAligned!==true||
+          (!kitDiscountAdjustAuthorized&&prepared.priceAligned!==true)||
           !['ready','planning'].includes(prepared.status))
         throw Error('Etapa 08: campanha encontrada, mas o preço ou anúncio diverge. Não foi enviado nenhum desconto.');
        const restored={kitSku:String(kitLink.kitSku),itemId:String(itemId),

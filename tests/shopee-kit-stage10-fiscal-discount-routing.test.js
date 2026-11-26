@@ -122,3 +122,32 @@ test('sincronização fiscal de kit não transforma tax_info ausente em CEST 00'
  assert.match(result.error,/não retornou tax_info/i);
  assert.equal(posts,0);
 });
+
+test('retomada pula plano ja tentado e continua com descricao independente',async()=>{
+ const body=between('async function kitAutoSweepChoosePlan(', 'function kitAutoSweepResume(');
+ const scope={value:'all',options:['all','seo','description'].map(value=>({value}))};
+ const calls=[];
+ const context={$:()=>scope,kitAutoSweepMatches:()=>true,optimizerExecPrepareError:'',
+  kitAutoSweepPreparePlan:async target=>{
+   calls.push(scope.value);return {selectedStage:scope.value,sku:target.sku,itemId:target.itemId,
+    canExecute:true,actions:[scope.value],fingerprint:scope.value};
+  },optimizerExecNotice:()=>{}};
+ const fn=runInNewContext(body+';kitAutoSweepChoosePlan',context);
+ const result=await fn({kitSku:'KIT-TESTE',sku:'TESTE',itemId:'123',modelId:'0',attemptedFingerprints:['seo','all']},
+  {stages:[{id:'seo',status:'pending'},{id:'description',status:'pending'}]},'seo');
+ assert.equal(result.plan.selectedStage,'description');
+ assert.deepEqual(calls,['seo','description']);
+});
+test('desconto revisado pode ajustar bruto calculado sem bloquear textos',async()=>{
+ const body=between('async function kitAutoSweepChoosePlan(', 'function kitAutoSweepResume(');
+ const scope={value:'discount',options:['discount','discount_adjust'].map(value=>({value}))};
+ const context={$:()=>scope,kitAutoSweepMatches:()=>true,optimizerExecPrepareError:'',
+  RAKitWizardExecutionReviews:()=>({stages:['discount']}),
+  kitAutoSweepPreparePlan:async target=>({selectedStage:scope.value,sku:target.sku,itemId:target.itemId,
+    canExecute:scope.value==='discount_adjust',actions:scope.value==='discount_adjust'?['kit_discount']:[]}),
+  optimizerExecNotice:()=>{}};
+ const fn=runInNewContext(body+';kitAutoSweepChoosePlan',context);
+ const result=await fn({kitSku:'KIT-TESTE',sku:'TESTE',itemId:'123',modelId:'0'},
+  {stages:[{id:'discount',status:'pending'}]},'discount');
+ assert.equal(result.plan.selectedStage,'discount_adjust');
+});

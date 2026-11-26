@@ -407,6 +407,30 @@ function kitWizardExecutionFeedback(message,state='info'){
  node.style.color=state==='error'?'#a1272f':state==='warning'?'#85520d':'#173e72';
  node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
 }
+globalThis.RAKitWizardExecutionProgress=({kitSku,sku,itemId,message,state}={})=>{
+ if(kitWizardStage!==10||String(prepared?.kit?.kitSku||'')!==String(kitSku)||
+    kitCurrentMain(prepared.kit)!==String(sku))return;
+ kitWizardExecutionFeedback('Item ID '+itemId+' · '+String(message||''),state);
+};
+globalThis.RAKitWizardExecutionAudit=({kitSku,sku,itemId,audit}={})=>{
+ if(kitWizardStage!==10||String(prepared?.kit?.kitSku||'')!==String(kitSku)||
+    kitCurrentMain(prepared.kit)!==String(sku)||!audit?.stages?.length)return;
+ const notice=$('#kitWizardExecutionDirectStatus');if(!notice)return;
+ let panel=$('#kitWizardExecutionReadback');
+ if(!panel){panel=document.createElement('div');panel.id='kitWizardExecutionReadback';
+  panel.style.cssText='display:grid;gap:5px;padding:10px 0;font-size:13px';notice.insertAdjacentElement('afterend',panel);}
+ panel.replaceChildren();
+ const heading=document.createElement('strong');
+ heading.textContent='Conferência na Shopee · Item ID '+itemId;
+ panel.append(heading);
+ for(const stage of audit.stages){
+  const line=document.createElement('div');
+  const done=['confirmed','not_applicable'].includes(stage.status);
+  line.style.color=done?'#16804b':'#986318';
+  line.textContent=(done?'✓ ':'○ ')+stage.label+' — '+(done?(stage.status==='not_applicable'?'Não aplicável':'Confirmado'):stage.reason||'Pendente');
+  panel.append(line);
+ }
+};
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
  if(panel&&home){
@@ -426,6 +450,7 @@ function kitWizardExecutionAudit(){
  }
  $('#kitWizardExecutionDiagnostics')?.remove();
  $('#kitWizardLogisticsChoice')?.remove();
+ $('#kitWizardExecutionReadback')?.remove();
  const button=$('#kitWizardOpenExecution');
  if(button)button.textContent='▶ Executar na Shopee';
 }
@@ -1856,6 +1881,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  kitDisablePreOrder();
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  $('#kitWizardLogisticsChoice')?.remove();
+ $('#kitWizardExecutionReadback')?.remove();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
  kitExistingOptimizer.restore(prepared?.optimization||null);
