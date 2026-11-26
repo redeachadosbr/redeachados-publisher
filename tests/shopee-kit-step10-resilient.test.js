@@ -71,3 +71,18 @@ test('motor raiz mostra progresso historico e abre pendencias reais sem preparar
  assert.match(app,/await optimizerDiscountFinalPrepare\(\)/);
  assert.match(app,/await optimizerExecuteApproved\(false\)/);
 });
+
+test('etapa 10 exibe escolha real de canal quando ha varias opcoes e nao simula ausencia de logistica',()=>{
+ const helper=builder.slice(builder.indexOf('function kitWizardLogisticsChoice('),builder.indexOf('function kitWizardExecutionAudit('));
+ assert.match(helper,/channels.length<2/);
+ assert.match(helper,/for\(const ch of channels\)/);
+ assert.match(helper,/source.value=select.value/);
+ assert.match(helper,/channels.some\(ch=>String\(ch.id\)===select.value\)/);
+ assert.match(helper,/source.dispatchEvent\(new Event\('change'/);
+ assert.match(helper,/prepared\?\.kit\?\.kitSku/);
+ assert.match(builder,/if\(commercial\)kitWizardLogisticsChoice\(result.channels\)/);
+ assert.match(builder,/A Shopee confirmou '\+channels.length\+' canais de envio ativos/);
+ assert.doesNotMatch(builder,/A Shopee não retornou um canal de envio ativo/);
+ assert.match(builder,/else if\(result.channels.length===1\)/);
+ assert.match(builder,/Kit comercial sem variações/);
+});

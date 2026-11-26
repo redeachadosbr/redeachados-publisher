@@ -399,6 +399,40 @@ function kitWizardExecutionFeedback(message,state='info'){
  node.style.color=state==='error'?'#a1272f':state==='warning'?'#85520d':'#173e72';
  node.style.background=state==='error'?'#fff0f1':state==='warning'?'#fff8e7':'#eef5ff';
 }
+// The commercial wizard hides the legacy form. Expose only the official
+// channel choice when there is more than one option, without guessing an ID.
+function kitWizardLogisticsChoice(channels){
+ const existing=$('#kitWizardLogisticsChoice');
+ if(kitWizardStage!==10||!kitWizardIsNewUnpublished()||channels.length<2){
+  existing?.remove();return;
+ }
+ const statusNode=$('#kitWizardExecutionDirectStatus'),source=$('#kitLogisticId');
+ if(!statusNode||!source)return;
+ const identity=String(prepared?.kit?.kitSku||'');
+ const box=existing||document.createElement('div');
+ box.id='kitWizardLogisticsChoice';box.dataset.kitSku=identity;
+ box.style.cssText='margin:10px 0;padding:12px;border:1px solid #c7d9ee;border-radius:10px;background:#fff';
+ const label=document.createElement('label');
+ label.textContent='Canal de envio Shopee';
+ label.style.cssText='display:block;font-weight:700;margin-bottom:6px';
+ const select=document.createElement('select');
+ select.style.cssText='display:block;width:100%;max-width:480px;padding:9px;border:1px solid #c7d9ee;border-radius:8px;margin-top:6px';
+ select.append(new Option('Selecione o canal de envio ativo',''));
+ for(const ch of channels)select.append(new Option(ch.name+' (ID '+ch.id+')',String(ch.id)));
+ select.value=source.value;
+ const note=document.createElement('small');
+ note.textContent='Escolha o canal compatível com o envio WeDrop. O aplicativo não altera a logística geral da loja.';
+ label.append(select);box.replaceChildren(label,note);
+ select.addEventListener('change',()=>{
+  if(kitWizardStage!==10||String(prepared?.kit?.kitSku||'')!==identity)return;
+  if(!channels.some(ch=>String(ch.id)===select.value))return;
+  if(![...source.options].some(o=>o.value===select.value))return;
+  source.value=select.value;
+  source.dispatchEvent(new Event('change',{bubbles:true}));
+  kitWizardExecutionFeedback('Canal selecionado: '+select.selectedOptions[0].textContent+'. Clique em Executar na Shopee para validar e continuar.','info');
+ });
+ if(!existing)statusNode.insertAdjacentElement('afterend',box);
+}
 function kitWizardExecutionAudit(){
  const panel=$('#kitPublishPanel'),home=$('#kitDetail');
  if(panel&&home){
@@ -417,6 +451,9 @@ function kitWizardExecutionAudit(){
   if(clip)clip.lastChild.textContent=newListing?' Incluir vídeo no anúncio comercial':' Incluir vídeo na publicação do Kit Formal';
  }
  $('#kitWizardExecutionDiagnostics')?.remove();
+ const logisticsChoice=$('#kitWizardLogisticsChoice');
+ if(logisticsChoice&&(kitWizardStage!==10||!kitWizardIsNewUnpublished()||
+   logisticsChoice.dataset.kitSku!==String(prepared?.kit?.kitSku||'')))logisticsChoice.remove();
  const button=$('#kitWizardOpenExecution');
  if(button)button.textContent='▶ Executar na Shopee';
 }
@@ -950,7 +987,15 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  if(context)context.textContent=prepared?.kit?
   'Kit selecionado: '+(prepared.creative?.title||prepared.kit.components.map(p=>p.name).join(' + ')).slice(0,155):
   'Escolha um kit nos rascunhos abaixo para completar as informações dos produtos.';
- const variation=$('#kitWizardVariantsAccess');if(variation)variation.hidden=kitWizardStage!==7;
+ const variation=$('#kitWizardVariantsAccess');
+ if(variation){
+  variation.hidden=kitWizardStage!==7;
+  const newListing=kitWizardIsNewUnpublished();
+  const heading=variation.querySelector('strong'),hint=variation.querySelector('p');
+  if(heading)heading.textContent=newListing?'Kit comercial sem variações':'Variações já configuradas na otimização da Shopee';
+  if(hint)hint.textContent=newListing?'O novo anúncio comercial contém um único conjunto, sem opções de cor, tamanho ou modelo. Confira a composição e marque esta etapa como conferida.':'Esta etapa reutiliza as opções de cor, tamanho, modelo e fotos do fluxo original, vinculadas ao anúncio da SKU principal. Não cria um cadastro paralelo.';
+  const open=$('#kitWizardOpenVariations');if(open)open.hidden=newListing;
+ }
  const technical=$('#kitWizardTechnicalAccess');if(technical)technical.hidden=kitWizardStage!==5;
  const fiscal=$('#kitWizardFiscalAccess');if(fiscal)fiscal.hidden=kitWizardStage!==8;
  const discount=$('#kitWizardDiscountAccess');if(discount)discount.hidden=kitWizardStage!==9;
@@ -1850,6 +1895,7 @@ function clearKitPublishApproval(){
 function resetKitPublication({saved=false,publication=null}={}){
  kitDisablePreOrder();
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
+ $('#kitWizardLogisticsChoice')?.remove();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
  kitExistingOptimizer.restore(prepared?.optimization||null);
@@ -2349,10 +2395,15 @@ async function kitReadinessCheck({throwOnError=false}={}){
  kitPublishStatus('Validando itens, variações, canais e limites do Kit Formal na Shopee...');
  try{
   const commercial=kitCommercialMode();
+  const checkedKitSku=String(prepared.kit.kitSku);
   const result=await api(commercial?'/api/shopee/kits/commercial/readiness':'/api/shopee/kits/publish/readiness',{body:{
    kitSku:prepared.kit.kitSku,
    ...(commercial?{categoryId:Number($('#kitCommercialCategoryId')?.value||0)}:{})
   }});
+  if(String(prepared?.kit?.kitSku||'')!==checkedKitSku){
+   if(throwOnError)throw Error('O kit selecionado mudou durante a consulta.');
+   return;
+  }
   kitReadiness=result;
   if(commercial){
    const uploaded=new Set(result.uploadedImageIds||[]);
@@ -2386,6 +2437,7 @@ async function kitReadinessCheck({throwOnError=false}={}){
   }
   kitLogisticsKeeper.channel(result.channels);
   kitApplyPendingLogisticName();
+  if(commercial)kitWizardLogisticsChoice(result.channels);
   kitPublishStatus(result.blockers?.length?
    'Não foi possível publicar: '+result.blockers.join(' | '):
    commercial?'Anúncio novo: verifique categoria, atributos e logística; imagens 1–9 serão enviadas apenas após aprovação.':
@@ -2853,7 +2905,14 @@ async function kitWizardExecuteNewListingDirect(){
   if(main&&[...main.options].some(option=>option.value===principal))main.value=principal;
   if(!main?.value||main.value!==principal)
    throw Error('Não consegui recuperar a SKU principal validada para este kit.');
-  if(!$('#kitLogisticId')?.value)throw Error('A Shopee não retornou um canal de envio ativo.');
+  if(!$('#kitLogisticId')?.value){
+   const channels=kitReadiness.channels||[];
+   if(channels.length>1){
+    kitWizardLogisticsChoice(channels);
+    throw Error('A Shopee confirmou '+channels.length+' canais de envio ativos. Selecione um canal abaixo e clique novamente em Executar na Shopee.');
+   }
+   throw Error('Nenhum canal de envio válido foi confirmado para este kit. Confira a logística da loja e consulte novamente.');
+  }
   const weight=Number($('#kitWeightKg')?.value||0);
   if(!Number.isFinite(weight)||weight<=0||weight>30)
    throw Error('O peso do pacote salvo não está válido em kg.');
