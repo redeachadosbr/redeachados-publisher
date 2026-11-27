@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {validateReview} from '../shopeeOptimizationWorkflow.js';
+import {validateReview,titleHasUnhelpfulDimensions,singleProductTitleDimensionsVerified,singleProductSeoDimensionEvidence} from '../shopeeOptimizationWorkflow.js';
 import {compileShopeeExecutionPlan,normalizeShopeeExecutionStage,shopeeMatrixPendingSnapshot,
  shouldAttachCommercialDiscount,confirmShopeeExecution,assertLiveShopeeUnchanged,
  approvedShopeeReadbackConvergence,videoMatches} from '../shopeeExecutionPlan.js';
@@ -162,6 +162,8 @@ test('rotas de preparo e execução revalidam a fonte da SKU, ignorando nome inf
    readPreparedImages:async()=>[],readShopeeExecution:async()=>saved,
    readWeDropProduct:async(shop,identity)=>{lookups.push({shop,...identity});
     return {matchedBy,product_data:{name:supplierName}};},
+   titleHasUnhelpfulDimensions,singleProductTitleDimensionsVerified,singleProductSeoDimensionEvidence,
+   readShopeeSourceEvidence:async()=>({sku:input.sku,sourceText:''}),
    assertShopeeSupplierBrand:()=>{},normalizeShopeeExecutionStage,compileShopeeExecutionPlan,
    shopeeExecutionProgress,shopeeMatrixPendingSnapshot,shouldAttachCommercialDiscount,
    confirmShopeeExecution,assertLiveShopeeUnchanged,approvedShopeeReadbackConvergence,videoMatches,
@@ -170,7 +172,9 @@ test('rotas de preparo e execução revalidam a fonte da SKU, ignorando nome inf
     (saved={sku,plan,state:plan.canExecute?'prepared':'blocked',updated_at:'2026-11-05T00:00:00Z'}),
    claimShopeePreparedExecution:async()=>{claimed++;},runOptimizerJobs:()=>{}};
   const prepare='/api/shopee/optimizer/execution/prepare',execute='/api/shopee/optimizer/execution/execute';
-  vm.runInNewContext(routeCode(prepare)+'\n'+routeCode(execute),scope);
+  const helper=source.slice(source.indexOf('async function seoDimensionEvidenceForSku('),source.indexOf("app.post('/api/shopee/optimizer/workflow/review'"));
+  assert.match(helper,/readShopeeSourceEvidence/);
+  vm.runInNewContext(helper+'\n'+routeCode(prepare)+'\n'+routeCode(execute),scope);
   const response=()=>({code:200,body:null,setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
   let res=response();
   await handlers[prepare]({body:{...input,stage:selectedStage,singleProductName:supplierName}},res);
