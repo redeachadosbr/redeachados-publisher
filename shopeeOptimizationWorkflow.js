@@ -1,5 +1,6 @@
 // Checklist de otimização Shopee por SKU (não publica nem altera anúncios).
 import {REDE_ACHADOS_DESCRIPTION_RULES} from './shopeeMatrixRules.js';
+import {supplierProductDimensions} from './shopeeSupplierEvidenceFacts.js';
 export const STAGE_IDS=Object.freeze(['images','video','seo','technical','description','variants','fiscal','final']);
 export const VARIATION_TYPES=Object.freeze(['Cor','Tamanho','Unidades por pacote','Modelo','Variação','Voltagem','Print','Quantidade']);
 export function validateVariationConfig(input,reviewed=false){
@@ -41,8 +42,17 @@ export function kitTitleDimensionsVerified(title,kitProductNames=[]){
  const trusted=kitProductNames.map(compositeDimensions).flat();
  return dimensions.every(d=>trusted.includes(d));
 }
-// Anúncio individual: aceitar apenas as cotas que já aparecem no NOME COMERCIAL
-// da WeDrop vinculada à mesma SKU. Nunca usar medidas da embalagem ou de outra SKU.
+// Evidência adicional da ficha da mesma SKU: apenas três eixos explícitos do produto.
+// O título pode apresentar os mesmos três eixos em outra ordem (ex.: L x C x A).
+export function singleProductSeoDimensionEvidence(name,sourceText='',catalogText=''){
+ const dimensions=supplierProductDimensions(sourceText)||supplierProductDimensions(catalogText);
+ if(!dimensions||dimensions.derivedFromDiameter)return String(name||'');
+ const {height:h,width:w,length:l}=dimensions;
+ const orders=[[h,w,l],[h,l,w],[w,h,l],[w,l,h],[l,h,w],[l,w,h]];
+ return [String(name||''),...new Set(orders.map(values=>values.join('x')+' cm'))].join(' ');
+}
+// Anúncio individual: aceitar cotas do nome comercial ou da ficha WeDrop
+// comprovada da mesma SKU. Nunca usar medidas logísticas ou de outra SKU.
 export function singleProductTitleDimensionsVerified(title,wedropProductName=''){
  const dimensions=compositeDimensions(title);
  if(!dimensions.length)return true;
@@ -63,7 +73,7 @@ export function validateContentRules({title,description},{allowShortKitTitle=fal
     singleProductTitleDimensionsVerified(title,singleProductName);
    if(!verified)throw Error(kit?
     'Dimensões compostas no título só são aceitas quando aparecem exatamente no nome comercial WeDrop de um dos produtos deste kit.':
-    'As dimensões do título precisam corresponder ao nome comercial WeDrop confirmado para esta SKU. Confira o vínculo e as medidas do produto.');
+    'As dimensões do título precisam corresponder ao nome comercial WeDrop confirmado ou à ficha do produto da mesma SKU. Confira o vínculo e as medidas do produto.');
   }
  }
  if(description!==undefined){

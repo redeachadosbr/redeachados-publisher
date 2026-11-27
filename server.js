@@ -60,7 +60,7 @@ import {readKitFiscalPreset} from './shopeeKitFiscalPreset.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
-import {buildStages,safeTitle,validateReview,titleHasUnhelpfulDimensions} from './shopeeOptimizationWorkflow.js';
+import {buildStages,safeTitle,validateReview,titleHasUnhelpfulDimensions,singleProductTitleDimensionsVerified,singleProductSeoDimensionEvidence} from './shopeeOptimizationWorkflow.js';
 import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescription} from './shopeeDescriptionComposer.js';
 import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill,persistWorkflowExecutionAudit} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
@@ -2789,6 +2789,18 @@ function approvedTechnicalDraftChanges(draft,{reviewedAt=null}={}){
  }
  return changes;
 }
+// Shared SKU-bound dimension evidence for approval, preparation and execution.
+async function seoDimensionEvidenceForSku({auth,sku,itemId,modelId,supplier,title,name}){
+ if(!supplier||!['exact-sku','reviewed-link'].includes(String(supplier.matchedBy||''))||
+    !titleHasUnhelpfulDimensions(title)||singleProductTitleDimensionsVerified(title,name))return name;
+ let sourceText='';
+ try{
+  const evidence=await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku);
+  if(String(evidence?.sku||'')===String(sku))sourceText=String(evidence.sourceText||'');
+ }catch{} // The catalog is still usable when supplemental evidence is unavailable.
+ const facts=supplier.product_data||{};
+ return singleProductSeoDimensionEvidence(name,sourceText,String(facts.description||facts.details||''));
+}
 app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
@@ -2809,6 +2821,7 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       if(supplier&&['exact-sku','reviewed-link'].includes(String(supplier.matchedBy||'')))
         singleProductName=String(supplier.product_data?.name||'');
+      singleProductName=await seoDimensionEvidenceForSku({auth,sku,itemId,modelId,supplier,title:req.body?.title,name:singleProductName});
     }
     const kitProductNames=linkedKit?.kitSku&&Array.isArray(linkedKit.componentNames)
       ?linkedKit.componentNames:[];
@@ -3254,9 +3267,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       {sku:kitLink.mainSku}:{sku,itemId,modelId}):null;
     // A publicação deve usar a MESMA prova de medidas aceita na revisão SEO.
     // Reconsultar o vínculo desta SKU; nunca aceitar um nome enviado pelo cliente.
-    const singleProductName=!kitLink?.kitSku&&
+    let singleProductName=!kitLink?.kitSku&&
       ['exact-sku','reviewed-link'].includes(String(supplierForBrand?.matchedBy||''))?
       String(supplierForBrand.product_data?.name||''):'';
+    if(!kitLink?.kitSku)singleProductName=await seoDimensionEvidenceForSku({auth,sku,itemId,modelId,supplier:supplierForBrand,title:reviewState.draftTitle,name:singleProductName});
     if(['all','technical'].includes(selectedStage))
       assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
         reviewState.attributes||[]:[],supplier:supplierForBrand});
@@ -4102,9 +4116,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    }
   const supplierForBrand=await readWeDropProduct(auth.shopId,linkedKit?
     {sku:linkedKit.mainSku}:{sku,itemId,modelId});
-  const singleProductName=!linkedKit?.kitSku&&
+  let singleProductName=!linkedKit?.kitSku&&
     ['exact-sku','reviewed-link'].includes(String(supplierForBrand?.matchedBy||''))?
     String(supplierForBrand.product_data?.name||''):'';
+  if(!linkedKit?.kitSku)singleProductName=await seoDimensionEvidenceForSku({auth,sku,itemId,modelId,supplier:supplierForBrand,title:reviewState.draftTitle,name:singleProductName});
   const selectedStage=plan.selectedStage||'all';
     // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
     // precisa ser anterior à revisão e os campos devem continuar elegíveis

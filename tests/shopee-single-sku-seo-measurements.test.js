@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {validateReview,singleProductTitleDimensionsVerified,kitTitleDimensionsVerified} from '../shopeeOptimizationWorkflow.js';
+import {validateReview,singleProductTitleDimensionsVerified,kitTitleDimensionsVerified,singleProductSeoDimensionEvidence} from '../shopeeOptimizationWorkflow.js';
 
 const title='🏊 Colchão Inflável para Piscina 183x69cm em PVC com Encosto para Cabeça e Gomos, para Praia e Verão, Cor Sortida ☀️';
 const wedrop='Colchão Inflável Piscina 183x69cm Verão';
@@ -42,4 +42,17 @@ test('rota de revisão usa vínculo WeDrop exato da SKU e nunca aprova sozinha',
  assert.match(route,/supplier\.product_data\?\.name/);
  assert.match(route,/validateReview\(req\.body,\{allowShortKitTitle,kitProductNames,singleProductName\}\)/);
  assert.match(route,/marketplaceUpdated:false/);
+});
+
+test('VP-1960: medidas confirmadas na ficha WeDrop permitem check do título mesmo ausentes no nome',()=>{
+ const name='Capa Protetora De Colchão Casal Box - Azul';
+ const seo='Capa Protetora de Colchão Casal Box Azul 🛏 com Elástico para Proteger de Poeira e Sujeira em Polipropileno 138x188x30 cm';
+ const ficha='Dimensão: 30 cm altura x 138 cm largura x 188 cm comprimento';
+ const evidence=singleProductSeoDimensionEvidence(name,ficha);
+ assert.equal(singleProductTitleDimensionsVerified(seo,evidence),true);
+ assert.equal(validateReview({stage:'seo',reviewed:true,title:seo},{singleProductName:evidence}).reviewed,true);
+ assert.equal(singleProductTitleDimensionsVerified(seo.replace('188','198'),evidence),false);
+ assert.equal(singleProductTitleDimensionsVerified(seo,singleProductSeoDimensionEvidence(name,'Dimensões da embalagem: 30 cm altura x 138 cm largura x 188 cm comprimento')),false);
+ assert.equal(singleProductTitleDimensionsVerified(seo,singleProductSeoDimensionEvidence(name,'',ficha)),true);
+ assert.equal(singleProductTitleDimensionsVerified(seo,singleProductSeoDimensionEvidence(name,'')),false);
 });
